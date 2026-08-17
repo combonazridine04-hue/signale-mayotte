@@ -1,0 +1,365 @@
+:root {
+  --app-bg: #000000;
+  --app-text: #f1f5f9;
+  --app-muted: #94a3b8;
+  --app-primary: #38bdf8;
+
+  --nav-bg: rgba(0, 0, 0, 0.8);
+  --nav-border: rgba(255, 255, 255, 0.12);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #22c55e;
+  --accent-dark: #16a34a;
+
+  --glass-bg: rgba(0, 0, 0, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  color: var(--app-text);
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  transition: background 0.4s ease;
+  background:
+    radial-gradient(ellipse 1000px 900px at 6% 78%, #0f9b8e 0%, transparent 55%),
+    radial-gradient(ellipse 800px 700px at 18% 4%, #05060a 0%, transparent 60%),
+    radial-gradient(ellipse 1100px 950px at 52% 32%, #7a1f2b 0%, transparent 52%),
+    radial-gradient(ellipse 1200px 1000px at 80% 62%, #e8580c 0%, transparent 55%),
+    radial-gradient(ellipse 1000px 900px at 96% 88%, #fbbf24 0%, transparent 58%),
+    #1a0f0a;
+  background-attachment: fixed;
+}
+
+body.theme-noir {
+  background: var(--app-bg);
+}
+
+#app,
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-shell {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.section-kicker {
+  margin: 0 0 0.75rem;
+  color: var(--app-primary);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.hero-section {
+  padding: 5rem 0;
+}
+
+.hero-image {
+  width: 100%;
+  min-height: 320px;
+  max-height: 460px;
+  object-fit: cover;
+  border-radius: 8px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+
+.detail-image {
+  width: 100%;
+  min-height: 320px;
+  max-height: 460px;
+  object-fit: contain;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+}
+
+.detail-galerie {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.detail-galerie-vignette {
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  background: none;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+.detail-galerie-vignette img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-galerie-vignette:hover {
+  opacity: 0.85;
+}
+
+.detail-galerie-vignette.active {
+  opacity: 1;
+  border-color: var(--accent);
+}
+
+.detail-suivi {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-suivi-item {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--glass-border);
+}
+
+.detail-suivi-item .btn-link {
+  text-decoration: none;
+  font-size: 0.78rem;
+}
+
+.contact-panel {
+  padding: 1.25rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.info-box {
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--glass-border);
+}
+
+.info-box span {
+  color: var(--app-muted);
+}
+
+.info-box span,
+.info-box strong {
+  display: block;
+}
+
+.honeypot-field {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.empty-state {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+main {
+  flex: 1;
+  padding-bottom: 96px;
+}
+
+.text-secondary {
+  color: var(--app-muted) !important;
+}
+
+.card-glass {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.form-control,
+.form-select {
+  color: var(--app-text);
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: var(--glass-border);
+}
+
+.form-control:focus,
+.form-select:focus {
+  color: var(--app-text);
+  background-color: rgba(255, 255, 255, 0.09);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.16);
+}
+
+.form-control::placeholder {
+  color: var(--app-muted);
+}
+
+.form-select option {
+  color: #0f172a;
+}
+
+.btn-outline-secondary {
+  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.btn-outline-secondary:hover:not(:disabled) {
+  color: #000000;
+  background-color: #f1f5f9;
+  border-color: #f1f5f9;
+}
+
+.btn-outline-secondary:disabled {
+  color: rgba(241, 245, 249, 0.55);
+  border-color: rgba(255, 255, 255, 0.2);
+  opacity: 1;
+}
+
+.form-label {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.photo-dropzone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 160px;
+  padding: 20px;
+  border: 2px dashed var(--glass-border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--app-muted);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.photo-dropzone:hover,
+.photo-dropzone:focus-visible,
+.photo-dropzone.dragover {
+  border-color: var(--accent);
+  background: rgba(34, 197, 94, 0.08);
+  outline: none;
+}
+
+.photo-dropzone-icon {
+  width: 32px;
+  height: 32px;
+}
+
+.photo-dropzone--complet {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.photo-dropzone-grille {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.photo-dropzone-vignette {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.photo-dropzone-vignette img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-dropzone-retirer {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  cursor: pointer;
+}
+
+.photo-dropzone-retirer svg {
+  width: 14px;
+  height: 14px;
+}
+
+.photo-dropzone-hint {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: var(--app-muted);
+}
+
+/* Marqueurs Leaflet : les cartes appliquent un filtre invert() pour un rendu sombre,
+   on contre-inverse les marqueurs pour garder leurs vraies couleurs. */
+.carte-marker-point {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.4);
+  filter: invert(1) hue-rotate(180deg);
+}
+
+.carte-marker-accent {
+  background: var(--accent);
+}
+
+.carte-marker-signale {
+  background: #dc3545;
+}
+
+.carte-marker-en-cours {
+  background: #f59e0b;
+}
+
+.carte-marker-resolu {
+  background: #22c55e;
+}
+
+@media (max-width: 767.98px) {
+  .hero-section {
+    padding: 3rem 0;
+  }
+
+  .hero-image,
+  .detail-image {
+    min-height: 240px;
+  }
+}
