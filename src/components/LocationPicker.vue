@@ -14,8 +14,15 @@ const emit = defineEmits(['update:latitude', 'update:longitude'])
 const conteneur = ref(null)
 const localisationEnCours = ref(false)
 const erreurLocalisation = ref('')
+const carteInactive = ref(false)
 let carte = null
 let marqueur = null
+
+function activerCarte() {
+  if (!carte) return
+  carte.dragging.enable()
+  carteInactive.value = false
+}
 
 function icone() {
   return L.divIcon({
@@ -85,6 +92,17 @@ onMounted(() => {
   carte.on('click', (event) => {
     definirPosition(event.latlng.lat, event.latlng.lng)
   })
+
+  // Sur mobile, la carte est petite et posée au milieu d'une page qui défile :
+  // si elle capte le glissement d'un doigt dès le premier contact, l'utilisateur
+  // n'arrive plus à faire défiler la page normalement. On désactive donc le
+  // déplacement tant que la carte n'a pas été touchée une première fois
+  // (un simple tap pour poser un repère reste possible entre-temps).
+  if (window.matchMedia('(pointer: coarse)').matches) {
+    carte.dragging.disable()
+    carteInactive.value = true
+    conteneur.value.addEventListener('touchstart', activerCarte, { once: true, passive: true })
+  }
 })
 
 watch(
@@ -103,7 +121,10 @@ onBeforeUnmount(() => {
 
 <template>
   <div>
-    <div ref="conteneur" class="location-picker-map"></div>
+    <div class="location-picker-map-wrap">
+      <div ref="conteneur" class="location-picker-map"></div>
+      <p v-if="carteInactive" class="location-picker-hint">Touchez la carte pour la déplacer</p>
+    </div>
     <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
       <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="localisationEnCours" @click="utiliserPositionActuelle">
         {{ localisationEnCours ? 'Localisation...' : 'Utiliser ma position actuelle' }}
@@ -118,11 +139,37 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.location-picker-map-wrap {
+  position: relative;
+}
+
 .location-picker-map {
   height: 220px;
   border-radius: 8px;
   overflow: hidden;
   border: 1px solid var(--glass-border);
   filter: invert(1) hue-rotate(180deg) brightness(0.95) contrast(0.9);
+}
+
+.location-picker-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 500;
+}
+
+@media (max-width: 575.98px) {
+  .location-picker-map {
+    height: 280px;
+  }
 }
 </style>

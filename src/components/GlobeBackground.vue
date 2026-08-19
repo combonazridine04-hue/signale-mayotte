@@ -88,9 +88,18 @@ function buildCountryBorders(radius) {
 
 function updateComposition() {
   if (!globe) return
+  const aspect = window.innerWidth / window.innerHeight
   const isMobile = window.innerWidth < 768
   globe.position.x = isMobile ? 0.5 : 1.7
   globe.position.y = isMobile ? 0.6 : 0
+
+  // Le champ de vision de la caméra est fixe verticalement, mais sur un écran
+  // étroit et haut (téléphone en portrait), le champ de vision horizontal est
+  // bien plus réduit : la sphère semble alors occuper tout l'écran. On la
+  // réduit proportionnellement pour qu'elle reste un élément de fond discret,
+  // comme sur desktop, au lieu de déborder bord à bord.
+  const echelle = Math.min(1, Math.max(0.55, aspect / 0.9))
+  globe.scale.setScalar(echelle)
 }
 
 function initScene() {
@@ -127,6 +136,21 @@ function onResize() {
   updateComposition()
 }
 
+function onContextLost(event) {
+  // Les navigateurs mobiles récupèrent agressivement les contextes WebGL sous
+  // pression mémoire (changement d'onglet, mise en arrière-plan...). Sans ce
+  // handler, le canvas reste vide en permanence après coup.
+  event.preventDefault()
+  if (animationId) cancelAnimationFrame(animationId)
+  animationId = null
+}
+
+function onContextRestored() {
+  lastFrameTime = 0
+  initScene()
+  animationId = requestAnimationFrame(animate)
+}
+
 function animate(time) {
   const dt = lastFrameTime ? time - lastFrameTime : 16
   lastFrameTime = time
@@ -141,12 +165,21 @@ function animate(time) {
 
 onMounted(() => {
   try {
+    // Sur connexion lente ou en mode économie de données (courant à Mayotte en
+    // mobile), on n'ajoute pas ce rendu 3D coûteux par-dessus le fond déjà présent.
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection
+    if (connection && (connection.saveData || ['slow-2g', '2g'].includes(connection.effectiveType))) {
+      return
+    }
+
     prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     velocity = prefersReducedMotion ? 0 : BASE_SPEED
     lastScrollY = window.scrollY
 
     initScene()
 
+    canvasEl.value.addEventListener('webglcontextlost', onContextLost, false)
+    canvasEl.value.addEventListener('webglcontextrestored', onContextRestored, false)
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onResize)
     animationId = requestAnimationFrame(animate)
@@ -157,6 +190,8 @@ onMounted(() => {
 
 onUnmounted(() => {
   if (animationId) cancelAnimationFrame(animationId)
+  canvasEl.value?.removeEventListener('webglcontextlost', onContextLost)
+  canvasEl.value?.removeEventListener('webglcontextrestored', onContextRestored)
   window.removeEventListener('scroll', onScroll)
   window.removeEventListener('resize', onResize)
 

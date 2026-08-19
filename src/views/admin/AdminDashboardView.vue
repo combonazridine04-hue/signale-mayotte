@@ -229,7 +229,7 @@ const changerStatut = async (id, statut) => {
     </aside>
 
     <div class="admin-main">
-      <header class="admin-header d-flex align-items-center justify-content-between">
+      <header class="admin-header d-flex align-items-center justify-content-between flex-wrap gap-2">
         <h1>
           {{
             { apercu: 'Aperçu', signalements: 'Signalements', messages: 'Messages', comptes: 'Comptes' }[section]
@@ -288,10 +288,10 @@ const changerStatut = async (id, statut) => {
               </thead>
               <tbody>
                 <tr v-for="s in signalementStore.signalements.slice(0, 5)" :key="s.id">
-                  <td>{{ s.categorie }}</td>
-                  <td>{{ s.commune }}</td>
-                  <td><span class="admin-badge" :class="`admin-badge--${s.statut === 'Signalé' ? 'signale' : s.statut === 'En cours' ? 'en-cours' : 'resolu'}`">{{ s.statut }}</span></td>
-                  <td>{{ new Date(s.dateSignalement).toLocaleDateString('fr-FR') }}</td>
+                  <td data-label="Catégorie">{{ s.categorie }}</td>
+                  <td data-label="Commune">{{ s.commune }}</td>
+                  <td data-label="Statut"><span class="admin-badge" :class="`admin-badge--${s.statut === 'Signalé' ? 'signale' : s.statut === 'En cours' ? 'en-cours' : 'resolu'}`">{{ s.statut }}</span></td>
+                  <td data-label="Date">{{ new Date(s.dateSignalement).toLocaleDateString('fr-FR') }}</td>
                 </tr>
               </tbody>
             </table>
@@ -313,9 +313,9 @@ const changerStatut = async (id, statut) => {
             </thead>
             <tbody>
               <tr v-for="s in signalementStore.signalements" :key="s.id">
-                <td>{{ s.categorie }}</td>
-                <td>{{ s.commune }}</td>
-                <td>
+                <td data-label="Catégorie">{{ s.categorie }}</td>
+                <td data-label="Commune">{{ s.commune }}</td>
+                <td data-label="Statut">
                   <select
                     class="admin-select"
                     :value="s.statut"
@@ -324,8 +324,8 @@ const changerStatut = async (id, statut) => {
                     <option v-for="statut in STATUTS" :key="statut" :value="statut">{{ statut }}</option>
                   </select>
                 </td>
-                <td>{{ new Date(s.dateSignalement).toLocaleDateString('fr-FR') }}</td>
-                <td>
+                <td data-label="Date">{{ new Date(s.dateSignalement).toLocaleDateString('fr-FR') }}</td>
+                <td data-label="Actions">
                   <div class="admin-actions">
                     <RouterLink :to="`/signalements/${s.id}`" class="admin-btn admin-btn--ghost">Voir</RouterLink>
                     <button
@@ -418,9 +418,9 @@ const changerStatut = async (id, statut) => {
               </thead>
               <tbody>
                 <tr v-for="c in adminStore.comptes" :key="c.id">
-                  <td>{{ c.identifiant }} <span v-if="c.identifiant === authStore.identifiant" class="admin-muted">(vous)</span></td>
-                  <td>{{ new Date(c.creeLe).toLocaleDateString('fr-FR') }}</td>
-                  <td>
+                  <td data-label="Identifiant">{{ c.identifiant }} <span v-if="c.identifiant === authStore.identifiant" class="admin-muted">(vous)</span></td>
+                  <td data-label="Créé le">{{ new Date(c.creeLe).toLocaleDateString('fr-FR') }}</td>
+                  <td data-label="Actions">
                     <button
                       v-if="c.identifiant !== authStore.identifiant"
                       type="button"
@@ -928,19 +928,128 @@ const changerStatut = async (id, statut) => {
     width: 100%;
     flex-direction: row;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    padding: 0.65rem 0.85rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-brand {
+    flex-shrink: 0;
+    padding: 0;
+    margin: 0;
+    border-bottom: none;
+  }
+
+  .admin-brand-subtitle {
+    display: none;
   }
 
   .admin-nav {
     flex-direction: row;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    flex: none;
+    gap: 0.35rem;
+  }
+
+  .admin-nav-item {
+    flex-shrink: 0;
+    padding: 0.5rem 0.7rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
   }
 
   .admin-sidebar-footer {
     flex-direction: row;
+    flex-shrink: 0;
+    align-items: center;
     border-top: none;
     padding-top: 0;
     margin-left: auto;
+    gap: 0.35rem;
+  }
+
+  .admin-sidebar-user {
+    display: none;
+  }
+
+  .admin-sidebar-link {
+    padding: 0.5rem 0.6rem;
+    white-space: nowrap;
+  }
+
+  .admin-header {
+    padding: 1rem 1.1rem;
+  }
+
+  .admin-header h1 {
+    font-size: 1.1rem;
+  }
+
+  .admin-content {
+    padding: 1.1rem;
+  }
+
+  .admin-panel {
+    padding: 1.1rem;
+  }
+
+  .admin-form {
+    max-width: none;
+  }
+
+  .admin-table thead {
+    display: none;
+  }
+
+  .admin-table,
+  .admin-table tbody,
+  .admin-table tr,
+  .admin-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .admin-table tr {
+    margin-bottom: 0.75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 0.3rem 0.85rem;
+  }
+
+  .admin-table tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .admin-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid #f1f5f9;
+    text-align: right;
+  }
+
+  .admin-table td:last-child {
+    border-bottom: none;
+  }
+
+  .admin-table td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    color: #64748b;
+    text-align: left;
+  }
+
+  .admin-table td .admin-actions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
   }
 }
 </style>
