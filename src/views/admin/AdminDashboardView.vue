@@ -22,6 +22,12 @@ const seDeconnecter = () => {
 }
 
 const section = ref('apercu')
+const menuMobileOuvert = ref(false)
+
+function choisirSection(nomSection) {
+  section.value = nomSection
+  menuMobileOuvert.value = false
+}
 
 onMounted(() => {
   signalementStore.charger()
@@ -168,21 +174,38 @@ const changerStatut = async (id, statut) => {
 
 <template>
   <div class="admin-dashboard">
-    <aside class="admin-sidebar">
-      <div class="admin-brand">
-        <div class="admin-brand-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3l7 3v5c0 4.8-3 8.5-7 10-4-1.5-7-5.2-7-10V6l7-3Z" />
+    <aside class="admin-sidebar" :class="{ 'admin-sidebar--ouvert': menuMobileOuvert }">
+      <div class="admin-sidebar-header">
+        <div class="admin-brand">
+          <div class="admin-brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3l7 3v5c0 4.8-3 8.5-7 10-4-1.5-7-5.2-7-10V6l7-3Z" />
+            </svg>
+          </div>
+          <div>
+            <p class="admin-brand-title">Signale Mayotte</p>
+            <p class="admin-brand-subtitle">Espace admin</p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          class="admin-menu-toggle"
+          :aria-expanded="menuMobileOuvert"
+          aria-label="Ouvrir le menu"
+          @click="menuMobileOuvert = !menuMobileOuvert"
+        >
+          <svg v-if="!menuMobileOuvert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7h16M4 12h16M4 17h16" />
           </svg>
-        </div>
-        <div>
-          <p class="admin-brand-title">Signale Mayotte</p>
-          <p class="admin-brand-subtitle">Espace admin</p>
-        </div>
+          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
       </div>
 
       <nav class="admin-nav">
-        <button type="button" class="admin-nav-item" :class="{ active: section === 'apercu' }" @click="section = 'apercu'">
+        <button type="button" class="admin-nav-item" :class="{ active: section === 'apercu' }" @click="choisirSection('apercu')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="7" height="7" rx="1.5" />
             <rect x="14" y="3" width="7" height="7" rx="1.5" />
@@ -195,7 +218,7 @@ const changerStatut = async (id, statut) => {
           type="button"
           class="admin-nav-item"
           :class="{ active: section === 'signalements' }"
-          @click="section = 'signalements'"
+          @click="choisirSection('signalements')"
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.3 2.25h17.76a1.5 1.5 0 0 0 1.3-2.25L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z" />
@@ -205,14 +228,14 @@ const changerStatut = async (id, statut) => {
           Signalements
           <span v-if="compteurs.signale" class="admin-nav-badge">{{ compteurs.signale }}</span>
         </button>
-        <button type="button" class="admin-nav-item" :class="{ active: section === 'messages' }" @click="section = 'messages'">
+        <button type="button" class="admin-nav-item" :class="{ active: section === 'messages' }" @click="choisirSection('messages')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.4 8.5 8.5 0 0 1-4-1L3 20l1.1-4a8.4 8.4 0 0 1-1-4A8.38 8.38 0 0 1 11.5 3a8.5 8.5 0 0 1 8.5 8.5Z" />
           </svg>
           Messages
           <span v-if="messagesNonLus" class="admin-nav-badge">{{ messagesNonLus }}</span>
         </button>
-        <button type="button" class="admin-nav-item" :class="{ active: section === 'comptes' }" @click="section = 'comptes'">
+        <button type="button" class="admin-nav-item" :class="{ active: section === 'comptes' }" @click="choisirSection('comptes')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="8" r="3.5" />
             <path d="M4.5 20c1.2-3.5 4-5.5 7.5-5.5s6.3 2 7.5 5.5" />
@@ -511,6 +534,31 @@ const changerStatut = async (id, statut) => {
   margin: 0;
   font-size: 0.72rem;
   color: #94a3b8;
+}
+
+.admin-sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.admin-menu-toggle {
+  display: none;
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.admin-menu-toggle svg {
+  width: 20px;
+  height: 20px;
 }
 
 .admin-nav {
@@ -926,17 +974,12 @@ const changerStatut = async (id, statut) => {
 
   .admin-sidebar {
     width: 100%;
-    flex-direction: row;
-    align-items: center;
-    flex-wrap: nowrap;
-    gap: 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
     padding: 0.65rem 0.85rem;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
   }
 
   .admin-brand {
-    flex-shrink: 0;
     padding: 0;
     margin: 0;
     border-bottom: none;
@@ -946,37 +989,39 @@ const changerStatut = async (id, statut) => {
     display: none;
   }
 
-  .admin-nav {
-    flex-direction: row;
-    flex-wrap: nowrap;
-    flex: none;
-    gap: 0.35rem;
+  .admin-menu-toggle {
+    display: flex;
   }
 
-  .admin-nav-item {
-    flex-shrink: 0;
-    padding: 0.5rem 0.7rem;
-    font-size: 0.82rem;
-    white-space: nowrap;
-  }
-
+  .admin-nav,
   .admin-sidebar-footer {
-    flex-direction: row;
-    flex-shrink: 0;
-    align-items: center;
-    border-top: none;
-    padding-top: 0;
-    margin-left: auto;
-    gap: 0.35rem;
-  }
-
-  .admin-sidebar-user {
     display: none;
   }
 
+  .admin-sidebar--ouvert .admin-nav {
+    display: flex;
+    flex-direction: column;
+    flex: none;
+    gap: 0.25rem;
+    margin-top: 0.85rem;
+  }
+
+  .admin-nav-item {
+    width: 100%;
+  }
+
+  .admin-sidebar--ouvert .admin-sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.15rem;
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
   .admin-sidebar-link {
-    padding: 0.5rem 0.6rem;
-    white-space: nowrap;
+    padding: 0.55rem 0.6rem;
   }
 
   .admin-header {
