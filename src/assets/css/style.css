@@ -66,19 +66,6 @@ body.theme-noir {
   text-transform: uppercase;
 }
 
-.hero-section {
-  padding: 5rem 0;
-}
-
-.hero-image {
-  width: 100%;
-  min-height: 320px;
-  max-height: 460px;
-  object-fit: cover;
-  border-radius: 8px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-}
-
 .detail-image {
   width: 100%;
   min-height: 320px;
@@ -321,10 +308,16 @@ main {
   height: 14px;
 }
 
-.photo-dropzone-hint {
-  margin: 4px 0 0;
-  font-size: 0.8rem;
-  color: var(--app-muted);
+.photo-dropzone-appareil {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.photo-dropzone-appareil svg {
+  width: 16px;
+  height: 16px;
 }
 
 /* Marqueurs Leaflet : les cartes appliquent un filtre invert() pour un rendu sombre,
@@ -356,11 +349,6 @@ main {
 }
 
 @media (max-width: 767.98px) {
-  .hero-section {
-    padding: 3rem 0;
-  }
-
-  .hero-image,
   .detail-image {
     min-height: 240px;
   }

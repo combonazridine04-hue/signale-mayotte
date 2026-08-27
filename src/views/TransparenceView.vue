@@ -101,38 +101,3 @@ const tauxResolution = computed(() => {
     </div>
   </main>
 </template>
-
-<style scoped>
-.transparence-valeur {
-  margin: 0;
-  font-size: 2.2rem;
-  font-weight: 800;
-  color: var(--app-text);
-}
-
-.transparence-valeur--signale {
-  color: #f87171;
-}
-
-.transparence-valeur--en-cours {
-  color: #fbbf24;
-}
-
-.transparence-valeur--resolu {
-  color: #4ade80;
-}
-
-.transparence-barre-piste {
-  height: 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  overflow: hidden;
-}
-
-.transparence-barre-remplissage {
-  height: 100%;
-  min-width: 4px;
-  border-radius: 999px;
-  background: var(--app-primary);
-}
-</style>

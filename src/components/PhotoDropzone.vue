@@ -10,6 +10,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'update:existantes'])
 
 const inputPhoto = ref(null)
+const inputAppareil = ref(null)
 const surGlisser = ref(false)
 const apercus = ref([]) // { url, fichier } pour les nouveaux fichiers
 
@@ -30,6 +31,10 @@ function ajouterFichiers(liste) {
 
 const declencherSelection = () => {
   if (!complet.value) inputPhoto.value.click()
+}
+
+const declencherAppareil = () => {
+  if (!complet.value) inputAppareil.value.click()
 }
 
 const choisirPhotos = (event) => {
@@ -76,6 +81,20 @@ function retirerExistante(url) {
       <p class="mb-0">{{ complet ? `Maximum ${MAX_PHOTOS} photos atteint` : 'Cliquez ou glissez des photos ici' }}</p>
       <p class="text-secondary small mb-0">JPG, PNG... 5 Mo par photo, {{ MAX_PHOTOS }} photos max ({{ nbTotal }}/{{ MAX_PHOTOS }})</p>
     </div>
+
+    <input ref="inputAppareil" type="file" accept="image/*" capture="environment" class="d-none" @change="choisirPhotos" />
+    <button
+      type="button"
+      class="btn btn-outline-secondary btn-sm photo-dropzone-appareil"
+      :disabled="complet"
+      @click="declencherAppareil"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" />
+        <circle cx="12" cy="13.5" r="3.2" />
+      </svg>
+      Prendre une photo
+    </button>
 
     <div v-if="nbTotal" class="photo-dropzone-grille">
       <div v-for="url in existantes" :key="url" class="photo-dropzone-vignette">

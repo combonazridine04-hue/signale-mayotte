@@ -22,29 +22,3 @@ defineProps({
     <p v-if="organisme.note" class="organisme-competent-note mb-0">{{ organisme.note }}</p>
   </div>
 </template>
-
-<style scoped>
-.organisme-competent {
-  padding: 12px 14px;
-  border-radius: 8px;
-  background: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  font-size: 0.88rem;
-}
-
-.organisme-competent-titre {
-  margin: 0 0 6px;
-  font-weight: 700;
-  color: var(--app-text);
-}
-
-.organisme-competent a {
-  color: var(--app-primary);
-}
-
-.organisme-competent-note {
-  margin-top: 6px;
-  color: var(--app-muted);
-  font-size: 0.82rem;
-}
-</style>
