@@ -1,3 +1,4 @@
+/* ---- Variables ---- */
 :root {
   --app-bg: #000000;
   --app-text: #f1f5f9;
@@ -7,14 +8,13 @@
   --nav-bg: rgba(0, 0, 0, 0.8);
   --nav-border: rgba(255, 255, 255, 0.12);
   --text-main: #f8fafc;
-  --text-muted: #94a3b8;
   --accent: #22c55e;
-  --accent-dark: #16a34a;
 
   --glass-bg: rgba(0, 0, 0, 0.7);
   --glass-border: rgba(255, 255, 255, 0.1);
 }
 
+/* ---- Reset et mise en page globale ---- */
 * {
   box-sizing: border-box;
 }
@@ -57,6 +57,7 @@ body.theme-noir {
   flex-direction: column;
 }
 
+/* ---- Page de détail d'un signalement ---- */
 .section-kicker {
   margin: 0 0 0.75rem;
   color: var(--app-primary);
@@ -132,13 +133,19 @@ body.theme-noir {
   font-size: 0.78rem;
 }
 
-.contact-panel {
-  padding: 1.25rem;
+.contact-panel,
+.hero-stat,
+.signalement-card,
+.filter-bar {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  border-radius: 8px;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+}
+
+.contact-panel {
+  padding: 1.25rem;
+  border-radius: 8px;
 }
 
 .info-box {
@@ -155,6 +162,7 @@ body.theme-noir {
   display: block;
 }
 
+/* ---- Utilitaires génériques ---- */
 .honeypot-field {
   position: absolute;
   width: 1px;
@@ -178,6 +186,7 @@ main {
   color: var(--app-muted) !important;
 }
 
+/* ---- Formulaires et boutons ---- */
 .card-glass {
   background: var(--glass-bg) !important;
   border: 1px solid var(--glass-border) !important;
@@ -230,6 +239,7 @@ main {
   font-weight: 600;
 }
 
+/* ---- Zone de dépôt de photo ---- */
 .photo-dropzone {
   position: relative;
   display: flex;

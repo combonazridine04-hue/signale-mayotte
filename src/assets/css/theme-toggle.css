@@ -11,7 +11,7 @@
   border: 1px solid var(--nav-border);
   border-radius: 50%;
   background: var(--nav-bg);
-  color: var(--text-muted);
+  color: var(--app-muted);
   cursor: pointer;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
