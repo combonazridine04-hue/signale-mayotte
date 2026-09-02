@@ -114,6 +114,10 @@ export const useSignalementStore = defineStore('signalement', {
       if (this.signalementCourant?.id === signalement.id) {
         this.signalementCourant = signalement
       }
+      const index = this.signalements.findIndex((s) => s.id === signalement.id)
+      if (index !== -1) {
+        this.signalements[index] = signalement
+      }
       return signalement
     },
 
