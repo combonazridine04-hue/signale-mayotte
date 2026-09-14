@@ -39,7 +39,11 @@ router.post('/login', async (req, res) => {
 })
 
 router.post('/inscription', limiteurInscription, async (req, res) => {
-  const { nom, email, telephone, motDePasse } = req.body || {}
+  const { nom, email, telephone, motDePasse, site_web: honeypot } = req.body || {}
+
+  if (honeypot) {
+    return res.status(400).json({ erreur: 'Inscription impossible.' })
+  }
 
   const resultat = await inscrireUtilisateur({ nom, email, telephone, motDePasse })
   if (resultat.erreur) {

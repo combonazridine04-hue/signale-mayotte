@@ -49,14 +49,12 @@ const routes = [
   {
     path: '/inscription',
     name: 'inscription',
-    component: InscriptionView,
-    meta: { pagePleinEcran: true }
+    component: InscriptionView
   },
   {
     path: '/connexion',
     name: 'connexion',
-    component: ConnexionView,
-    meta: { pagePleinEcran: true }
+    component: ConnexionView
   },
   {
     path: '/admin/login',

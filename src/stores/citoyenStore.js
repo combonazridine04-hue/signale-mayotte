@@ -38,13 +38,13 @@ export const useCitoyenStore = defineStore('citoyen', {
       sessionStorage.setItem(STORAGE_KEY_NOM, this.nom)
     },
 
-    async inscrire({ nom, email, telephone, motDePasse }) {
+    async inscrire({ nom, email, telephone, motDePasse, site_web }) {
       let reponse
       try {
         reponse = await fetch('/api/auth/inscription', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nom, email, telephone, motDePasse })
+          body: JSON.stringify({ nom, email, telephone, motDePasse, site_web })
         })
       } catch {
         return { succes: false, erreur: "Impossible de contacter le serveur. Vérifie qu'il est bien lancé." }

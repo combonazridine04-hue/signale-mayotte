@@ -22,7 +22,7 @@ const route = useRoute()
 </script>
 
 <template>
-  <RouterView v-if="route.meta.admin || route.meta.pagePleinEcran" />
+  <RouterView v-if="route.meta.admin" />
   <template v-else>
     <GlobeBackground />
     <div class="app-shell">
