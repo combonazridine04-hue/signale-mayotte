@@ -73,14 +73,31 @@ await db.query(`
 `)
 
 await db.query(`
+  CREATE TABLE IF NOT EXISTS utilisateurs (
+    id SERIAL PRIMARY KEY,
+    nom TEXT NOT NULL,
+    email TEXT UNIQUE,
+    telephone TEXT UNIQUE,
+    mot_de_passe_hash TEXT NOT NULL,
+    cree_le TEXT NOT NULL,
+    CONSTRAINT utilisateurs_email_ou_telephone CHECK (email IS NOT NULL OR telephone IS NOT NULL)
+  )
+`)
+
+await db.query(`ALTER TABLE signalements ADD COLUMN IF NOT EXISTS utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL`)
+
+await db.query(`
   CREATE TABLE IF NOT EXISTS soutiens (
     id SERIAL PRIMARY KEY,
     signalement_id INTEGER NOT NULL REFERENCES signalements(id) ON DELETE CASCADE,
     ip_hash TEXT NOT NULL,
+    utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL,
     date_soutien TEXT NOT NULL,
     UNIQUE (signalement_id, ip_hash)
   )
 `)
+await db.query(`ALTER TABLE soutiens ADD COLUMN IF NOT EXISTS utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL`)
+await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS soutiens_signalement_utilisateur_uniq ON soutiens (signalement_id, utilisateur_id) WHERE utilisateur_id IS NOT NULL`)
 
 await db.query(`
   CREATE TABLE IF NOT EXISTS mises_a_jour (
@@ -97,9 +114,11 @@ await db.query(`
     signalement_id INTEGER NOT NULL REFERENCES signalements(id) ON DELETE CASCADE,
     auteur TEXT NOT NULL,
     texte TEXT NOT NULL,
-    date_creation TEXT NOT NULL
+    date_creation TEXT NOT NULL,
+    utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL
   )
 `)
+await db.query(`ALTER TABLE commentaires ADD COLUMN IF NOT EXISTS utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL`)
 
 const donneesDemo = [
   {

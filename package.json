@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.3",
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.2",
@@ -23,6 +25,7 @@
     "leaflet": "^1.9.4",
     "multer": "^2.2.0",
     "nodemailer": "^9.0.5",
+    "nsfwjs": "^4.3.0",
     "pg": "^8.23.0",
     "pinia": "^3.0.4",
     "sharp": "^0.35.3",

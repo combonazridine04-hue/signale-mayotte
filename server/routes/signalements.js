@@ -6,9 +6,10 @@ import { rateLimit } from 'express-rate-limit'
 import { db } from '../db.js'
 import { CATEGORIES, COMMUNES, STATUTS } from '../../src/models/signalement.js'
 import { envoyerNotificationSignalement, envoyerConfirmationSignalement, envoyerChangementStatut } from '../mailer.js'
-import { requireAuth } from '../middleware/requireAuth.js'
+import { requireAuth, requireAuthUtilisateur } from '../middleware/requireAuth.js'
 import { sessionValide } from '../auth.js'
 import { uploaderPhoto, supprimerPhoto } from '../storage.js'
+import { contientContenuExplicite } from '../moderation.js'
 
 const MAX_PHOTOS = 5
 
@@ -64,12 +65,18 @@ function hasherIp(req) {
   return crypto.createHash('sha256').update(`signale-mayotte-soutien:${req.ip}`).digest('hex')
 }
 
-// Autorisé si connecté en admin, OU si le token secret de suppression (donné au créateur
-// à la création, jamais exposé ailleurs) correspond à celui du signalement.
-function estAutoriseASupprimer(req, existant) {
+function sessionDeLaRequete(req) {
   const entete = req.headers.authorization || ''
   const token = entete.startsWith('Bearer ') ? entete.slice(7) : ''
-  if (sessionValide(token)) return true
+  return sessionValide(token)
+}
+
+// Autorisé si connecté en admin, si c'est le compte citoyen créateur, OU si le token secret
+// de suppression (donné au créateur anonyme historique, jamais exposé ailleurs) correspond.
+function estAutoriseASupprimer(req, existant) {
+  const session = sessionDeLaRequete(req)
+  if (session?.type === 'admin') return true
+  if (session?.type === 'utilisateur' && session.utilisateurId === existant.utilisateur_id) return true
 
   const tokenSuppression = req.query.token || req.body?.token
   return Boolean(tokenSuppression) && tokenSuppression === existant.token_suppression
@@ -95,8 +102,17 @@ async function traiterPhotos(fichiers) {
   return urls
 }
 
-function mapRow(row) {
-  return {
+// Renvoie true si au moins une des photos envoyées est jugée à caractère explicite
+// (analysée avant tout traitement/envoi, pour ne rien stocker si elle est rejetée).
+async function contientUnePhotoInterdite(fichiers) {
+  for (const fichier of fichiers) {
+    if (await contientContenuExplicite(fichier.buffer)) return true
+  }
+  return false
+}
+
+function mapRow(row, avecAuteur = false) {
+  const base = {
     id: row.id,
     categorie: row.categorie,
     commune: row.commune,
@@ -110,6 +126,13 @@ function mapRow(row) {
     longitude: row.longitude,
     nbSoutiens: row.nb_soutiens || 0
   }
+  // Identité du créateur : jamais publique, visible uniquement par l'admin (traçabilité anti-abus).
+  if (avecAuteur) {
+    base.auteurNom = row.auteur_nom || null
+    base.auteurEmail = row.auteur_email || null
+    base.auteurTelephone = row.auteur_telephone || null
+  }
+  return base
 }
 
 function mapMiseAJour(row) {
@@ -165,14 +188,19 @@ router.get('/signalements/stats-publiques', async (req, res) => {
 })
 
 router.get('/signalements/export.csv', requireAuth, async (req, res) => {
-  const { rows } = await db.query('SELECT * FROM signalements ORDER BY date_signalement DESC')
+  const { rows } = await db.query(
+    `SELECT s.*, u.nom AS auteur_nom, u.email AS auteur_email, u.telephone AS auteur_telephone
+     FROM signalements s
+     LEFT JOIN utilisateurs u ON u.id = s.utilisateur_id
+     ORDER BY s.date_signalement DESC`
+  )
 
   const echapperCsv = (valeur) => `"${String(valeur ?? '').replace(/"/g, '""')}"`
-  const entetes = ['id', 'categorie', 'commune', 'description', 'statut', 'date_signalement', 'date_resolution', 'latitude', 'longitude', 'nb_soutiens']
+  const entetes = ['id', 'categorie', 'commune', 'description', 'statut', 'date_signalement', 'date_resolution', 'latitude', 'longitude', 'nb_soutiens', 'auteur_nom', 'auteur_email', 'auteur_telephone']
   const lignes = [entetes.join(',')]
   for (const row of rows) {
     lignes.push(
-      [row.id, row.categorie, row.commune, row.description, row.statut, row.date_signalement, row.date_resolution, row.latitude, row.longitude, row.nb_soutiens]
+      [row.id, row.categorie, row.commune, row.description, row.statut, row.date_signalement, row.date_resolution, row.latitude, row.longitude, row.nb_soutiens, row.auteur_nom, row.auteur_email, row.auteur_telephone]
         .map(echapperCsv)
         .join(',')
     )
@@ -186,7 +214,16 @@ router.get('/signalements/export.csv', requireAuth, async (req, res) => {
 
 router.get('/signalements/:id', async (req, res) => {
   const id = Number(req.params.id)
-  const { rows } = await db.query('SELECT * FROM signalements WHERE id = $1', [id])
+  const session = sessionDeLaRequete(req)
+  const estAdmin = session?.type === 'admin'
+
+  const { rows } = await db.query(
+    `SELECT s.*, u.nom AS auteur_nom, u.email AS auteur_email, u.telephone AS auteur_telephone
+     FROM signalements s
+     LEFT JOIN utilisateurs u ON u.id = s.utilisateur_id
+     WHERE s.id = $1`,
+    [id]
+  )
   if (!rows[0]) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
   const { rows: misesAJour } = await db.query(
@@ -197,16 +234,27 @@ router.get('/signalements/:id', async (req, res) => {
     'SELECT * FROM commentaires WHERE signalement_id = $1 ORDER BY date_creation ASC',
     [id]
   )
-  const { rows: soutienExistant } = await db.query(
-    'SELECT 1 FROM soutiens WHERE signalement_id = $1 AND ip_hash = $2',
-    [id, hasherIp(req)]
-  )
+
+  let dejaSoutenu = false
+  if (session?.type === 'utilisateur') {
+    const { rows: soutienExistant } = await db.query(
+      'SELECT 1 FROM soutiens WHERE signalement_id = $1 AND utilisateur_id = $2',
+      [id, session.utilisateurId]
+    )
+    dejaSoutenu = soutienExistant.length > 0
+  } else {
+    const { rows: soutienExistant } = await db.query(
+      'SELECT 1 FROM soutiens WHERE signalement_id = $1 AND ip_hash = $2',
+      [id, hasherIp(req)]
+    )
+    dejaSoutenu = soutienExistant.length > 0
+  }
 
   res.json({
-    ...mapRow(rows[0]),
+    ...mapRow(rows[0], estAdmin),
     misesAJour: misesAJour.map(mapMiseAJour),
     commentaires: commentaires.map(mapCommentaire),
-    dejaSoutenu: soutienExistant.length > 0
+    dejaSoutenu
   })
 })
 
@@ -244,14 +292,19 @@ router.get('/signalements', async (req, res) => {
 
   const paramsPage = [...params, parPage, (page - 1) * parPage]
   const { rows } = await db.query(
-    `SELECT * FROM signalements ${where} ORDER BY ${ordre} ${sens} LIMIT $${paramsPage.length - 1} OFFSET $${paramsPage.length}`,
+    `SELECT s.*, u.nom AS auteur_nom, u.email AS auteur_email, u.telephone AS auteur_telephone
+     FROM signalements s
+     LEFT JOIN utilisateurs u ON u.id = s.utilisateur_id
+     ${where}
+     ORDER BY ${ordre} ${sens} LIMIT $${paramsPage.length - 1} OFFSET $${paramsPage.length}`,
     paramsPage
   )
 
-  res.json({ signalements: rows.map(mapRow), total, page, parPage })
+  const estAdmin = sessionDeLaRequete(req)?.type === 'admin'
+  res.json({ signalements: rows.map((r) => mapRow(r, estAdmin)), total, page, parPage })
 })
 
-router.post('/signalements/:id/soutenir', limiteurSoutien, async (req, res) => {
+router.post('/signalements/:id/soutenir', requireAuthUtilisateur, limiteurSoutien, async (req, res) => {
   const id = Number(req.params.id)
   const ipHash = hasherIp(req)
 
@@ -259,9 +312,10 @@ router.post('/signalements/:id/soutenir', limiteurSoutien, async (req, res) => {
   if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
   try {
-    await db.query('INSERT INTO soutiens (signalement_id, ip_hash, date_soutien) VALUES ($1, $2, $3)', [
+    await db.query('INSERT INTO soutiens (signalement_id, ip_hash, utilisateur_id, date_soutien) VALUES ($1, $2, $3, $4)', [
       id,
       ipHash,
+      req.utilisateur?.id || null,
       new Date().toISOString()
     ])
   } catch {
@@ -275,7 +329,7 @@ router.post('/signalements/:id/soutenir', limiteurSoutien, async (req, res) => {
   res.json({ nbSoutiens: rows[0].nb_soutiens })
 })
 
-router.post('/signalements', limiteurCreation, upload.array('photos', MAX_PHOTOS), async (req, res) => {
+router.post('/signalements', requireAuthUtilisateur, limiteurCreation, upload.array('photos', MAX_PHOTOS), async (req, res) => {
   if (estUnRobot(req)) {
     return res.status(201).json({ id: 0, statut: 'Signalé' })
   }
@@ -295,6 +349,10 @@ router.post('/signalements', limiteurCreation, upload.array('photos', MAX_PHOTOS
     return res.status(400).json({ erreur: 'La description ne doit pas dépasser 2000 caractères.' })
   }
 
+  if (req.files?.length && (await contientUnePhotoInterdite(req.files))) {
+    return res.status(400).json({ erreur: 'Une des photos envoyées a été refusée (contenu inapproprié détecté).' })
+  }
+
   const emailValide = email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null
   const photos = req.files?.length ? await traiterPhotos(req.files) : []
   const dateSignalement = new Date().toISOString()
@@ -303,10 +361,10 @@ router.post('/signalements', limiteurCreation, upload.array('photos', MAX_PHOTOS
   const tokenSuppression = crypto.randomBytes(24).toString('hex')
 
   const { rows } = await db.query(
-    `INSERT INTO signalements (categorie, commune, description, photos, statut, date_signalement, latitude, longitude, email_contact, token_suppression)
-     VALUES ($1, $2, $3, $4, 'Signalé', $5, $6, $7, $8, $9)
+    `INSERT INTO signalements (categorie, commune, description, photos, statut, date_signalement, latitude, longitude, email_contact, token_suppression, utilisateur_id)
+     VALUES ($1, $2, $3, $4, 'Signalé', $5, $6, $7, $8, $9, $10)
      RETURNING *`,
-    [categorie, commune, description.trim(), photos, dateSignalement, lat, lon, emailValide, tokenSuppression]
+    [categorie, commune, description.trim(), photos, dateSignalement, lat, lon, emailValide, tokenSuppression, req.utilisateur?.id || null]
   )
 
   const signalementCree = mapRow(rows[0])
@@ -333,6 +391,9 @@ router.patch('/signalements/:id', requireAuth, upload.single('photoResolution'),
 
   let photoResolution = existant.photo_resolution
   if (req.file) {
+    if (await contientContenuExplicite(req.file.buffer)) {
+      return res.status(400).json({ erreur: 'La photo envoyée a été refusée (contenu inapproprié détecté).' })
+    }
     if (photoResolution) await supprimerPhoto(photoResolution)
     photoResolution = await traiterPhoto(req.file)
   }
@@ -371,6 +432,10 @@ router.put('/signalements/:id', requireAuth, upload.array('photos', MAX_PHOTOS),
   }
   if (description.trim().length > 2000) {
     return res.status(400).json({ erreur: 'La description ne doit pas dépasser 2000 caractères.' })
+  }
+
+  if (req.files?.length && (await contientUnePhotoInterdite(req.files))) {
+    return res.status(400).json({ erreur: 'Une des photos envoyées a été refusée (contenu inapproprié détecté).' })
   }
 
   let photosConservees = existant.photos
@@ -434,13 +499,12 @@ router.delete('/signalements/:id/mises-a-jour/:miseAJourId', requireAuth, async 
   res.status(204).end()
 })
 
-router.post('/signalements/:id/commentaires', limiteurCommentaire, async (req, res) => {
-  if (estUnRobot(req)) {
-    return res.status(201).json({ id: 0, auteur: 'Anonyme', texte: '', dateCreation: new Date().toISOString() })
-  }
-
+router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCommentaire, async (req, res) => {
   const id = Number(req.params.id)
-  const { auteur = '', texte = '' } = req.body || {}
+  const { texte = '' } = req.body || {}
+  // L'auteur affiché vient toujours du compte connecté, jamais d'un champ du formulaire :
+  // ça empêche de se faire passer pour quelqu'un d'autre.
+  const auteur = req.utilisateur ? req.utilisateur.nom : `Admin (${req.admin.identifiant})`
 
   if (texte.trim().length < 3) {
     return res.status(400).json({ erreur: 'Le commentaire doit contenir au moins 3 caractères.' })
@@ -448,16 +512,13 @@ router.post('/signalements/:id/commentaires', limiteurCommentaire, async (req, r
   if (texte.trim().length > 1000) {
     return res.status(400).json({ erreur: 'Le commentaire ne doit pas dépasser 1000 caractères.' })
   }
-  if (auteur.trim().length > 60) {
-    return res.status(400).json({ erreur: "Le nom ne doit pas dépasser 60 caractères." })
-  }
 
   const { rows: existant } = await db.query('SELECT id FROM signalements WHERE id = $1', [id])
   if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
   const { rows } = await db.query(
-    'INSERT INTO commentaires (signalement_id, auteur, texte, date_creation) VALUES ($1, $2, $3, $4) RETURNING *',
-    [id, auteur.trim() || 'Anonyme', texte.trim(), new Date().toISOString()]
+    'INSERT INTO commentaires (signalement_id, auteur, texte, date_creation, utilisateur_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+    [id, auteur, texte.trim(), new Date().toISOString(), req.utilisateur?.id || null]
   )
 
   res.status(201).json(mapCommentaire(rows[0]))

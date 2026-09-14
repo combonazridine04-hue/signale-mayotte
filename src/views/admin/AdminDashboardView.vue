@@ -329,6 +329,7 @@ const changerStatut = async (id, statut) => {
               <tr>
                 <th>Catégorie</th>
                 <th>Commune</th>
+                <th>Auteur</th>
                 <th>Statut</th>
                 <th>Date</th>
                 <th></th>
@@ -338,6 +339,10 @@ const changerStatut = async (id, statut) => {
               <tr v-for="s in signalementStore.signalements" :key="s.id">
                 <td data-label="Catégorie">{{ s.categorie }}</td>
                 <td data-label="Commune">{{ s.commune }}</td>
+                <td data-label="Auteur">
+                  <span v-if="s.auteurNom">{{ s.auteurNom }}</span>
+                  <span v-else class="admin-muted">Anonyme (historique)</span>
+                </td>
                 <td data-label="Statut">
                   <select
                     class="admin-select"

@@ -1,9 +1,10 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { CATEGORIES, COMMUNES, STATUTS, ORGANISME_PAR_CATEGORIE } from '../models/signalement.js'
 import { useSignalementStore } from '../stores/signalementStore.js'
 import { useAuthStore } from '../stores/authStore.js'
+import { useCitoyenStore } from '../stores/citoyenStore.js'
 import { useUiStore } from '../stores/uiStore.js'
 import { enregistrerTokenSuppression, lireTokenSuppression } from '../utils/tokensSuppression.js'
 import PhotoDropzone from '../components/PhotoDropzone.vue'
@@ -21,7 +22,9 @@ const route = useRoute()
 const router = useRouter()
 const signalementStore = useSignalementStore()
 const authStore = useAuthStore()
+const citoyenStore = useCitoyenStore()
 const uiStore = useUiStore()
+const peutAgir = computed(() => authStore.estConnecte || citoyenStore.estConnecte)
 const imageEnErreur = ref(false)
 const indexImageActive = ref(0)
 
@@ -179,9 +182,7 @@ const supprimerMiseAJour = async (miseAJourId) => {
   }
 }
 
-const nouveauCommentaireAuteur = ref('')
 const nouveauCommentaireTexte = ref('')
-const commentaireSiteWeb = ref('')
 const ajoutCommentaireEnCours = ref(false)
 const erreurCommentaire = ref('')
 
@@ -191,9 +192,7 @@ const ajouterCommentaire = async () => {
   erreurCommentaire.value = ''
   try {
     await signalementStore.ajouterCommentaire(signalementStore.signalementCourant.id, {
-      auteur: nouveauCommentaireAuteur.value.trim(),
-      texte: nouveauCommentaireTexte.value.trim(),
-      site_web: commentaireSiteWeb.value
+      texte: nouveauCommentaireTexte.value.trim()
     })
     nouveauCommentaireTexte.value = ''
   } catch (e) {
@@ -287,6 +286,14 @@ const marquerResolu = async () => {
 
               <OrganismeCompetent v-if="organismeCompetent" :organisme="organismeCompetent" class="mb-3" />
 
+              <p v-if="authStore.estConnecte" class="text-secondary small mb-3">
+                Envoyé par :
+                <strong>{{ signalementStore.signalementCourant.auteurNom || 'Compte supprimé / signalement anonyme historique' }}</strong>
+                <template v-if="signalementStore.signalementCourant.auteurEmail"> — {{ signalementStore.signalementCourant.auteurEmail }}</template>
+                <template v-if="signalementStore.signalementCourant.auteurTelephone"> — {{ signalementStore.signalementCourant.auteurTelephone }}</template>
+                <span class="d-block">(visible par l'admin uniquement)</span>
+              </p>
+
               <div v-if="authStore.estConnecte || peutSupprimer" class="d-flex flex-wrap gap-2 mt-3">
                 <button v-if="authStore.estConnecte" type="button" class="btn btn-outline-secondary btn-sm" @click="ouvrirEdition">
                   Modifier
@@ -314,6 +321,7 @@ const marquerResolu = async () => {
 
               <div class="d-flex align-items-center gap-3 mt-3">
                 <button
+                  v-if="peutAgir"
                   type="button"
                   class="btn btn-outline-success btn-sm"
                   :disabled="soutienEnCours || signalementStore.signalementCourant.dejaSoutenu"
@@ -321,6 +329,13 @@ const marquerResolu = async () => {
                 >
                   👍 {{ signalementStore.signalementCourant.dejaSoutenu ? 'Soutenu' : 'Moi aussi' }}
                 </button>
+                <RouterLink
+                  v-else
+                  :to="{ name: 'connexion', query: { retour: route.fullPath } }"
+                  class="btn btn-outline-success btn-sm"
+                >
+                  👍 Moi aussi
+                </RouterLink>
                 <span class="text-secondary small">
                   {{ signalementStore.signalementCourant.nbSoutiens }} soutien{{ signalementStore.signalementCourant.nbSoutiens > 1 ? 's' : '' }}
                 </span>
@@ -408,16 +423,7 @@ const marquerResolu = async () => {
                 </ul>
                 <p v-else class="text-secondary small mt-2 mb-3">Aucun commentaire pour le moment. Soyez le premier à réagir.</p>
 
-                <form novalidate @submit.prevent="ajouterCommentaire">
-                  <div class="mb-2">
-                    <input
-                      v-model="nouveauCommentaireAuteur"
-                      type="text"
-                      class="form-control form-control-sm"
-                      maxlength="60"
-                      placeholder="Votre nom (facultatif)"
-                    />
-                  </div>
+                <form v-if="peutAgir" novalidate @submit.prevent="ajouterCommentaire">
                   <div class="d-flex gap-2">
                     <textarea
                       v-model="nouveauCommentaireTexte"
@@ -434,12 +440,12 @@ const marquerResolu = async () => {
                       Publier
                     </button>
                   </div>
-                  <div class="honeypot-field" aria-hidden="true">
-                    <label for="commentaire-site-web">Site web</label>
-                    <input id="commentaire-site-web" v-model="commentaireSiteWeb" type="text" tabindex="-1" autocomplete="off" />
-                  </div>
                   <p v-if="erreurCommentaire" class="text-danger small mt-1 mb-0">{{ erreurCommentaire }}</p>
                 </form>
+                <p v-else class="text-secondary small mb-0">
+                  <RouterLink :to="{ name: 'connexion', query: { retour: route.fullPath } }">Connectez-vous</RouterLink>
+                  pour laisser un commentaire.
+                </p>
               </div>
             </template>
 

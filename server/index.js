@@ -15,6 +15,8 @@ const signalementsRouter = (await import('./routes/signalements.js')).default
 const authRouter = (await import('./routes/auth.js')).default
 const contactRouter = (await import('./routes/contact.js')).default
 const adminsRouter = (await import('./routes/admins.js')).default
+const { precharger: prechargerModerationPhotos } = await import('./moderation.js')
+prechargerModerationPhotos()
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3001

@@ -154,11 +154,11 @@ export const useSignalementStore = defineStore('signalement', {
       }
     },
 
-    async ajouterCommentaire(id, { auteur, texte, site_web }) {
+    async ajouterCommentaire(id, { texte }) {
       const reponse = await apiFetch(`/api/signalements/${id}/commentaires`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ auteur, texte, site_web })
+        body: JSON.stringify({ texte })
       })
       const commentaire = await traiterReponse(reponse)
       if (this.signalementCourant?.id === id) {

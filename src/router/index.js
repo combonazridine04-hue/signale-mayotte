@@ -7,8 +7,11 @@ import CarteView from '../views/CarteView.vue'
 import TransparenceView from '../views/TransparenceView.vue'
 import AdminLoginView from '../views/admin/AdminLoginView.vue'
 import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
+import InscriptionView from '../views/InscriptionView.vue'
+import ConnexionView from '../views/ConnexionView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 import { useAuthStore } from '../stores/authStore.js'
+import { useCitoyenStore } from '../stores/citoyenStore.js'
 
 const routes = [
   {
@@ -19,7 +22,8 @@ const routes = [
   {
     path: '/signaler',
     name: 'signaler',
-    component: SignalerView
+    component: SignalerView,
+    meta: { requiresAuthCitoyen: true }
   },
   {
     path: '/signalements/:id',
@@ -41,6 +45,18 @@ const routes = [
     path: '/transparence',
     name: 'transparence',
     component: TransparenceView
+  },
+  {
+    path: '/inscription',
+    name: 'inscription',
+    component: InscriptionView,
+    meta: { pagePleinEcran: true }
+  },
+  {
+    path: '/connexion',
+    name: 'connexion',
+    component: ConnexionView,
+    meta: { pagePleinEcran: true }
   },
   {
     path: '/admin/login',
@@ -68,12 +84,19 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const authStore = useAuthStore()
+  const citoyenStore = useCitoyenStore()
 
   if (to.meta.requiresAuth && !authStore.estConnecte) {
     return { name: 'admin-login' }
   }
   if (to.name === 'admin-login' && authStore.estConnecte) {
     return { name: 'admin-dashboard' }
+  }
+  if (to.meta.requiresAuthCitoyen && !authStore.estConnecte && !citoyenStore.estConnecte) {
+    return { name: 'connexion', query: { retour: to.fullPath } }
+  }
+  if ((to.name === 'connexion' || to.name === 'inscription') && (authStore.estConnecte || citoyenStore.estConnecte)) {
+    return { name: 'accueil' }
   }
   return true
 })
