@@ -32,6 +32,14 @@
   color: var(--app-text);
 }
 
+.card-text-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
 .filter-bar {
   padding: 1.25rem;
   border-radius: 8px;

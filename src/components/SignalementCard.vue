@@ -34,7 +34,7 @@ const imageEnErreur = ref(false)
           <span class="badge" :class="badgeClasses[signalement.statut]">{{ signalement.statut }}</span>
         </div>
         <h3 class="h6 card-title mb-1">{{ signalement.commune }}</h3>
-        <p class="card-text text-secondary small mb-0">{{ signalement.description }}</p>
+        <p class="card-text card-text-clamp text-secondary small mb-0">{{ signalement.description }}</p>
         <p v-if="signalement.nbSoutiens" class="card-text text-secondary small mb-0 mt-2">
           👍 {{ signalement.nbSoutiens }} soutien{{ signalement.nbSoutiens > 1 ? 's' : '' }}
         </p>
