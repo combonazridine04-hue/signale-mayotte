@@ -26,6 +26,9 @@ app.set('trust proxy', 1)
 
 app.use(
   helmet({
+    // Par défaut Helmet envoie "no-referrer", ce qui empêche MapTiler de vérifier
+    // l'origine des requêtes de tuiles (clé API restreinte par domaine).
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
