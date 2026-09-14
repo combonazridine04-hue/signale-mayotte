@@ -157,6 +157,26 @@ const soutenir = async () => {
   }
 }
 
+const signalerCommentaire = async (commentaireId) => {
+  if (!(await uiStore.confirmer('Signaler ce commentaire comme inapproprié ?'))) return
+  try {
+    await signalementStore.signalerContenu('commentaire', commentaireId)
+    uiStore.alerter('Merci, ce commentaire a été signalé aux administrateurs.')
+  } catch (e) {
+    uiStore.alerter(e.message)
+  }
+}
+
+const signalerCeSignalement = async () => {
+  if (!(await uiStore.confirmer('Signaler ce signalement comme inapproprié ?'))) return
+  try {
+    await signalementStore.signalerContenu('signalement', signalementStore.signalementCourant.id)
+    uiStore.alerter('Merci, ce signalement a été signalé aux administrateurs.')
+  } catch (e) {
+    uiStore.alerter(e.message)
+  }
+}
+
 const nouveauTexteMiseAJour = ref('')
 const ajoutMiseAJourEnCours = ref(false)
 
@@ -294,12 +314,15 @@ const marquerResolu = async () => {
                 <span class="d-block">(visible par l'admin uniquement)</span>
               </p>
 
-              <div v-if="authStore.estConnecte || peutSupprimer" class="d-flex flex-wrap gap-2 mt-3">
+              <div v-if="authStore.estConnecte || peutSupprimer || peutAgir" class="d-flex flex-wrap gap-2 mt-3">
                 <button v-if="authStore.estConnecte" type="button" class="btn btn-outline-secondary btn-sm" @click="ouvrirEdition">
                   Modifier
                 </button>
                 <button v-if="peutSupprimer" type="button" class="btn btn-outline-danger btn-sm" @click="supprimer">
                   Supprimer
+                </button>
+                <button v-if="peutAgir" type="button" class="btn btn-outline-warning btn-sm" @click="signalerCeSignalement">
+                  🚩 Signaler ce contenu
                 </button>
               </div>
               <p v-if="peutSupprimer && !authStore.estConnecte" class="text-secondary small mt-1 mb-0">
@@ -410,6 +433,14 @@ const marquerResolu = async () => {
                     <p class="mb-0">{{ c.texte }}</p>
                     <div class="d-flex align-items-center gap-2">
                       <span class="text-secondary small">{{ new Date(c.dateCreation).toLocaleString('fr-FR') }}</span>
+                      <button
+                        v-if="peutAgir && !authStore.estConnecte"
+                        type="button"
+                        class="btn btn-link btn-sm p-0"
+                        @click="signalerCommentaire(c.id)"
+                      >
+                        🚩 Signaler
+                      </button>
                       <button
                         v-if="authStore.estConnecte"
                         type="button"

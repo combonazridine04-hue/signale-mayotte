@@ -149,6 +149,45 @@ export async function envoyerChangementStatut(signalement, emailCitoyen) {
   }
 }
 
+export async function envoyerVerificationEmail(nom, email, token) {
+  if (!transporteur || !email) return
+
+  const lienVerification = `${SITE_URL}/verifier-email?token=${token}`
+
+  try {
+    await transporteur.sendMail({
+      from: `"Signale Mayotte" <${expediteur}>`,
+      to: email,
+      subject: 'Confirmez votre adresse email — Signale Mayotte',
+      text: [
+        `Bonjour ${nom},`,
+        '',
+        'Confirmez votre adresse email pour pouvoir envoyer des signalements :',
+        lienVerification,
+        '',
+        "Si vous n'êtes pas à l'origine de cette inscription, ignorez cet email."
+      ].join('\n'),
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+          <div style="background: #16a34a; color: #ffffff; padding: 16px 20px;">
+            <h2 style="margin: 0; font-size: 18px;">Confirmez votre email</h2>
+          </div>
+          <div style="padding: 20px; color: #0f172a;">
+            <p style="margin: 0 0 16px;">Bonjour ${echapperHtml(nom)},</p>
+            <p style="margin: 0 0 16px;">Confirmez votre adresse email pour pouvoir envoyer des signalements sur Signale Mayotte.</p>
+            <a href="${lienVerification}" style="display: inline-block; background: #16a34a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
+              Confirmer mon email
+            </a>
+            <p style="margin: 16px 0 0; color: #64748b; font-size: 12px;">Si vous n'êtes pas à l'origine de cette inscription, ignorez cet email.</p>
+          </div>
+        </div>
+      `
+    })
+  } catch (e) {
+    console.error('[mailer] Échec envoi email de vérification :', e.message)
+  }
+}
+
 export async function envoyerMessageContact({ nom, email, sujet, message }) {
   if (!transporteur) return
 

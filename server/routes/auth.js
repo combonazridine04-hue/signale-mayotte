@@ -6,10 +6,22 @@ import {
   revoquerSession,
   inscrireUtilisateur,
   verifierIdentifiantsUtilisateur,
-  creerSessionUtilisateur
+  creerSessionUtilisateur,
+  confirmerEmailUtilisateur,
+  regenererTokenVerification
 } from '../auth.js'
+import { envoyerVerificationEmail } from '../mailer.js'
+import { requireAuthUtilisateur } from '../middleware/requireAuth.js'
 
 const router = Router()
+
+const limiteurRenvoiVerification = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erreur: 'Trop de demandes, réessayez plus tard.' }
+})
 
 const limiteurInscription = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -50,7 +62,29 @@ router.post('/inscription', limiteurInscription, async (req, res) => {
     return res.status(400).json({ erreur: resultat.erreur })
   }
 
+  if (resultat.tokenVerification) {
+    envoyerVerificationEmail(resultat.utilisateur.nom, resultat.utilisateur.email, resultat.tokenVerification)
+  }
+
   res.status(201).json({ token: creerSessionUtilisateur(resultat.utilisateur), nom: resultat.utilisateur.nom })
+})
+
+router.get('/verifier-email', async (req, res) => {
+  const ok = await confirmerEmailUtilisateur(req.query.token)
+  if (!ok) return res.status(400).json({ erreur: 'Lien de vérification invalide ou déjà utilisé.' })
+  res.json({ succes: true })
+})
+
+router.post('/renvoyer-verification', requireAuthUtilisateur, limiteurRenvoiVerification, async (req, res) => {
+  if (!req.utilisateur) {
+    return res.status(400).json({ erreur: 'Non applicable pour un compte admin.' })
+  }
+  const resultat = await regenererTokenVerification(req.utilisateur.id)
+  if (!resultat) {
+    return res.status(400).json({ erreur: 'Aucun email à vérifier sur ce compte (déjà vérifié, ou inscrit par téléphone).' })
+  }
+  envoyerVerificationEmail(resultat.nom, resultat.email, resultat.token)
+  res.status(204).end()
 })
 
 router.post('/connexion', limiteurConnexionUtilisateur, async (req, res) => {

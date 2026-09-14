@@ -85,6 +85,20 @@ await db.query(`
 `)
 
 await db.query(`ALTER TABLE signalements ADD COLUMN IF NOT EXISTS utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL`)
+await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS email_verifie BOOLEAN NOT NULL DEFAULT false`)
+await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS token_verification TEXT`)
+
+await db.query(`
+  CREATE TABLE IF NOT EXISTS signalements_abus (
+    id SERIAL PRIMARY KEY,
+    type TEXT NOT NULL,
+    cible_id INTEGER NOT NULL,
+    motif TEXT,
+    utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL,
+    date_creation TEXT NOT NULL,
+    UNIQUE (type, cible_id, utilisateur_id)
+  )
+`)
 
 await db.query(`
   CREATE TABLE IF NOT EXISTS soutiens (

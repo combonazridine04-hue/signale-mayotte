@@ -212,6 +212,16 @@ router.get('/signalements/export.csv', requireAuth, async (req, res) => {
   res.send(BOM + lignes.join('\n'))
 })
 
+router.get('/signalements/mes', requireAuthUtilisateur, async (req, res) => {
+  if (!req.utilisateur) return res.json({ signalements: [] })
+
+  const { rows } = await db.query(
+    'SELECT * FROM signalements WHERE utilisateur_id = $1 ORDER BY date_signalement DESC',
+    [req.utilisateur.id]
+  )
+  res.json({ signalements: rows.map((r) => mapRow(r)) })
+})
+
 router.get('/signalements/:id', async (req, res) => {
   const id = Number(req.params.id)
   const session = sessionDeLaRequete(req)
@@ -332,6 +342,17 @@ router.post('/signalements/:id/soutenir', requireAuthUtilisateur, limiteurSoutie
 router.post('/signalements', requireAuthUtilisateur, limiteurCreation, upload.array('photos', MAX_PHOTOS), async (req, res) => {
   if (estUnRobot(req)) {
     return res.status(201).json({ id: 0, statut: 'Signalé' })
+  }
+
+  if (req.utilisateur) {
+    const { rows } = await db.query('SELECT email, email_verifie FROM utilisateurs WHERE id = $1', [req.utilisateur.id])
+    const compte = rows[0]
+    if (compte?.email && !compte.email_verifie) {
+      return res.status(403).json({
+        erreur: "Confirmez votre email avant d'envoyer un signalement (lien envoyé à l'inscription).",
+        emailNonVerifie: true
+      })
+    }
   }
 
   const { categorie, commune, description, latitude, longitude, email } = req.body

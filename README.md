@@ -57,7 +57,7 @@ Les signalements sont stockés dans une base PostgreSQL hébergée sur Supabase.
 
 Le site est composé de deux espaces séparés, visuellement distincts :
 
-- **Site public** (`/`) : accessible sans compte. Consultation des signalements, carte, formulaire de signalement (avec confirmation par email facultative) et formulaire de contact.
+- **Site public** (`/`) : consultation des signalements, carte, formulaire de contact accessibles sans compte. Envoyer un signalement, soutenir un signalement existant ou commenter nécessite un compte citoyen (`/inscription`, `/connexion` — distinct du compte admin), pour limiter les abus.
 - **Backoffice admin** (`/admin`, connexion sur `/admin/login`) : gestion des signalements (statut, modification, suppression), des messages de contact reçus, et des comptes admin (plusieurs comptes possibles, chacun avec son propre mot de passe — utile pour tracer qui fait quoi). Le premier compte est créé automatiquement depuis `ADMIN_IDENTIFIANT` / `ADMIN_MOT_DE_PASSE` dans `.env` ; les suivants se créent depuis l'onglet "Comptes" du backoffice. L'accès à `/admin` sans être connecté redirige automatiquement vers `/admin/login`.
 
 ## Carte

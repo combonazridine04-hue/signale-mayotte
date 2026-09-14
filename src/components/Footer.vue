@@ -22,6 +22,7 @@ import logo from '../assets/img/logo.svg'
           <RouterLink to="/">Accueil</RouterLink>
           <RouterLink to="/signaler">Signaler un problème</RouterLink>
           <RouterLink to="/contact">Contact</RouterLink>
+          <RouterLink to="/confidentialite">Confidentialité</RouterLink>
         </div>
 
         <div class="footer-links">

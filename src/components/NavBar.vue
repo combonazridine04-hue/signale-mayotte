@@ -50,6 +50,20 @@ const citoyenStore = useCitoyenStore()
       </RouterLink>
 
       <RouterLink
+        v-if="citoyenStore.estConnecte"
+        to="/mes-signalements"
+        class="icon-pill-link"
+        exact-active-class="active"
+        aria-label="Mes signalements"
+        title="Mes signalements"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="3" width="16" height="18" rx="2" />
+          <path d="M8 8h8M8 12h8M8 16h5" />
+        </svg>
+      </RouterLink>
+
+      <RouterLink
         v-if="!citoyenStore.estConnecte"
         to="/connexion"
         class="icon-pill-link"

@@ -29,11 +29,51 @@ function choisirSection(nomSection) {
   menuMobileOuvert.value = false
 }
 
+const signalementsAbus = ref([])
+const chargementModeration = ref(false)
+
+async function chargerModeration() {
+  chargementModeration.value = true
+  try {
+    const reponse = await apiFetch('/api/moderation/signalements-abus')
+    const donnees = await reponse.json()
+    signalementsAbus.value = donnees.signalementsAbus || []
+  } catch {
+    signalementsAbus.value = []
+  } finally {
+    chargementModeration.value = false
+  }
+}
+
+const supprimerContenuSignale = async (item) => {
+  if (!(await uiStore.confirmer('Supprimer définitivement ce contenu ?'))) return
+  try {
+    const url = item.type === 'signalement'
+      ? `/api/signalements/${item.cibleId}`
+      : `/api/signalements/${item.apercu.signalement_id}/commentaires/${item.cibleId}`
+    await apiFetch(url, { method: 'DELETE' })
+    await chargerModeration()
+    signalementStore.charger()
+  } catch (e) {
+    uiStore.alerter(e.message)
+  }
+}
+
+const ignorerSignalementAbus = async (item) => {
+  try {
+    await apiFetch(`/api/moderation/signalements-abus/${item.type}/${item.cibleId}`, { method: 'DELETE' })
+    await chargerModeration()
+  } catch (e) {
+    uiStore.alerter(e.message)
+  }
+}
+
 onMounted(() => {
   signalementStore.charger()
   signalementStore.chargerStats()
   contactStore.charger()
   adminStore.charger()
+  chargerModeration()
 })
 
 const nouveauCompte = reactive({ identifiant: '', motDePasse: '' })
@@ -242,6 +282,14 @@ const changerStatut = async (id, statut) => {
           </svg>
           Comptes
         </button>
+        <button type="button" class="admin-nav-item" :class="{ active: section === 'moderation' }" @click="choisirSection('moderation')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 21V4a1 1 0 0 1 1-1h9l6 6v2H9" />
+            <path d="M4 21l5-5" />
+          </svg>
+          Modération
+          <span v-if="signalementsAbus.length" class="admin-nav-badge">{{ signalementsAbus.length }}</span>
+        </button>
       </nav>
 
       <div class="admin-sidebar-footer">
@@ -409,7 +457,53 @@ const changerStatut = async (id, statut) => {
           </div>
         </div>
 
-        <div v-else class="d-flex flex-column gap-4">
+        <div v-else-if="section === 'moderation'" class="admin-panel">
+          <p v-if="chargementModeration" class="admin-muted">Chargement...</p>
+          <p v-else-if="!signalementsAbus.length" class="admin-muted">Aucun contenu signalé.</p>
+          <div v-else class="admin-messages">
+            <div v-for="item in signalementsAbus" :key="`${item.type}-${item.cibleId}`" class="admin-message">
+              <div class="admin-message-header">
+                <div>
+                  <strong>{{ item.type === 'signalement' ? 'Signalement' : 'Commentaire' }} #{{ item.cibleId }}</strong>
+                  <span class="admin-muted"> — {{ item.nbSignalements }} signalement{{ item.nbSignalements > 1 ? 's' : '' }}</span>
+                  <p class="admin-message-meta">Dernier signalement le {{ new Date(item.dernierSignalement).toLocaleString('fr-FR') }}</p>
+                </div>
+                <div class="admin-actions">
+                  <RouterLink
+                    v-if="item.existeEncore"
+                    :to="`/signalements/${item.type === 'signalement' ? item.cibleId : item.apercu.signalement_id}`"
+                    class="admin-btn admin-btn--ghost"
+                  >
+                    Voir
+                  </RouterLink>
+                  <button
+                    v-if="item.existeEncore"
+                    type="button"
+                    class="admin-btn admin-btn--danger"
+                    @click="supprimerContenuSignale(item)"
+                  >
+                    Supprimer le contenu
+                  </button>
+                  <button type="button" class="admin-btn admin-btn--ghost" @click="ignorerSignalementAbus(item)">
+                    Ignorer
+                  </button>
+                </div>
+              </div>
+              <p v-if="!item.existeEncore" class="admin-message-body admin-muted">
+                Ce contenu a déjà été supprimé.
+              </p>
+              <p v-else-if="item.type === 'signalement'" class="admin-message-body">
+                {{ item.apercu.categorie }} — {{ item.apercu.commune }} : {{ item.apercu.description }}
+              </p>
+              <p v-else class="admin-message-body">
+                <strong>{{ item.apercu.auteur }}</strong> : {{ item.apercu.texte }}
+              </p>
+              <p v-if="item.motifs?.length" class="admin-message-meta">Motifs : {{ item.motifs.join(', ') }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div v-else-if="section === 'comptes'" class="d-flex flex-column gap-4">
           <div class="admin-panel">
             <h2 class="admin-panel-title">Changer mon mot de passe</h2>
             <form class="admin-form" @submit.prevent="changerMotDePasse">

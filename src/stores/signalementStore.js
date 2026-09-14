@@ -68,6 +68,30 @@ export const useSignalementStore = defineStore('signalement', {
       }
     },
 
+    async signalerContenu(type, cibleId, motif = '') {
+      const reponse = await apiFetch('/api/moderation/signaler', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type, cibleId, motif })
+      })
+      await traiterReponse(reponse)
+    },
+
+    async chargerMesSignalements() {
+      this.chargement = true
+      this.erreur = ''
+      try {
+        const reponse = await apiFetch('/api/signalements/mes')
+        const donnees = await traiterReponse(reponse)
+        this.signalements = donnees.signalements
+      } catch (e) {
+        this.erreur = e.message
+        this.signalements = []
+      } finally {
+        this.chargement = false
+      }
+    },
+
     async chargerParId(id) {
       this.chargement = true
       this.erreur = ''

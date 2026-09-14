@@ -98,20 +98,43 @@ export async function inscrireUtilisateur({ nom, email, telephone, motDePasse })
 
   const hash = await bcrypt.hash(motDePasse, 12)
   const creeLe = new Date().toISOString()
+  // Un token de vérification est généré dès l'inscription si un email est fourni ;
+  // le compte reste utilisable normalement, seul l'envoi d'un signalement l'exigera.
+  const tokenVerification = emailNormalise ? randomBytes(24).toString('hex') : null
 
   try {
     const { rows } = await db.query(
-      `INSERT INTO utilisateurs (nom, email, telephone, mot_de_passe_hash, cree_le)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id, nom, email, telephone`,
-      [nom.trim(), emailNormalise, telephoneNormalise, hash, creeLe]
+      `INSERT INTO utilisateurs (nom, email, telephone, mot_de_passe_hash, cree_le, token_verification)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, nom, email, telephone, email_verifie`,
+      [nom.trim(), emailNormalise, telephoneNormalise, hash, creeLe, tokenVerification]
     )
-    return { utilisateur: rows[0] }
+    return { utilisateur: rows[0], tokenVerification }
   } catch (e) {
     if (e.code === '23505') {
       return { erreur: 'Un compte existe déjà avec cet email ou ce numéro.' }
     }
     throw e
   }
+}
+
+export async function confirmerEmailUtilisateur(token) {
+  if (!token) return false
+  const { rows } = await db.query(
+    'UPDATE utilisateurs SET email_verifie = true, token_verification = NULL WHERE token_verification = $1 RETURNING id',
+    [token]
+  )
+  return rows.length > 0
+}
+
+// Renvoie { token, email, nom } pour un nouvel envoi, ou null si déjà vérifié / pas d'email / compte introuvable.
+export async function regenererTokenVerification(utilisateurId) {
+  const { rows } = await db.query('SELECT email, nom, email_verifie FROM utilisateurs WHERE id = $1', [utilisateurId])
+  const utilisateur = rows[0]
+  if (!utilisateur || !utilisateur.email || utilisateur.email_verifie) return null
+
+  const token = randomBytes(24).toString('hex')
+  await db.query('UPDATE utilisateurs SET token_verification = $1 WHERE id = $2', [token, utilisateurId])
+  return { token, email: utilisateur.email, nom: utilisateur.nom }
 }
 
 export async function verifierIdentifiantsUtilisateur(identifiant, motDePasse) {

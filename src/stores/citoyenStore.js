@@ -96,6 +96,22 @@ export const useCitoyenStore = defineStore('citoyen', {
           headers: { Authorization: `Bearer ${token}` }
         }).catch(() => {})
       }
+    },
+
+    async renvoyerVerificationEmail() {
+      try {
+        const reponse = await fetch('/api/auth/renvoyer-verification', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${this.token}` }
+        })
+        if (!reponse.ok) {
+          const corps = await reponse.json().catch(() => ({}))
+          return { succes: false, erreur: corps.erreur || 'Envoi impossible.' }
+        }
+        return { succes: true }
+      } catch {
+        return { succes: false, erreur: "Impossible de contacter le serveur." }
+      }
     }
   }
 })

@@ -9,6 +9,9 @@ import AdminLoginView from '../views/admin/AdminLoginView.vue'
 import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
 import InscriptionView from '../views/InscriptionView.vue'
 import ConnexionView from '../views/ConnexionView.vue'
+import VerifierEmailView from '../views/VerifierEmailView.vue'
+import ConfidentialiteView from '../views/ConfidentialiteView.vue'
+import MesSignalementsView from '../views/MesSignalementsView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 import { useAuthStore } from '../stores/authStore.js'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
@@ -55,6 +58,22 @@ const routes = [
     path: '/connexion',
     name: 'connexion',
     component: ConnexionView
+  },
+  {
+    path: '/verifier-email',
+    name: 'verifier-email',
+    component: VerifierEmailView
+  },
+  {
+    path: '/confidentialite',
+    name: 'confidentialite',
+    component: ConfidentialiteView
+  },
+  {
+    path: '/mes-signalements',
+    name: 'mes-signalements',
+    component: MesSignalementsView,
+    meta: { requiresAuthCitoyen: true }
   },
   {
     path: '/admin/login',

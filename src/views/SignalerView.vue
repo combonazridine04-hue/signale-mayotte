@@ -3,12 +3,26 @@ import { computed, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { CATEGORIES, COMMUNES, ORGANISME_PAR_CATEGORIE } from '../models/signalement.js'
 import { useSignalementStore } from '../stores/signalementStore.js'
+import { useCitoyenStore } from '../stores/citoyenStore.js'
 import PhotoDropzone from '../components/PhotoDropzone.vue'
 import LocationPicker from '../components/LocationPicker.vue'
 import OrganismeCompetent from '../components/OrganismeCompetent.vue'
 
 const router = useRouter()
 const signalementStore = useSignalementStore()
+const citoyenStore = useCitoyenStore()
+
+const emailNonVerifie = computed(() => erreurEnvoi.value.includes('Confirmez votre email'))
+const renvoiEnCours = ref(false)
+const renvoiMessage = ref('')
+
+const renvoyerEmail = async () => {
+  renvoiEnCours.value = true
+  renvoiMessage.value = ''
+  const resultat = await citoyenStore.renvoyerVerificationEmail()
+  renvoiMessage.value = resultat.succes ? 'Email renvoyé, vérifiez votre boîte de réception.' : resultat.erreur
+  renvoiEnCours.value = false
+}
 
 const formulaire = reactive({
   categorie: '',
@@ -154,7 +168,19 @@ const envoyer = async () => {
               <LocationPicker v-model:latitude="formulaire.latitude" v-model:longitude="formulaire.longitude" />
             </div>
 
-            <div v-if="erreurEnvoi" class="alert alert-danger py-2">{{ erreurEnvoi }}</div>
+            <div v-if="erreurEnvoi" class="alert alert-danger py-2">
+              {{ erreurEnvoi }}
+              <button
+                v-if="emailNonVerifie"
+                type="button"
+                class="btn btn-link btn-sm p-0 ms-1 align-baseline"
+                :disabled="renvoiEnCours"
+                @click="renvoyerEmail"
+              >
+                Renvoyer l'email
+              </button>
+              <div v-if="renvoiMessage" class="small mt-1">{{ renvoiMessage }}</div>
+            </div>
 
             <button type="submit" class="btn btn-success btn-lg" :disabled="envoiEnCours">
               {{ envoiEnCours ? 'Envoi en cours...' : 'Envoyer le signalement' }}
