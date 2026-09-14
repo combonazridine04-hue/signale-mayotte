@@ -154,6 +154,27 @@ export const useSignalementStore = defineStore('signalement', {
       }
     },
 
+    async ajouterCommentaire(id, { auteur, texte, site_web }) {
+      const reponse = await apiFetch(`/api/signalements/${id}/commentaires`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auteur, texte, site_web })
+      })
+      const commentaire = await traiterReponse(reponse)
+      if (this.signalementCourant?.id === id) {
+        this.signalementCourant.commentaires = [...(this.signalementCourant.commentaires || []), commentaire]
+      }
+      return commentaire
+    },
+
+    async supprimerCommentaire(id, commentaireId) {
+      const reponse = await apiFetch(`/api/signalements/${id}/commentaires/${commentaireId}`, { method: 'DELETE' })
+      await traiterReponse(reponse)
+      if (this.signalementCourant?.id === id) {
+        this.signalementCourant.commentaires = this.signalementCourant.commentaires.filter((c) => c.id !== commentaireId)
+      }
+    },
+
     async modifier(id, formData) {
       const reponse = await apiFetch(`/api/signalements/${id}`, {
         method: 'PUT',

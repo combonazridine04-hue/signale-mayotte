@@ -179,6 +179,39 @@ const supprimerMiseAJour = async (miseAJourId) => {
   }
 }
 
+const nouveauCommentaireAuteur = ref('')
+const nouveauCommentaireTexte = ref('')
+const commentaireSiteWeb = ref('')
+const ajoutCommentaireEnCours = ref(false)
+const erreurCommentaire = ref('')
+
+const ajouterCommentaire = async () => {
+  if (nouveauCommentaireTexte.value.trim().length < 3) return
+  ajoutCommentaireEnCours.value = true
+  erreurCommentaire.value = ''
+  try {
+    await signalementStore.ajouterCommentaire(signalementStore.signalementCourant.id, {
+      auteur: nouveauCommentaireAuteur.value.trim(),
+      texte: nouveauCommentaireTexte.value.trim(),
+      site_web: commentaireSiteWeb.value
+    })
+    nouveauCommentaireTexte.value = ''
+  } catch (e) {
+    erreurCommentaire.value = e.message
+  } finally {
+    ajoutCommentaireEnCours.value = false
+  }
+}
+
+const supprimerCommentaire = async (commentaireId) => {
+  if (!(await uiStore.confirmer('Supprimer définitivement ce commentaire ?'))) return
+  try {
+    await signalementStore.supprimerCommentaire(signalementStore.signalementCourant.id, commentaireId)
+  } catch (e) {
+    uiStore.alerter(e.message)
+  }
+}
+
 const fichierPhotoResolution = ref(null)
 const resolutionEnCours = ref(false)
 
@@ -351,6 +384,62 @@ const marquerResolu = async () => {
                     </div>
                   </li>
                 </ul>
+              </div>
+
+              <div class="info-box mt-4">
+                <span>Commentaires</span>
+
+                <ul v-if="signalementStore.signalementCourant.commentaires?.length" class="detail-suivi mt-2 mb-3">
+                  <li v-for="c in signalementStore.signalementCourant.commentaires" :key="c.id" class="detail-suivi-item">
+                    <p class="mb-0 fw-semibold">{{ c.auteur }}</p>
+                    <p class="mb-0">{{ c.texte }}</p>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="text-secondary small">{{ new Date(c.dateCreation).toLocaleString('fr-FR') }}</span>
+                      <button
+                        v-if="authStore.estConnecte"
+                        type="button"
+                        class="btn btn-link btn-sm text-danger p-0"
+                        @click="supprimerCommentaire(c.id)"
+                      >
+                        Supprimer
+                      </button>
+                    </div>
+                  </li>
+                </ul>
+                <p v-else class="text-secondary small mt-2 mb-3">Aucun commentaire pour le moment. Soyez le premier à réagir.</p>
+
+                <form novalidate @submit.prevent="ajouterCommentaire">
+                  <div class="mb-2">
+                    <input
+                      v-model="nouveauCommentaireAuteur"
+                      type="text"
+                      class="form-control form-control-sm"
+                      maxlength="60"
+                      placeholder="Votre nom (facultatif)"
+                    />
+                  </div>
+                  <div class="d-flex gap-2">
+                    <textarea
+                      v-model="nouveauCommentaireTexte"
+                      class="form-control form-control-sm"
+                      rows="2"
+                      maxlength="1000"
+                      placeholder="Ajouter un commentaire..."
+                    ></textarea>
+                    <button
+                      type="submit"
+                      class="btn btn-outline-secondary btn-sm text-nowrap align-self-start"
+                      :disabled="ajoutCommentaireEnCours || nouveauCommentaireTexte.trim().length < 3"
+                    >
+                      Publier
+                    </button>
+                  </div>
+                  <div class="honeypot-field" aria-hidden="true">
+                    <label for="commentaire-site-web">Site web</label>
+                    <input id="commentaire-site-web" v-model="commentaireSiteWeb" type="text" tabindex="-1" autocomplete="off" />
+                  </div>
+                  <p v-if="erreurCommentaire" class="text-danger small mt-1 mb-0">{{ erreurCommentaire }}</p>
+                </form>
               </div>
             </template>
 

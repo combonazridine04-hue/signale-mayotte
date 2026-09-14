@@ -28,6 +28,14 @@ const limiteurSoutien = rateLimit({
   message: { erreur: 'Trop de demandes, réessayez plus tard.' }
 })
 
+const limiteurCommentaire = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erreur: 'Trop de commentaires envoyés, réessayez plus tard.' }
+})
+
 const EXTENSIONS_AUTORISEES = {
   'image/jpeg': 'jpeg',
   'image/png': 'png',
@@ -108,6 +116,10 @@ function mapMiseAJour(row) {
   return { id: row.id, texte: row.texte, dateCreation: row.date_creation }
 }
 
+function mapCommentaire(row) {
+  return { id: row.id, auteur: row.auteur, texte: row.texte, dateCreation: row.date_creation }
+}
+
 router.get('/signalements/count', async (req, res) => {
   const { rows } = await db.query('SELECT COUNT(*)::int AS count FROM signalements')
   res.json({ count: rows[0].count })
@@ -181,12 +193,21 @@ router.get('/signalements/:id', async (req, res) => {
     'SELECT * FROM mises_a_jour WHERE signalement_id = $1 ORDER BY date_creation DESC',
     [id]
   )
+  const { rows: commentaires } = await db.query(
+    'SELECT * FROM commentaires WHERE signalement_id = $1 ORDER BY date_creation ASC',
+    [id]
+  )
   const { rows: soutienExistant } = await db.query(
     'SELECT 1 FROM soutiens WHERE signalement_id = $1 AND ip_hash = $2',
     [id, hasherIp(req)]
   )
 
-  res.json({ ...mapRow(rows[0]), misesAJour: misesAJour.map(mapMiseAJour), dejaSoutenu: soutienExistant.length > 0 })
+  res.json({
+    ...mapRow(rows[0]),
+    misesAJour: misesAJour.map(mapMiseAJour),
+    commentaires: commentaires.map(mapCommentaire),
+    dejaSoutenu: soutienExistant.length > 0
+  })
 })
 
 router.get('/signalements', async (req, res) => {
@@ -410,6 +431,44 @@ router.delete('/signalements/:id/mises-a-jour/:miseAJourId', requireAuth, async 
     Number(req.params.id)
   ])
   if (!rowCount) return res.status(404).json({ erreur: 'Mise à jour introuvable.' })
+  res.status(204).end()
+})
+
+router.post('/signalements/:id/commentaires', limiteurCommentaire, async (req, res) => {
+  if (estUnRobot(req)) {
+    return res.status(201).json({ id: 0, auteur: 'Anonyme', texte: '', dateCreation: new Date().toISOString() })
+  }
+
+  const id = Number(req.params.id)
+  const { auteur = '', texte = '' } = req.body || {}
+
+  if (texte.trim().length < 3) {
+    return res.status(400).json({ erreur: 'Le commentaire doit contenir au moins 3 caractères.' })
+  }
+  if (texte.trim().length > 1000) {
+    return res.status(400).json({ erreur: 'Le commentaire ne doit pas dépasser 1000 caractères.' })
+  }
+  if (auteur.trim().length > 60) {
+    return res.status(400).json({ erreur: "Le nom ne doit pas dépasser 60 caractères." })
+  }
+
+  const { rows: existant } = await db.query('SELECT id FROM signalements WHERE id = $1', [id])
+  if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
+
+  const { rows } = await db.query(
+    'INSERT INTO commentaires (signalement_id, auteur, texte, date_creation) VALUES ($1, $2, $3, $4) RETURNING *',
+    [id, auteur.trim() || 'Anonyme', texte.trim(), new Date().toISOString()]
+  )
+
+  res.status(201).json(mapCommentaire(rows[0]))
+})
+
+router.delete('/signalements/:id/commentaires/:commentaireId', requireAuth, async (req, res) => {
+  const { rowCount } = await db.query('DELETE FROM commentaires WHERE id = $1 AND signalement_id = $2', [
+    Number(req.params.commentaireId),
+    Number(req.params.id)
+  ])
+  if (!rowCount) return res.status(404).json({ erreur: 'Commentaire introuvable.' })
   res.status(204).end()
 })
 

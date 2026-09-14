@@ -91,6 +91,16 @@ await db.query(`
   )
 `)
 
+await db.query(`
+  CREATE TABLE IF NOT EXISTS commentaires (
+    id SERIAL PRIMARY KEY,
+    signalement_id INTEGER NOT NULL REFERENCES signalements(id) ON DELETE CASCADE,
+    auteur TEXT NOT NULL,
+    texte TEXT NOT NULL,
+    date_creation TEXT NOT NULL
+  )
+`)
+
 const donneesDemo = [
   {
     categorie: 'Dépôt sauvage / déchets',
