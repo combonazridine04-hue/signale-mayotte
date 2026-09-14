@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useSignalementStore } from '../stores/signalementStore.js'
+import { ajouterCoucheTuiles } from '../utils/tuiles.js'
 
 const MAYOTTE = [-12.8275, 45.1662]
 
@@ -63,8 +64,7 @@ onMounted(async () => {
   await nextTick()
 
   carte = L.map(conteneur.value, { attributionControl: false }).setView(MAYOTTE, 11)
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(carte)
-  L.control.attribution({ prefix: false }).addAttribution('© OpenStreetMap').addTo(carte)
+  ajouterCoucheTuiles(carte)
   couche = L.layerGroup().addTo(carte)
 
   dessinerMarqueurs()

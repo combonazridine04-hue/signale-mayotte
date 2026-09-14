@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { ajouterCoucheTuiles } from '../utils/tuiles.js'
 
 const MAYOTTE = [-12.8275, 45.1662]
 
@@ -79,11 +80,7 @@ onMounted(() => {
   const centre = props.latitude && props.longitude ? [props.latitude, props.longitude] : MAYOTTE
   carte = L.map(conteneur.value, { attributionControl: false }).setView(centre, props.latitude ? 15 : 11)
 
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18
-  }).addTo(carte)
-
-  L.control.attribution({ prefix: false }).addAttribution('© OpenStreetMap').addTo(carte)
+  ajouterCoucheTuiles(carte)
 
   if (props.latitude && props.longitude) {
     placerMarqueur(props.latitude, props.longitude)

@@ -32,7 +32,14 @@ app.use(
         scriptSrc: ["'self'", 'https://cdn.jsdelivr.net'],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net', 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
-        imgSrc: ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org', 'https://*.supabase.co'],
+        imgSrc: [
+          "'self'",
+          'data:',
+          'blob:',
+          'https://api.maptiler.com',
+          'https://*.tile.openstreetmap.fr',
+          'https://*.supabase.co'
+        ],
         connectSrc: ["'self'"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
