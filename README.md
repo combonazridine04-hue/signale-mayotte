@@ -88,7 +88,7 @@ Sans `EMAIL_EXPEDITEUR` / `EMAIL_MOT_DE_PASSE_APP`, le site fonctionne normaleme
 
 - En-têtes de sécurité HTTP (CSP, anti-clickjacking, HSTS...) via `helmet`.
 - Limite anti-brute-force sur la connexion admin (10 tentatives / 15 min / IP).
-- Limite anti-spam sur la création de signalement (20 / 15 min / IP) et l'envoi de message de contact (10 / 15 min / IP), plus un champ piège invisible (honeypot) sur les deux formulaires publics.
+- Limite anti-spam sur la création de signalement (5 / heure / IP) et l'envoi de message de contact (10 / 15 min / IP), plus un champ piège invisible (honeypot) sur les deux formulaires publics.
 - Mots de passe admin hashés (bcrypt), jamais stockés en clair. Sessions en mémoire, expirant après 12h.
 - Upload de photo restreint aux formats jpg/png/webp/gif (SVG explicitement exclu), métadonnées EXIF supprimées automatiquement.
 

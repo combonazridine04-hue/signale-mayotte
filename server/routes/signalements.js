@@ -13,8 +13,8 @@ import { uploaderPhoto, supprimerPhoto } from '../storage.js'
 const MAX_PHOTOS = 5
 
 const limiteurCreation = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
   standardHeaders: true,
   legacyHeaders: false,
   message: { erreur: 'Trop de signalements envoyés, réessayez plus tard.' }
