@@ -98,6 +98,39 @@ export const useCitoyenStore = defineStore('citoyen', {
       }
     },
 
+    async demanderReinitialisationMotDePasse(email) {
+      try {
+        await fetch('/api/auth/mot-de-passe-oublie', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email })
+        })
+        return { succes: true }
+      } catch {
+        return { succes: false, erreur: "Impossible de contacter le serveur." }
+      }
+    },
+
+    async reinitialiserMotDePasse(token, motDePasse) {
+      let reponse
+      try {
+        reponse = await fetch('/api/auth/reinitialiser-mot-de-passe', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, motDePasse })
+        })
+      } catch {
+        return { succes: false, erreur: "Impossible de contacter le serveur." }
+      }
+
+      if (!reponse.ok) {
+        const corps = await reponse.json().catch(() => ({}))
+        return { succes: false, erreur: corps.erreur || 'Réinitialisation impossible.' }
+      }
+
+      return { succes: true }
+    },
+
     async renvoyerVerificationEmail() {
       try {
         const reponse = await fetch('/api/auth/renvoyer-verification', {

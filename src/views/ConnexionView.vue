@@ -72,6 +72,9 @@ const connecter = async () => {
                 required
                 class="form-control"
               />
+              <div class="text-end mt-1">
+                <RouterLink to="/mot-de-passe-oublie" class="small">Mot de passe oublié ?</RouterLink>
+              </div>
             </div>
 
             <div v-if="messageErreur" class="alert alert-danger py-2 mb-0">{{ messageErreur }}</div>

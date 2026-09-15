@@ -10,6 +10,8 @@ import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
 import InscriptionView from '../views/InscriptionView.vue'
 import ConnexionView from '../views/ConnexionView.vue'
 import VerifierEmailView from '../views/VerifierEmailView.vue'
+import MotDePasseOublieView from '../views/MotDePasseOublieView.vue'
+import ReinitialiserMotDePasseView from '../views/ReinitialiserMotDePasseView.vue'
 import ConfidentialiteView from '../views/ConfidentialiteView.vue'
 import MesSignalementsView from '../views/MesSignalementsView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
@@ -63,6 +65,16 @@ const routes = [
     path: '/verifier-email',
     name: 'verifier-email',
     component: VerifierEmailView
+  },
+  {
+    path: '/mot-de-passe-oublie',
+    name: 'mot-de-passe-oublie',
+    component: MotDePasseOublieView
+  },
+  {
+    path: '/reinitialiser-mot-de-passe',
+    name: 'reinitialiser-mot-de-passe',
+    component: ReinitialiserMotDePasseView
   },
   {
     path: '/confidentialite',

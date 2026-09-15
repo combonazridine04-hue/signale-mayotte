@@ -72,6 +72,12 @@ export function revoquerSessionsDe(adminId) {
   }
 }
 
+export function revoquerSessionsUtilisateur(utilisateurId) {
+  for (const [token, session] of sessions) {
+    if (session.type === 'utilisateur' && session.utilisateurId === utilisateurId) sessions.delete(token)
+  }
+}
+
 // --- Comptes citoyens (distincts des comptes admin) ---
 
 function normaliserEmail(email) {
@@ -135,6 +141,47 @@ export async function regenererTokenVerification(utilisateurId) {
   const token = randomBytes(24).toString('hex')
   await db.query('UPDATE utilisateurs SET token_verification = $1 WHERE id = $2', [token, utilisateurId])
   return { token, email: utilisateur.email, nom: utilisateur.nom }
+}
+
+const DUREE_TOKEN_REINITIALISATION_MS = 60 * 60 * 1000 // 1h
+
+// Renvoie { token, nom, email } si un compte avec cet email existe, sinon null.
+// Ne jamais révéler au client si l'email existe ou non (évite l'énumération de comptes).
+export async function genererTokenReinitialisation(email) {
+  const emailNormalise = normaliserEmail(email)
+  if (!emailNormalise) return null
+
+  const { rows } = await db.query('SELECT id, nom FROM utilisateurs WHERE LOWER(email) = $1', [emailNormalise])
+  const utilisateur = rows[0]
+  if (!utilisateur) return null
+
+  const token = randomBytes(24).toString('hex')
+  const expiration = new Date(Date.now() + DUREE_TOKEN_REINITIALISATION_MS).toISOString()
+  await db.query(
+    'UPDATE utilisateurs SET token_reinitialisation = $1, token_reinitialisation_expire = $2 WHERE id = $3',
+    [token, expiration, utilisateur.id]
+  )
+  return { token, nom: utilisateur.nom, email: emailNormalise }
+}
+
+// Renvoie true si le mot de passe a bien été changé, false si le lien est invalide ou expiré.
+export async function reinitialiserMotDePasse(token, nouveauMotDePasse) {
+  if (!token || !nouveauMotDePasse || nouveauMotDePasse.length < 8) return false
+
+  const { rows } = await db.query(
+    'SELECT id FROM utilisateurs WHERE token_reinitialisation = $1 AND token_reinitialisation_expire > NOW()',
+    [token]
+  )
+  const utilisateur = rows[0]
+  if (!utilisateur) return false
+
+  const hash = await bcrypt.hash(nouveauMotDePasse, 12)
+  await db.query(
+    'UPDATE utilisateurs SET mot_de_passe_hash = $1, token_reinitialisation = NULL, token_reinitialisation_expire = NULL WHERE id = $2',
+    [hash, utilisateur.id]
+  )
+  revoquerSessionsUtilisateur(utilisateur.id)
+  return true
 }
 
 export async function verifierIdentifiantsUtilisateur(identifiant, motDePasse) {

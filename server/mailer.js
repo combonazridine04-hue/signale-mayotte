@@ -188,6 +188,46 @@ export async function envoyerVerificationEmail(nom, email, token) {
   }
 }
 
+export async function envoyerReinitialisationMotDePasse(nom, email, token) {
+  if (!transporteur || !email) return
+
+  const lienReinitialisation = `${SITE_URL}/reinitialiser-mot-de-passe?token=${token}`
+
+  try {
+    await transporteur.sendMail({
+      from: `"Signale Mayotte" <${expediteur}>`,
+      to: email,
+      subject: 'Réinitialisez votre mot de passe — Signale Mayotte',
+      text: [
+        `Bonjour ${nom},`,
+        '',
+        'Vous avez demandé à réinitialiser votre mot de passe :',
+        lienReinitialisation,
+        '',
+        'Ce lien expire dans 1 heure.',
+        "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email : votre mot de passe restera inchangé."
+      ].join('\n'),
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+          <div style="background: #16a34a; color: #ffffff; padding: 16px 20px;">
+            <h2 style="margin: 0; font-size: 18px;">Réinitialisation du mot de passe</h2>
+          </div>
+          <div style="padding: 20px; color: #0f172a;">
+            <p style="margin: 0 0 16px;">Bonjour ${echapperHtml(nom)},</p>
+            <p style="margin: 0 0 16px;">Vous avez demandé à réinitialiser votre mot de passe sur Signale Mayotte.</p>
+            <a href="${lienReinitialisation}" style="display: inline-block; background: #16a34a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
+              Choisir un nouveau mot de passe
+            </a>
+            <p style="margin: 16px 0 0; color: #64748b; font-size: 12px;">Ce lien expire dans 1 heure. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email : votre mot de passe restera inchangé.</p>
+          </div>
+        </div>
+      `
+    })
+  } catch (e) {
+    console.error('[mailer] Échec envoi email de réinitialisation :', e.message)
+  }
+}
+
 export async function envoyerMessageContact({ nom, email, sujet, message }) {
   if (!transporteur) return
 

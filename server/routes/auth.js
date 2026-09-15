@@ -8,9 +8,11 @@ import {
   verifierIdentifiantsUtilisateur,
   creerSessionUtilisateur,
   confirmerEmailUtilisateur,
-  regenererTokenVerification
+  regenererTokenVerification,
+  genererTokenReinitialisation,
+  reinitialiserMotDePasse
 } from '../auth.js'
-import { envoyerVerificationEmail } from '../mailer.js'
+import { envoyerVerificationEmail, envoyerReinitialisationMotDePasse } from '../mailer.js'
 import { requireAuthUtilisateur } from '../middleware/requireAuth.js'
 
 const router = Router()
@@ -37,6 +39,14 @@ const limiteurConnexionUtilisateur = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { erreur: 'Trop de tentatives de connexion, réessayez plus tard.' }
+})
+
+const limiteurMotDePasseOublie = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erreur: 'Trop de demandes, réessayez plus tard.' }
 })
 
 router.post('/login', async (req, res) => {
@@ -96,6 +106,33 @@ router.post('/connexion', limiteurConnexionUtilisateur, async (req, res) => {
   }
 
   res.json({ token: creerSessionUtilisateur(utilisateur), nom: utilisateur.nom })
+})
+
+router.post('/mot-de-passe-oublie', limiteurMotDePasseOublie, async (req, res) => {
+  const { email } = req.body || {}
+
+  const resultat = await genererTokenReinitialisation(email)
+  if (resultat) {
+    envoyerReinitialisationMotDePasse(resultat.nom, resultat.email, resultat.token)
+  }
+
+  // Réponse identique que le compte existe ou non, pour ne pas révéler les emails inscrits.
+  res.status(204).end()
+})
+
+router.post('/reinitialiser-mot-de-passe', async (req, res) => {
+  const { token, motDePasse } = req.body || {}
+
+  if (!motDePasse || motDePasse.length < 8) {
+    return res.status(400).json({ erreur: 'Le mot de passe doit contenir au moins 8 caractères.' })
+  }
+
+  const ok = await reinitialiserMotDePasse(token, motDePasse)
+  if (!ok) {
+    return res.status(400).json({ erreur: 'Lien de réinitialisation invalide ou expiré.' })
+  }
+
+  res.status(204).end()
 })
 
 router.post('/logout', (req, res) => {
