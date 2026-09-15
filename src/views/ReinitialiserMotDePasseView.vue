@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
 import logo from '../assets/img/logo.svg'
@@ -13,6 +13,9 @@ const confirmation = ref('')
 const messageErreur = ref('')
 const envoiEnCours = ref(false)
 const succes = ref(false)
+
+const confirmationInvalide = computed(() => confirmation.value.length > 0 && confirmation.value !== motDePasse.value)
+const confirmationValide = computed(() => confirmation.value.length > 0 && confirmation.value === motDePasse.value)
 
 const valider = async () => {
   messageErreur.value = ''
@@ -86,7 +89,10 @@ const valider = async () => {
                   autocomplete="new-password"
                   required
                   class="form-control"
+                  :class="{ 'is-invalid': confirmationInvalide, 'is-valid': confirmationValide }"
                 />
+                <div class="invalid-feedback">Les mots de passe ne correspondent pas.</div>
+                <div class="valid-feedback">Les mots de passe correspondent.</div>
               </div>
 
               <div v-if="messageErreur" class="alert alert-danger py-2 mb-0">{{ messageErreur }}</div>

@@ -138,9 +138,13 @@ const inscrire = async () => {
                   type="password"
                   autocomplete="new-password"
                   class="form-control"
-                  :class="{ 'is-invalid': soumis && erreurs.confirmation }"
+                  :class="{
+                    'is-invalid': formulaire.confirmationMotDePasse.length > 0 && erreurs.confirmation,
+                    'is-valid': formulaire.confirmationMotDePasse.length > 0 && !erreurs.confirmation
+                  }"
                 />
                 <div class="invalid-feedback">Les mots de passe ne correspondent pas.</div>
+                <div class="valid-feedback">Les mots de passe correspondent.</div>
               </div>
             </div>
 
