@@ -64,7 +64,8 @@ const routes = [
   {
     path: '/verifier-email',
     name: 'verifier-email',
-    component: VerifierEmailView
+    component: VerifierEmailView,
+    meta: { requiresAuthCitoyen: true }
   },
   {
     path: '/mot-de-passe-oublie',

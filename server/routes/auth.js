@@ -25,6 +25,15 @@ const limiteurRenvoiVerification = rateLimit({
   message: { erreur: 'Trop de demandes, réessayez plus tard.' }
 })
 
+// Anti brute-force sur le code à 6 chiffres (1 million de combinaisons).
+const limiteurVerificationCode = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erreur: 'Trop de tentatives, réessayez plus tard.' }
+})
+
 const limiteurInscription = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 10,
@@ -72,16 +81,23 @@ router.post('/inscription', limiteurInscription, async (req, res) => {
     return res.status(400).json({ erreur: resultat.erreur })
   }
 
-  if (resultat.tokenVerification) {
-    envoyerVerificationEmail(resultat.utilisateur.nom, resultat.utilisateur.email, resultat.tokenVerification)
+  if (resultat.codeVerification) {
+    envoyerVerificationEmail(resultat.utilisateur.nom, resultat.utilisateur.email, resultat.codeVerification)
   }
 
-  res.status(201).json({ token: creerSessionUtilisateur(resultat.utilisateur), nom: resultat.utilisateur.nom })
+  res.status(201).json({
+    token: creerSessionUtilisateur(resultat.utilisateur),
+    nom: resultat.utilisateur.nom,
+    emailAConfirmer: Boolean(resultat.codeVerification)
+  })
 })
 
-router.get('/verifier-email', async (req, res) => {
-  const ok = await confirmerEmailUtilisateur(req.query.token)
-  if (!ok) return res.status(400).json({ erreur: 'Lien de vérification invalide ou déjà utilisé.' })
+router.post('/verifier-email', requireAuthUtilisateur, limiteurVerificationCode, async (req, res) => {
+  if (!req.utilisateur) {
+    return res.status(400).json({ erreur: 'Non applicable pour un compte admin.' })
+  }
+  const ok = await confirmerEmailUtilisateur(req.utilisateur.id, req.body?.code)
+  if (!ok) return res.status(400).json({ erreur: 'Code invalide ou expiré.' })
   res.json({ succes: true })
 })
 
@@ -93,7 +109,7 @@ router.post('/renvoyer-verification', requireAuthUtilisateur, limiteurRenvoiVeri
   if (!resultat) {
     return res.status(400).json({ erreur: 'Aucun email à vérifier sur ce compte (déjà vérifié, ou inscrit par téléphone).' })
   }
-  envoyerVerificationEmail(resultat.nom, resultat.email, resultat.token)
+  envoyerVerificationEmail(resultat.nom, resultat.email, resultat.code)
   res.status(204).end()
 })
 

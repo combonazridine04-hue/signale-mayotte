@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto'
+import { randomBytes, randomInt } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { db } from './db.js'
 
@@ -88,6 +88,12 @@ function normaliserTelephone(telephone) {
   return typeof telephone === 'string' && telephone.trim() ? telephone.trim() : null
 }
 
+const DUREE_CODE_VERIFICATION_MS = 30 * 60 * 1000 // 30min
+
+function genererCodeVerification() {
+  return String(randomInt(0, 1000000)).padStart(6, '0')
+}
+
 export async function inscrireUtilisateur({ nom, email, telephone, motDePasse }) {
   const emailNormalise = normaliserEmail(email)
   const telephoneNormalise = normaliserTelephone(telephone)
@@ -104,17 +110,18 @@ export async function inscrireUtilisateur({ nom, email, telephone, motDePasse })
 
   const hash = await bcrypt.hash(motDePasse, 12)
   const creeLe = new Date().toISOString()
-  // Un token de vérification est généré dès l'inscription si un email est fourni ;
+  // Un code de vérification à 6 chiffres est généré dès l'inscription si un email est fourni ;
   // le compte reste utilisable normalement, seul l'envoi d'un signalement l'exigera.
-  const tokenVerification = emailNormalise ? randomBytes(24).toString('hex') : null
+  const codeVerification = emailNormalise ? genererCodeVerification() : null
+  const codeExpiration = codeVerification ? new Date(Date.now() + DUREE_CODE_VERIFICATION_MS).toISOString() : null
 
   try {
     const { rows } = await db.query(
-      `INSERT INTO utilisateurs (nom, email, telephone, mot_de_passe_hash, cree_le, token_verification)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, nom, email, telephone, email_verifie`,
-      [nom.trim(), emailNormalise, telephoneNormalise, hash, creeLe, tokenVerification]
+      `INSERT INTO utilisateurs (nom, email, telephone, mot_de_passe_hash, cree_le, token_verification, token_verification_expire)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, nom, email, telephone, email_verifie`,
+      [nom.trim(), emailNormalise, telephoneNormalise, hash, creeLe, codeVerification, codeExpiration]
     )
-    return { utilisateur: rows[0], tokenVerification }
+    return { utilisateur: rows[0], codeVerification }
   } catch (e) {
     if (e.code === '23505') {
       return { erreur: 'Un compte existe déjà avec cet email ou ce numéro.' }
@@ -123,24 +130,31 @@ export async function inscrireUtilisateur({ nom, email, telephone, motDePasse })
   }
 }
 
-export async function confirmerEmailUtilisateur(token) {
-  if (!token) return false
+// Vérifie le code saisi pour le compte CONNECTÉ (jamais une recherche globale par code :
+// avec seulement 6 chiffres, plusieurs comptes pourraient en théorie partager le même).
+export async function confirmerEmailUtilisateur(utilisateurId, code) {
+  if (!code) return false
   const { rows } = await db.query(
-    'UPDATE utilisateurs SET email_verifie = true, token_verification = NULL WHERE token_verification = $1 RETURNING id',
-    [token]
+    `UPDATE utilisateurs SET email_verifie = true, token_verification = NULL, token_verification_expire = NULL
+     WHERE id = $1 AND token_verification = $2 AND token_verification_expire > NOW() RETURNING id`,
+    [utilisateurId, code]
   )
   return rows.length > 0
 }
 
-// Renvoie { token, email, nom } pour un nouvel envoi, ou null si déjà vérifié / pas d'email / compte introuvable.
+// Renvoie { code, email, nom } pour un nouvel envoi, ou null si déjà vérifié / pas d'email / compte introuvable.
 export async function regenererTokenVerification(utilisateurId) {
   const { rows } = await db.query('SELECT email, nom, email_verifie FROM utilisateurs WHERE id = $1', [utilisateurId])
   const utilisateur = rows[0]
   if (!utilisateur || !utilisateur.email || utilisateur.email_verifie) return null
 
-  const token = randomBytes(24).toString('hex')
-  await db.query('UPDATE utilisateurs SET token_verification = $1 WHERE id = $2', [token, utilisateurId])
-  return { token, email: utilisateur.email, nom: utilisateur.nom }
+  const code = genererCodeVerification()
+  const expiration = new Date(Date.now() + DUREE_CODE_VERIFICATION_MS).toISOString()
+  await db.query(
+    'UPDATE utilisateurs SET token_verification = $1, token_verification_expire = $2 WHERE id = $3',
+    [code, expiration, utilisateurId]
+  )
+  return { code, email: utilisateur.email, nom: utilisateur.nom }
 }
 
 const DUREE_TOKEN_REINITIALISATION_MS = 60 * 60 * 1000 // 1h

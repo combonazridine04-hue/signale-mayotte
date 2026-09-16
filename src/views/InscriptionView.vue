@@ -42,7 +42,7 @@ const inscrire = async () => {
     site_web: siteWeb.value
   })
   if (resultat.succes) {
-    router.push({ name: 'accueil' })
+    router.push(resultat.emailAConfirmer ? { name: 'verifier-email' } : { name: 'accueil' })
   } else {
     erreurEnvoi.value = resultat.erreur
   }

@@ -1,6 +1,6 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import { CATEGORIES, COMMUNES, ORGANISME_PAR_CATEGORIE } from '../models/signalement.js'
 import { useSignalementStore } from '../stores/signalementStore.js'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
@@ -170,15 +170,20 @@ const envoyer = async () => {
 
             <div v-if="erreurEnvoi" class="alert alert-danger py-2">
               {{ erreurEnvoi }}
-              <button
-                v-if="emailNonVerifie"
-                type="button"
-                class="btn btn-link btn-sm p-0 ms-1 align-baseline"
-                :disabled="renvoiEnCours"
-                @click="renvoyerEmail"
-              >
-                Renvoyer l'email
-              </button>
+              <template v-if="emailNonVerifie">
+                <RouterLink to="/verifier-email" class="btn btn-link btn-sm p-0 ms-1 align-baseline">
+                  J'ai reçu mon code
+                </RouterLink>
+                ·
+                <button
+                  type="button"
+                  class="btn btn-link btn-sm p-0 ms-1 align-baseline"
+                  :disabled="renvoiEnCours"
+                  @click="renvoyerEmail"
+                >
+                  Renvoyer le code
+                </button>
+              </template>
               <div v-if="renvoiMessage" class="small mt-1">{{ renvoiMessage }}</div>
             </div>
 

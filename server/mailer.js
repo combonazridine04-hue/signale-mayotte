@@ -149,21 +149,21 @@ export async function envoyerChangementStatut(signalement, emailCitoyen) {
   }
 }
 
-export async function envoyerVerificationEmail(nom, email, token) {
+export async function envoyerVerificationEmail(nom, email, code) {
   if (!transporteur || !email) return
-
-  const lienVerification = `${SITE_URL}/verifier-email?token=${token}`
 
   try {
     await transporteur.sendMail({
       from: `"Signale Mayotte" <${expediteur}>`,
       to: email,
-      subject: 'Confirmez votre adresse email — Signale Mayotte',
+      subject: `${code} — Votre code de confirmation Signale Mayotte`,
       text: [
         `Bonjour ${nom},`,
         '',
-        'Confirmez votre adresse email pour pouvoir envoyer des signalements :',
-        lienVerification,
+        'Voici votre code de confirmation :',
+        code,
+        '',
+        'Saisissez ce code sur Signale Mayotte pour confirmer votre adresse email. Il expire dans 30 minutes.',
         '',
         "Si vous n'êtes pas à l'origine de cette inscription, ignorez cet email."
       ].join('\n'),
@@ -174,11 +174,9 @@ export async function envoyerVerificationEmail(nom, email, token) {
           </div>
           <div style="padding: 20px; color: #0f172a;">
             <p style="margin: 0 0 16px;">Bonjour ${echapperHtml(nom)},</p>
-            <p style="margin: 0 0 16px;">Confirmez votre adresse email pour pouvoir envoyer des signalements sur Signale Mayotte.</p>
-            <a href="${lienVerification}" style="display: inline-block; background: #16a34a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
-              Confirmer mon email
-            </a>
-            <p style="margin: 16px 0 0; color: #64748b; font-size: 12px;">Si vous n'êtes pas à l'origine de cette inscription, ignorez cet email.</p>
+            <p style="margin: 0 0 16px;">Voici votre code de confirmation pour Signale Mayotte :</p>
+            <p style="margin: 0 0 16px; font-size: 32px; font-weight: bold; letter-spacing: 6px; text-align: center; background: #f1f5f9; border-radius: 8px; padding: 16px;">${echapperHtml(code)}</p>
+            <p style="margin: 0; color: #64748b; font-size: 12px;">Ce code expire dans 30 minutes. Si vous n'êtes pas à l'origine de cette inscription, ignorez cet email.</p>
           </div>
         </div>
       `

@@ -57,7 +57,7 @@ export const useCitoyenStore = defineStore('citoyen', {
 
       const donnees = await reponse.json()
       this.enregistrerSession(donnees)
-      return { succes: true }
+      return { succes: true, emailAConfirmer: Boolean(donnees.emailAConfirmer) }
     },
 
     async connecter(identifiant, motDePasse) {
@@ -145,6 +145,26 @@ export const useCitoyenStore = defineStore('citoyen', {
       } catch {
         return { succes: false, erreur: "Impossible de contacter le serveur." }
       }
+    },
+
+    async confirmerEmail(code) {
+      let reponse
+      try {
+        reponse = await fetch('/api/auth/verifier-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+          body: JSON.stringify({ code })
+        })
+      } catch {
+        return { succes: false, erreur: "Impossible de contacter le serveur." }
+      }
+
+      if (!reponse.ok) {
+        const corps = await reponse.json().catch(() => ({}))
+        return { succes: false, erreur: corps.erreur || 'Code invalide.' }
+      }
+
+      return { succes: true }
     }
   }
 })
