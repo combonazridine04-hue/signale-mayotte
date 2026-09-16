@@ -8,7 +8,10 @@ const SITE_URL = (process.env.SITE_URL || 'http://localhost:5173').replace(/\/$/
 const transporteur = expediteur && motDePasse
   ? nodemailer.createTransport({
       service: 'gmail',
-      auth: { user: expediteur, pass: motDePasse }
+      auth: { user: expediteur, pass: motDePasse },
+      // Force IPv4 : certains hébergeurs (dont Render) n'ont pas de route sortante en IPv6,
+      // ce qui fait échouer silencieusement la connexion à smtp.gmail.com (ENETUNREACH).
+      family: 4
     })
   : null
 
