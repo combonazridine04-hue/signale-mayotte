@@ -29,7 +29,7 @@ const routes = [
     path: '/signaler',
     name: 'signaler',
     component: SignalerView,
-    meta: { requiresAuthCitoyen: true }
+    meta: { titre: 'Signaler un problème', requiresAuthCitoyen: true }
   },
   {
     path: '/signalements/:id',
@@ -40,77 +40,86 @@ const routes = [
   {
     path: '/contact',
     name: 'contact',
-    component: ContactView
+    component: ContactView,
+    meta: { titre: 'Contact' }
   },
   {
     path: '/carte',
     name: 'carte',
-    component: CarteView
+    component: CarteView,
+    meta: { titre: 'Carte des signalements' }
   },
   {
     path: '/transparence',
     name: 'transparence',
-    component: TransparenceView
+    component: TransparenceView,
+    meta: { titre: 'Transparence' }
   },
   {
     path: '/inscription',
     name: 'inscription',
-    component: InscriptionView
+    component: InscriptionView,
+    meta: { titre: 'Créer mon compte' }
   },
   {
     path: '/connexion',
     name: 'connexion',
-    component: ConnexionView
+    component: ConnexionView,
+    meta: { titre: 'Connexion' }
   },
   {
     path: '/verifier-email',
     name: 'verifier-email',
     component: VerifierEmailView,
-    meta: { requiresAuthCitoyen: true }
+    meta: { titre: 'Confirmer mon email', requiresAuthCitoyen: true }
   },
   {
     path: '/mot-de-passe-oublie',
     name: 'mot-de-passe-oublie',
-    component: MotDePasseOublieView
+    component: MotDePasseOublieView,
+    meta: { titre: 'Mot de passe oublié' }
   },
   {
     path: '/reinitialiser-mot-de-passe',
     name: 'reinitialiser-mot-de-passe',
-    component: ReinitialiserMotDePasseView
+    component: ReinitialiserMotDePasseView,
+    meta: { titre: 'Nouveau mot de passe' }
   },
   {
     path: '/confidentialite',
     name: 'confidentialite',
-    component: ConfidentialiteView
+    component: ConfidentialiteView,
+    meta: { titre: 'Confidentialité' }
   },
   {
     path: '/mes-signalements',
     name: 'mes-signalements',
     component: MesSignalementsView,
-    meta: { requiresAuthCitoyen: true }
+    meta: { titre: 'Mes signalements', requiresAuthCitoyen: true }
   },
   {
     path: '/profil',
     name: 'profil',
     component: ProfilView,
-    meta: { requiresAuthCitoyen: true }
+    meta: { titre: 'Mon profil', requiresAuthCitoyen: true }
   },
   {
     path: '/admin/login',
     name: 'admin-login',
     component: AdminLoginView,
-    meta: { admin: true }
+    meta: { titre: 'Connexion admin', admin: true }
   },
   {
     path: '/admin',
     name: 'admin-dashboard',
     component: AdminDashboardView,
-    meta: { admin: true, requiresAuth: true }
+    meta: { titre: 'Espace admin', admin: true, requiresAuth: true }
   },
   {
     path: '/:pathMatch(.*)*',
     name: 'introuvable',
-    component: NotFoundView
+    component: NotFoundView,
+    meta: { titre: 'Page introuvable' }
   }
 ]
 
@@ -136,6 +145,14 @@ router.beforeEach((to) => {
     return { name: 'accueil' }
   }
   return true
+})
+
+export const TITRE_SITE = 'Signale Mayotte'
+
+// Le titre de l'onglet doit refléter la page : repères dans l'historique, les favoris
+// et les onglets multiples. La page d'un signalement affine ce titre de son côté.
+router.afterEach((to) => {
+  document.title = to.meta.titre ? `${to.meta.titre} · ${TITRE_SITE}` : `${TITRE_SITE} — Signalement citoyen`
 })
 
 export default router

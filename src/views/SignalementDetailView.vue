@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { TITRE_SITE } from '../router/index.js'
 import { CATEGORIES, COMMUNES, STATUTS, ORGANISME_PAR_CATEGORIE } from '../models/signalement.js'
 import { useSignalementStore } from '../stores/signalementStore.js'
 import { useAuthStore } from '../stores/authStore.js'
@@ -67,6 +68,17 @@ const charger = () => {
 
 onMounted(charger)
 watch(() => props.id, charger)
+
+// Titre d'onglet propre à ce signalement (le routeur ne connaît que le titre générique).
+watch(
+  () => signalementStore.signalementCourant,
+  (signalement) => {
+    document.title = signalement
+      ? `${signalement.categorie} à ${signalement.commune} · ${TITRE_SITE}`
+      : `Signalement · ${TITRE_SITE}`
+  },
+  { immediate: true }
+)
 
 const peutSupprimer = computed(() => authStore.estConnecte || Boolean(monToken.value))
 
@@ -144,6 +156,35 @@ const changerStatutPublic = async (statut) => {
 
 const soutienEnCours = ref(false)
 const erreurSoutien = ref('')
+
+const messagePartage = ref('')
+
+// Beaucoup de signalements circulent par WhatsApp : on utilise le partage natif du
+// téléphone quand il existe, sinon on copie simplement le lien dans le presse-papier.
+const partager = async () => {
+  const signalement = signalementStore.signalementCourant
+  if (!signalement) return
+
+  const lien = `${window.location.origin}/signalements/${signalement.id}`
+  const texte = `${signalement.categorie} à ${signalement.commune} — Signale Mayotte`
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: 'Signale Mayotte', text: texte, url: lien })
+      return
+    } catch {
+      // Partage annulé par l'utilisateur : on retombe sur la copie du lien.
+    }
+  }
+
+  try {
+    await navigator.clipboard.writeText(lien)
+    messagePartage.value = 'Lien copié !'
+  } catch {
+    messagePartage.value = 'Copie impossible'
+  }
+  setTimeout(() => { messagePartage.value = '' }, 2500)
+}
 
 const soutenir = async () => {
   soutienEnCours.value = true
@@ -362,6 +403,10 @@ const marquerResolu = async () => {
                 <span class="text-secondary small">
                   {{ signalementStore.signalementCourant.nbSoutiens }} soutien{{ signalementStore.signalementCourant.nbSoutiens > 1 ? 's' : '' }}
                 </span>
+
+                <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" @click="partager">
+                  {{ messagePartage || 'Partager' }}
+                </button>
               </div>
               <p v-if="erreurSoutien" class="text-danger small mt-1 mb-0">{{ erreurSoutien }}</p>
 
