@@ -12,6 +12,7 @@ import {
   genererTokenReinitialisation,
   reinitialiserMotDePasse,
   recupererProfil,
+  recupererStatsUtilisateur,
   mettreAJourPseudo,
   mettreAJourAvatar
 } from '../auth.js'
@@ -146,7 +147,7 @@ router.get('/profil', requireAuthUtilisateur, async (req, res) => {
   }
   const profil = await recupererProfil(req.utilisateur.id)
   if (!profil) return res.status(404).json({ erreur: 'Compte introuvable.' })
-  res.json(profil)
+  res.json({ ...profil, stats: await recupererStatsUtilisateur(req.utilisateur.id) })
 })
 
 router.patch('/profil', requireAuthUtilisateur, async (req, res) => {
@@ -170,7 +171,16 @@ router.patch('/avatar', requireAuthUtilisateur, limiteurAvatar, uploadAvatar.sin
   }
 
   const ancienProfil = await recupererProfil(req.utilisateur.id)
-  const avatarUrl = await traiterPhoto(req.file, { largeurMax: 256 })
+
+  let avatarUrl
+  try {
+    avatarUrl = await traiterPhoto(req.file, { largeurMax: 256 })
+  } catch {
+    // Fichier accepté par son type MIME mais illisible (corrompu, renommé...) :
+    // sans ça l'utilisateur reçoit le "Requête invalide." générique du serveur.
+    return res.status(400).json({ erreur: "Cette image n'a pas pu être lue. Essayez un autre fichier." })
+  }
+
   await mettreAJourAvatar(req.utilisateur.id, avatarUrl)
   if (ancienProfil?.avatarUrl) await supprimerPhoto(ancienProfil.avatarUrl)
 

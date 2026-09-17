@@ -231,7 +231,7 @@ const REGEX_PSEUDO = /^[a-zA-Z0-9 _-]{2,24}$/
 
 export async function recupererProfil(utilisateurId) {
   const { rows } = await db.query(
-    'SELECT nom, email, telephone, pseudo, avatar_url, email_verifie FROM utilisateurs WHERE id = $1',
+    'SELECT nom, email, telephone, pseudo, avatar_url, email_verifie, cree_le FROM utilisateurs WHERE id = $1',
     [utilisateurId]
   )
   const utilisateur = rows[0]
@@ -242,8 +242,21 @@ export async function recupererProfil(utilisateurId) {
     telephone: utilisateur.telephone,
     pseudo: utilisateur.pseudo,
     avatarUrl: utilisateur.avatar_url,
-    emailVerifie: utilisateur.email_verifie
+    emailVerifie: utilisateur.email_verifie,
+    creeLe: utilisateur.cree_le
   }
+}
+
+// Contributions du citoyen, affichées sur sa page profil.
+export async function recupererStatsUtilisateur(utilisateurId) {
+  const { rows } = await db.query(
+    `SELECT COUNT(*)::int AS signalements,
+            COUNT(*) FILTER (WHERE statut = 'Résolu')::int AS resolus,
+            COALESCE(SUM(nb_soutiens), 0)::int AS soutiens
+     FROM signalements WHERE utilisateur_id = $1`,
+    [utilisateurId]
+  )
+  return rows[0]
 }
 
 export async function mettreAJourAvatar(utilisateurId, avatarUrl) {

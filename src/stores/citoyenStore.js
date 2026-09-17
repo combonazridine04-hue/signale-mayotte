@@ -30,7 +30,9 @@ export const useCitoyenStore = defineStore('citoyen', {
       avatarUrl: '',
       email: '',
       telephone: '',
-      emailVerifie: false
+      emailVerifie: false,
+      creeLe: '',
+      stats: { signalements: 0, resolus: 0, soutiens: 0 }
     }
   },
 
@@ -94,6 +96,8 @@ export const useCitoyenStore = defineStore('citoyen', {
       this.estConnecte = false
       this.pseudo = ''
       this.avatarUrl = ''
+      this.creeLe = ''
+      this.stats = { signalements: 0, resolus: 0, soutiens: 0 }
       this.email = ''
       this.telephone = ''
       this.emailVerifie = false
@@ -192,6 +196,8 @@ export const useCitoyenStore = defineStore('citoyen', {
         this.email = profil.email || ''
         this.telephone = profil.telephone || ''
         this.emailVerifie = Boolean(profil.emailVerifie)
+        this.creeLe = profil.creeLe || ''
+        this.stats = profil.stats || { signalements: 0, resolus: 0, soutiens: 0 }
         return { succes: true }
       } catch {
         return { succes: false, erreur: "Impossible de contacter le serveur." }
