@@ -174,6 +174,10 @@ router.get('/signalements/stats-publiques', async (req, res) => {
     'SELECT commune, COUNT(*)::int AS count FROM signalements GROUP BY commune ORDER BY count DESC'
   )
 
+  const { rows: parCategorieRows } = await db.query(
+    'SELECT categorie, COUNT(*)::int AS count FROM signalements GROUP BY categorie ORDER BY count DESC'
+  )
+
   const { rows: delaiRows } = await db.query(`
     SELECT AVG(EXTRACT(EPOCH FROM (date_resolution::timestamptz - date_signalement::timestamptz)) / 86400)::float AS jours
     FROM signalements
@@ -183,6 +187,7 @@ router.get('/signalements/stats-publiques', async (req, res) => {
   res.json({
     parStatut,
     parCommune: parCommuneRows.map((r) => ({ commune: r.commune, count: r.count })),
+    parCategorie: parCategorieRows.map((r) => ({ categorie: r.categorie, count: r.count })),
     delaiMoyenResolutionJours: delaiRows[0].jours !== null ? Math.round(delaiRows[0].jours * 10) / 10 : null
   })
 })

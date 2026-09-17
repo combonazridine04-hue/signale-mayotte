@@ -18,6 +18,7 @@ onMounted(async () => {
 })
 
 const maxCommune = computed(() => Math.max(1, ...(stats.value?.parCommune || []).map((c) => c.count)))
+const maxCategorie = computed(() => Math.max(1, ...(stats.value?.parCategorie || []).map((c) => c.count)))
 
 const tauxResolution = computed(() => {
   if (!stats.value || !stats.value.parStatut.total) return 0
@@ -82,17 +83,39 @@ const tauxResolution = computed(() => {
           </div>
         </div>
 
-        <div class="card-glass rounded p-4">
-          <h2 class="h5 fw-bold mb-4">Signalements par commune</h2>
-          <div v-if="!stats.parCommune.length" class="text-secondary">Aucune donnée pour le moment.</div>
-          <div v-else class="d-flex flex-column gap-3">
-            <div v-for="c in stats.parCommune" :key="c.commune" class="transparence-barre-ligne">
-              <div class="d-flex justify-content-between mb-1">
-                <span>{{ c.commune }}</span>
-                <span class="text-secondary">{{ c.count }}</span>
+        <div class="row g-4">
+          <div class="col-12 col-lg-6">
+            <div class="card-glass rounded p-4 h-100">
+              <h2 class="h5 fw-bold mb-4">Signalements par commune</h2>
+              <div v-if="!stats.parCommune.length" class="text-secondary">Aucune donnée pour le moment.</div>
+              <div v-else class="d-flex flex-column gap-3">
+                <div v-for="c in stats.parCommune" :key="c.commune" class="transparence-barre-ligne">
+                  <div class="d-flex justify-content-between mb-1">
+                    <span>{{ c.commune }}</span>
+                    <span class="text-secondary">{{ c.count }}</span>
+                  </div>
+                  <div class="transparence-barre-piste">
+                    <div class="transparence-barre-remplissage" :style="{ width: `${(c.count / maxCommune) * 100}%` }"></div>
+                  </div>
+                </div>
               </div>
-              <div class="transparence-barre-piste">
-                <div class="transparence-barre-remplissage" :style="{ width: `${(c.count / maxCommune) * 100}%` }"></div>
+            </div>
+          </div>
+
+          <div class="col-12 col-lg-6">
+            <div class="card-glass rounded p-4 h-100">
+              <h2 class="h5 fw-bold mb-4">Signalements par catégorie</h2>
+              <div v-if="!stats.parCategorie?.length" class="text-secondary">Aucune donnée pour le moment.</div>
+              <div v-else class="d-flex flex-column gap-3">
+                <div v-for="c in stats.parCategorie" :key="c.categorie" class="transparence-barre-ligne">
+                  <div class="d-flex justify-content-between mb-1">
+                    <span>{{ c.categorie }}</span>
+                    <span class="text-secondary">{{ c.count }}</span>
+                  </div>
+                  <div class="transparence-barre-piste">
+                    <div class="transparence-barre-remplissage" :style="{ width: `${(c.count / maxCategorie) * 100}%` }"></div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
