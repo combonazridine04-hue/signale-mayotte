@@ -7,8 +7,15 @@ async function traiterReponse(reponse) {
     const corps = await reponse.json().catch(() => ({}))
     throw new Error(corps.erreur || `Erreur serveur (${reponse.status})`)
   }
-  if (reponse.status === 204) return null
-  return reponse.json()
+  // Une réponse sans corps ne doit jamais faire échouer l'appel : sinon l'utilisateur
+  // reçoit une erreur technique ("Unexpected end of JSON input") alors que tout a marché.
+  const texte = await reponse.text()
+  if (!texte) return null
+  try {
+    return JSON.parse(texte)
+  } catch {
+    return null
+  }
 }
 
 export const useSignalementStore = defineStore('signalement', {

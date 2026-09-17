@@ -31,7 +31,8 @@ router.post('/moderation/signaler', requireAuthUtilisateur, limiteurSignalementA
       'INSERT INTO signalements_abus (type, cible_id, motif, utilisateur_id, date_creation) VALUES ($1, $2, $3, $4, $5)',
       [type, id, typeof motif === 'string' ? motif.trim().slice(0, 500) : null, req.utilisateur?.id || null, new Date().toISOString()]
     )
-    res.status(201).end()
+    // 204 et pas 201 : la réponse n'a pas de corps, et le client tentait d'y lire du JSON.
+    res.status(204).end()
   } catch (e) {
     if (e.code === '23505') {
       return res.status(409).json({ erreur: 'Vous avez déjà signalé ce contenu.' })
