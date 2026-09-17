@@ -25,6 +25,10 @@
   font-size: 0.9rem;
 }
 
+.hero-stat--resolu strong {
+  color: #4ade80;
+}
+
 .hero-title {
   color: #ffffff;
   font-size: clamp(2rem, 4vw, 3.5rem);

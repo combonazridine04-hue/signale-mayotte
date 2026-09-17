@@ -125,7 +125,13 @@ const routes = [
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes
+  routes,
+  // Sans ça, on arrive au milieu d'une nouvelle page en gardant le défilement précédent.
+  // Le retour arrière, lui, doit retrouver la position quittée.
+  scrollBehavior(to, from, positionSauvegardee) {
+    if (positionSauvegardee) return positionSauvegardee
+    return { top: 0 }
+  }
 })
 
 router.beforeEach((to) => {

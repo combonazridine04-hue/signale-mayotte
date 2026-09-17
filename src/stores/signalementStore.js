@@ -56,6 +56,18 @@ export const useSignalementStore = defineStore('signalement', {
       }
     },
 
+    // Version publique de chargerStats : /api/signalements/stats est réservé aux admins,
+    // l'accueil doit pouvoir afficher les compteurs à un visiteur non connecté.
+    async chargerStatsPubliques() {
+      try {
+        const reponse = await apiFetch('/api/signalements/stats-publiques')
+        const donnees = await traiterReponse(reponse)
+        if (donnees?.parStatut) this.stats = donnees.parStatut
+      } catch {
+        this.stats = { total: 0, signale: 0, enCours: 0, resolu: 0 }
+      }
+    },
+
     async chargerStats() {
       try {
         const reponse = await apiFetch('/api/signalements/stats')

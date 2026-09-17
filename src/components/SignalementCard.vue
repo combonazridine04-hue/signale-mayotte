@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
+import { dateRelative, dateComplete } from '../utils/dates.js'
 
 const props = defineProps({
   signalement: {
@@ -35,9 +36,13 @@ const imageEnErreur = ref(false)
         </div>
         <h3 class="h6 card-title mb-1">{{ signalement.commune }}</h3>
         <p class="card-text card-text-clamp text-secondary small mb-0">{{ signalement.description }}</p>
-        <p v-if="signalement.nbSoutiens" class="card-text text-secondary small mb-0 mt-2">
-          👍 {{ signalement.nbSoutiens }} soutien{{ signalement.nbSoutiens > 1 ? 's' : '' }}
-        </p>
+
+        <div class="d-flex align-items-center gap-2 mt-2 text-secondary small">
+          <time :datetime="signalement.dateSignalement" :title="dateComplete(signalement.dateSignalement)">
+            {{ dateRelative(signalement.dateSignalement) }}
+          </time>
+          <span v-if="signalement.nbSoutiens">· 👍 {{ signalement.nbSoutiens }}</span>
+        </div>
       </div>
     </div>
   </RouterLink>

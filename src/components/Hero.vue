@@ -5,7 +5,12 @@ import { useSignalementStore } from '../stores/signalementStore.js'
 
 const signalementStore = useSignalementStore()
 
-onMounted(() => signalementStore.chargerCompteur())
+onMounted(() => {
+  signalementStore.chargerCompteur()
+  // Les résolus sont la vraie preuve que signaler sert à quelque chose : c'est ce qui
+  // donne envie de contribuer, bien plus que le volume brut de signalements.
+  signalementStore.chargerStatsPubliques()
+})
 </script>
 
 <template>
@@ -24,9 +29,17 @@ onMounted(() => signalementStore.chargerCompteur())
             Faire un signalement
           </RouterLink>
 
-          <div class="hero-stat">
+          <!-- Tant que le compteur n'est pas chargé, on n'affiche rien : sur connexion
+               lente, un "0 signalements" s'affichait plusieurs secondes et donnait
+               l'impression d'une plateforme vide. -->
+          <div v-if="signalementStore.total" class="hero-stat">
             <strong>{{ signalementStore.total }}</strong>
             <span>signalements enregistrés</span>
+          </div>
+
+          <div v-if="signalementStore.stats.resolu" class="hero-stat hero-stat--resolu">
+            <strong>{{ signalementStore.stats.resolu }}</strong>
+            <span>déjà résolu{{ signalementStore.stats.resolu > 1 ? 's' : '' }}</span>
           </div>
         </div>
       </div>

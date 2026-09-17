@@ -11,6 +11,8 @@ import { enregistrerTokenSuppression, lireTokenSuppression } from '../utils/toke
 import PhotoDropzone from '../components/PhotoDropzone.vue'
 import LocationPicker from '../components/LocationPicker.vue'
 import OrganismeCompetent from '../components/OrganismeCompetent.vue'
+import StatutSuivi from '../components/StatutSuivi.vue'
+import { dateRelative, dateComplete } from '../utils/dates.js'
 
 const props = defineProps({
   id: {
@@ -330,8 +332,21 @@ const marquerResolu = async () => {
           </div>
 
           <div v-if="signalementStore.signalementCourant.photoResolution" class="mt-4">
-            <p class="section-kicker mb-2">Après résolution</p>
-            <img :src="signalementStore.signalementCourant.photoResolution" class="detail-image" alt="Photo après résolution" />
+            <p class="section-kicker mb-2">Avant / après</p>
+            <div class="avant-apres">
+              <figure>
+                <img
+                  v-if="signalementStore.signalementCourant.photoUrls?.[0]"
+                  :src="signalementStore.signalementCourant.photoUrls[0]"
+                  alt="Photo au moment du signalement"
+                />
+                <figcaption>Avant</figcaption>
+              </figure>
+              <figure>
+                <img :src="signalementStore.signalementCourant.photoResolution" alt="Photo après résolution" />
+                <figcaption class="apres">Après</figcaption>
+              </figure>
+            </div>
           </div>
         </div>
 
@@ -342,8 +357,19 @@ const marquerResolu = async () => {
               <h1 class="fw-bold">{{ signalementStore.signalementCourant.commune }}</h1>
               <p class="text-secondary">{{ signalementStore.signalementCourant.description }}</p>
               <p class="text-secondary small">
-                Signalé le {{ new Date(signalementStore.signalementCourant.dateSignalement).toLocaleDateString('fr-FR') }}
+                Signalé
+                <time
+                  :datetime="signalementStore.signalementCourant.dateSignalement"
+                  :title="dateComplete(signalementStore.signalementCourant.dateSignalement)"
+                >{{ dateRelative(signalementStore.signalementCourant.dateSignalement) }}</time>
               </p>
+
+              <StatutSuivi
+                class="my-4"
+                :statut="signalementStore.signalementCourant.statut"
+                :date-signalement="signalementStore.signalementCourant.dateSignalement"
+                :date-resolution="signalementStore.signalementCourant.dateResolution"
+              />
 
               <OrganismeCompetent v-if="organismeCompetent" :organisme="organismeCompetent" class="mb-3" />
 
@@ -370,17 +396,17 @@ const marquerResolu = async () => {
                 Vous pouvez supprimer ce signalement car c'est vous qui l'avez créé.
               </p>
 
-              <div class="info-box mt-4">
-                <span>Statut</span>
+              <!-- Le statut est déjà lisible dans le suivi visuel ci-dessus : on ne garde
+                   ici que le moyen de le modifier, réservé aux administrateurs. -->
+              <div v-if="authStore.estConnecte" class="info-box mt-4">
+                <span>Changer le statut</span>
                 <select
-                  v-if="authStore.estConnecte"
                   class="form-select mt-1"
                   :value="signalementStore.signalementCourant.statut"
                   @change="changerStatutPublic($event.target.value)"
                 >
                   <option v-for="statut in STATUTS" :key="statut" :value="statut">{{ statut }}</option>
                 </select>
-                <p v-else class="mb-0 fw-semibold">{{ signalementStore.signalementCourant.statut }}</p>
               </div>
 
               <div class="d-flex align-items-center gap-3 mt-3">
@@ -455,7 +481,7 @@ const marquerResolu = async () => {
                   <li v-for="m in signalementStore.signalementCourant.misesAJour" :key="m.id" class="detail-suivi-item">
                     <p class="mb-0">{{ m.texte }}</p>
                     <div class="d-flex align-items-center gap-2">
-                      <span class="text-secondary small">{{ new Date(m.dateCreation).toLocaleString('fr-FR') }}</span>
+                      <span class="text-secondary small" :title="dateComplete(m.dateCreation)">{{ dateRelative(m.dateCreation) }}</span>
                       <button
                         v-if="authStore.estConnecte"
                         type="button"
@@ -483,7 +509,7 @@ const marquerResolu = async () => {
                     </div>
                     <p class="mb-0">{{ c.texte }}</p>
                     <div class="d-flex align-items-center gap-2">
-                      <span class="text-secondary small">{{ new Date(c.dateCreation).toLocaleString('fr-FR') }}</span>
+                      <span class="text-secondary small" :title="dateComplete(c.dateCreation)">{{ dateRelative(c.dateCreation) }}</span>
                       <button
                         v-if="peutAgir && !authStore.estConnecte"
                         type="button"
