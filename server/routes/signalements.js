@@ -7,7 +7,8 @@ import {
   envoyerNotificationSignalement,
   envoyerConfirmationSignalement,
   envoyerChangementStatut,
-  envoyerNouveauCommentaire
+  envoyerNouveauCommentaire,
+  envoyerMiseAJourSignalement
 } from '../mailer.js'
 import { requireAuth, requireAuthUtilisateur } from '../middleware/requireAuth.js'
 import { sessionValide } from '../auth.js'
@@ -89,6 +90,22 @@ async function contientUnePhotoInterdite(fichiers) {
     if (await contientContenuExplicite(fichier.buffer)) return true
   }
   return false
+}
+
+// À qui écrire pour les nouvelles d'un signalement : l'email de contact laissé
+// volontairement, sinon l'adresse du compte — et seulement si elle a été vérifiée,
+// une adresse mal saisie pouvant appartenir à quelqu'un d'autre.
+async function emailSuiviSignalement(signalementId) {
+  const { rows } = await db.query(
+    `SELECT s.email_contact, u.email AS email_compte, u.email_verifie
+     FROM signalements s
+     LEFT JOIN utilisateurs u ON u.id = s.utilisateur_id
+     WHERE s.id = $1`,
+    [signalementId]
+  )
+  const ligne = rows[0]
+  if (!ligne) return null
+  return ligne.email_contact || (ligne.email_verifie ? ligne.email_compte : null)
 }
 
 function mapRow(row, avecAuteur = false) {
@@ -426,8 +443,12 @@ router.patch('/signalements/:id', requireAuth, upload.single('photoResolution'),
   )
 
   const signalementMisAJour = mapRow(rows[0])
-  if (existant.statut !== statut && existant.email_contact) {
-    envoyerChangementStatut(signalementMisAJour, existant.email_contact)
+  if (existant.statut !== statut) {
+    // Prévient aussi les comptes citoyens : signaler exige un compte, donc presque
+    // personne ne remplit l'email de contact optionnel — ils n'apprenaient jamais
+    // que leur problème avait été traité.
+    const destinataire = await emailSuiviSignalement(id)
+    if (destinataire) envoyerChangementStatut(signalementMisAJour, destinataire)
   }
 
   res.json(signalementMisAJour)
@@ -499,8 +520,13 @@ router.post('/signalements/:id/mises-a-jour', requireAuth, async (req, res) => {
     return res.status(400).json({ erreur: 'Le message ne doit pas dépasser 1000 caractères.' })
   }
 
-  const { rows: existant } = await db.query('SELECT id FROM signalements WHERE id = $1', [id])
+  const { rows: existant } = await db.query('SELECT id, categorie, commune FROM signalements WHERE id = $1', [id])
   if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
+
+  // Un suivi publié sans prévenir personne ne sert à rien : le citoyen ne revient pas
+  // consulter la page de lui-même.
+  const destinataire = await emailSuiviSignalement(id)
+  if (destinataire) envoyerMiseAJourSignalement(existant[0], destinataire, texte.trim())
 
   const { rows } = await db.query(
     'INSERT INTO mises_a_jour (signalement_id, texte, date_creation) VALUES ($1, $2, $3) RETURNING *',
@@ -541,11 +567,7 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
   }
 
   const { rows: existant } = await db.query(
-    `SELECT s.id, s.categorie, s.commune, s.utilisateur_id, s.email_contact,
-            u.email AS email_compte, u.email_verifie
-     FROM signalements s
-     LEFT JOIN utilisateurs u ON u.id = s.utilisateur_id
-     WHERE s.id = $1`,
+    'SELECT id, categorie, commune, utilisateur_id FROM signalements WHERE id = $1',
     [id]
   )
   if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
@@ -575,9 +597,8 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
     [id, auteur, texte.trim(), new Date().toISOString(), req.utilisateur?.id || null, parentFinal]
   )
 
-  // On n'écrit jamais à l'adresse d'un compte non vérifiée (elle peut être erronée),
-  // et personne n'est notifié de son propre message.
-  const emailSignalement = signalement.email_contact || (signalement.email_verifie ? signalement.email_compte : null)
+  // Personne n'est notifié de son propre message.
+  const emailSignalement = await emailSuiviSignalement(id)
   const commenteSonPropreSignalement = req.utilisateur && signalement.utilisateur_id === req.utilisateur.id
   if (emailSignalement && !commenteSonPropreSignalement) {
     envoyerNouveauCommentaire(signalement, emailSignalement, { auteur, texte: texte.trim(), estReponse: false })

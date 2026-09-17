@@ -192,6 +192,40 @@ export async function envoyerChangementStatut(signalement, emailCitoyen) {
   })
 }
 
+export async function envoyerMiseAJourSignalement(signalement, emailCitoyen, texte) {
+  if (!emailCitoyen) return
+
+  const lienDetail = `${SITE_URL}/signalements/${signalement.id}`
+
+  await envoyerEmail({
+    to: emailCitoyen,
+    subject: 'Du nouveau sur votre signalement',
+    text: [
+      'Un suivi a été publié sur votre signalement :',
+      `${signalement.categorie} — ${signalement.commune}`,
+      '',
+      texte,
+      '',
+      `Voir le signalement : ${lienDetail}`
+    ].join('\n'),
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+        <div style="background: #16a34a; color: #ffffff; padding: 16px 20px;">
+          <h2 style="margin: 0; font-size: 18px;">Suivi de votre signalement</h2>
+        </div>
+        <div style="padding: 20px; color: #0f172a;">
+          <p style="margin: 0 0 8px;">Un message de suivi a été publié sur votre signalement :</p>
+          <p style="margin: 0 0 16px; color: #64748b; font-size: 13px;">${echapperHtml(signalement.categorie)} — ${echapperHtml(signalement.commune)}</p>
+          <blockquote style="margin: 0 0 16px; padding: 12px 16px; background: #f1f5f9; border-left: 3px solid #16a34a; border-radius: 4px; white-space: pre-wrap;">${echapperHtml(texte)}</blockquote>
+          <a href="${lienDetail}" style="display: inline-block; background: #16a34a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
+            Voir le signalement
+          </a>
+        </div>
+      </div>
+    `
+  })
+}
+
 export async function envoyerNouveauCommentaire(signalement, emailAuteur, commentaire) {
   if (!emailAuteur) return
 
