@@ -12,11 +12,39 @@ const enregistrementEnCours = ref(false)
 const messageErreur = ref('')
 const messageSucces = ref('')
 
+const inputAvatar = ref(null)
+const avatarEnCours = ref(false)
+const erreurAvatar = ref('')
+
 onMounted(async () => {
   const resultat = await citoyenStore.chargerProfil()
   if (resultat.succes) pseudo.value = citoyenStore.pseudo
   chargement.value = false
 })
+
+const choisirAvatar = () => inputAvatar.value?.click()
+
+const changerAvatar = async (event) => {
+  const fichier = event.target.files?.[0]
+  event.target.value = ''
+  if (!fichier) return
+
+  avatarEnCours.value = true
+  erreurAvatar.value = ''
+  const resultat = await citoyenStore.televerserAvatar(fichier)
+  avatarEnCours.value = false
+
+  if (!resultat.succes) erreurAvatar.value = resultat.erreur
+}
+
+const retirerAvatar = async () => {
+  avatarEnCours.value = true
+  erreurAvatar.value = ''
+  const resultat = await citoyenStore.supprimerAvatar()
+  avatarEnCours.value = false
+
+  if (!resultat.succes) erreurAvatar.value = resultat.erreur
+}
 
 const enregistrer = async () => {
   enregistrementEnCours.value = true
@@ -52,6 +80,33 @@ const deconnecter = () => {
           </div>
 
           <template v-else>
+            <div class="card-glass rounded p-4 shadow-sm mb-3 d-flex align-items-center gap-3 flex-wrap">
+              <div class="profil-avatar">
+                <img v-if="citoyenStore.avatarUrl" :src="citoyenStore.avatarUrl" alt="" />
+                <span v-else class="profil-avatar-vide">{{ (citoyenStore.pseudo || citoyenStore.nom || '?').charAt(0).toUpperCase() }}</span>
+              </div>
+              <div>
+                <input ref="inputAvatar" type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden @change="changerAvatar" />
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="avatarEnCours" @click="choisirAvatar">
+                    {{ avatarEnCours ? 'Envoi...' : (citoyenStore.avatarUrl ? 'Changer la photo' : 'Ajouter une photo') }}
+                  </button>
+                  <button
+                    v-if="citoyenStore.avatarUrl"
+                    type="button"
+                    class="btn btn-outline-danger btn-sm"
+                    :disabled="avatarEnCours"
+                    @click="retirerAvatar"
+                  >
+                    Retirer
+                  </button>
+                </div>
+                <div v-if="erreurAvatar" class="text-danger small mt-1">{{ erreurAvatar }}</div>
+                <div v-if="avatarEnCours" class="text-secondary small mt-1">Vérification automatique en cours, ça peut prendre quelques secondes...</div>
+                <div v-else class="text-secondary small mt-1">JPG, PNG, WEBP ou GIF, 3 Mo max.</div>
+              </div>
+            </div>
+
             <div class="card-glass rounded p-4 shadow-sm mb-3">
               <h2 class="h5 fw-bold mb-3">Pseudo public</h2>
               <p class="text-secondary small mb-3">
@@ -109,3 +164,29 @@ const deconnecter = () => {
     </div>
   </main>
 </template>
+
+<style scoped>
+.profil-avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--bs-secondary-bg, #e9ecef);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profil-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profil-avatar-vide {
+  font-size: 1.75rem;
+  font-weight: bold;
+  color: var(--bs-secondary-color, #6c757d);
+}
+</style>

@@ -429,7 +429,13 @@ const marquerResolu = async () => {
 
                 <ul v-if="signalementStore.signalementCourant.commentaires?.length" class="detail-suivi mt-2 mb-3">
                   <li v-for="c in signalementStore.signalementCourant.commentaires" :key="c.id" class="detail-suivi-item">
-                    <p class="mb-0 fw-semibold">{{ c.auteur }}</p>
+                    <div class="d-flex align-items-center gap-2">
+                      <div class="detail-commentaire-avatar">
+                        <img v-if="c.auteurAvatarUrl" :src="c.auteurAvatarUrl" alt="" />
+                        <span v-else>{{ c.auteur.charAt(0).toUpperCase() }}</span>
+                      </div>
+                      <p class="mb-0 fw-semibold">{{ c.auteur }}</p>
+                    </div>
                     <p class="mb-0">{{ c.texte }}</p>
                     <div class="d-flex align-items-center gap-2">
                       <span class="text-secondary small">{{ new Date(c.dateCreation).toLocaleString('fr-FR') }}</span>

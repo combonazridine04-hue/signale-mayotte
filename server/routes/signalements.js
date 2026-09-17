@@ -1,6 +1,4 @@
 import { Router } from 'express'
-import multer from 'multer'
-import sharp from 'sharp'
 import crypto from 'node:crypto'
 import { rateLimit } from 'express-rate-limit'
 import { db } from '../db.js'
@@ -8,8 +6,9 @@ import { CATEGORIES, COMMUNES, STATUTS } from '../../src/models/signalement.js'
 import { envoyerNotificationSignalement, envoyerConfirmationSignalement, envoyerChangementStatut } from '../mailer.js'
 import { requireAuth, requireAuthUtilisateur } from '../middleware/requireAuth.js'
 import { sessionValide } from '../auth.js'
-import { uploaderPhoto, supprimerPhoto } from '../storage.js'
+import { supprimerPhoto } from '../storage.js'
 import { contientContenuExplicite } from '../moderation.js'
+import { creerUpload, traiterPhoto as traiterPhotoPartage } from '../photoUpload.js'
 
 const MAX_PHOTOS = 5
 
@@ -37,21 +36,7 @@ const limiteurCommentaire = rateLimit({
   message: { erreur: 'Trop de commentaires envoyés, réessayez plus tard.' }
 })
 
-const EXTENSIONS_AUTORISEES = {
-  'image/jpeg': 'jpeg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-  'image/gif': 'gif'
-}
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024, files: MAX_PHOTOS },
-  fileFilter: (req, file, cb) => {
-    // Liste blanche stricte : exclut notamment image/svg+xml, vecteur de XSS stocké.
-    cb(null, Object.hasOwn(EXTENSIONS_AUTORISEES, file.mimetype))
-  }
-})
+const upload = creerUpload({ fileSize: 5 * 1024 * 1024, files: MAX_PHOTOS })
 
 const router = Router()
 
@@ -82,17 +67,7 @@ function estAutoriseASupprimer(req, existant) {
   return Boolean(tokenSuppression) && tokenSuppression === existant.token_suppression
 }
 
-async function traiterPhoto(fichier) {
-  const format = EXTENSIONS_AUTORISEES[fichier.mimetype]
-  // .rotate() sans argument applique l'orientation EXIF avant de la supprimer,
-  // pour éviter les photos de travers ; toBuffer() par défaut retire déjà toutes
-  // les métadonnées (dont la géolocalisation GPS embarquée par les smartphones).
-  const image = sharp(fichier.buffer, { animated: format === 'gif' }).rotate()
-  const buffer = await image.toFormat(format).toBuffer()
-
-  const nomFichier = `${Date.now()}-${Math.round(Math.random() * 1e9)}.${format}`
-  return uploaderPhoto(buffer, nomFichier, fichier.mimetype)
-}
+const traiterPhoto = traiterPhotoPartage
 
 async function traiterPhotos(fichiers) {
   const urls = []
@@ -140,7 +115,10 @@ function mapMiseAJour(row) {
 }
 
 function mapCommentaire(row) {
-  return { id: row.id, auteur: row.auteur, texte: row.texte, dateCreation: row.date_creation }
+  // Si l'auteur a un compte encore actif, on affiche son pseudo/nom/avatar ACTUELS (pas
+  // celui au moment du commentaire) : changer son profil doit s'appliquer à tout l'historique.
+  const auteur = row.auteur_pseudo_actuel || row.auteur_nom_actuel || row.auteur
+  return { id: row.id, auteur, auteurAvatarUrl: row.auteur_avatar_actuel || null, texte: row.texte, dateCreation: row.date_creation }
 }
 
 router.get('/signalements/count', async (req, res) => {
@@ -246,7 +224,11 @@ router.get('/signalements/:id', async (req, res) => {
     [id]
   )
   const { rows: commentaires } = await db.query(
-    'SELECT * FROM commentaires WHERE signalement_id = $1 ORDER BY date_creation ASC',
+    `SELECT c.*, u.pseudo AS auteur_pseudo_actuel, u.nom AS auteur_nom_actuel, u.avatar_url AS auteur_avatar_actuel
+     FROM commentaires c
+     LEFT JOIN utilisateurs u ON u.id = c.utilisateur_id
+     WHERE c.signalement_id = $1
+     ORDER BY c.date_creation ASC`,
     [id]
   )
 
@@ -532,9 +514,11 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
   // ça empêche de se faire passer pour quelqu'un d'autre. Le pseudo (s'il est défini)
   // est affiché à la place du vrai nom pour préserver la confidentialité promise à l'inscription.
   let auteur = `Admin (${req.admin?.identifiant})`
+  let auteurAvatarUrl = null
   if (req.utilisateur) {
-    const { rows } = await db.query('SELECT nom, pseudo FROM utilisateurs WHERE id = $1', [req.utilisateur.id])
+    const { rows } = await db.query('SELECT nom, pseudo, avatar_url FROM utilisateurs WHERE id = $1', [req.utilisateur.id])
     auteur = rows[0]?.pseudo || rows[0]?.nom || req.utilisateur.nom
+    auteurAvatarUrl = rows[0]?.avatar_url || null
   }
 
   if (texte.trim().length < 3) {
@@ -552,7 +536,7 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
     [id, auteur, texte.trim(), new Date().toISOString(), req.utilisateur?.id || null]
   )
 
-  res.status(201).json(mapCommentaire(rows[0]))
+  res.status(201).json({ ...mapCommentaire(rows[0]), auteurAvatarUrl })
 })
 
 router.delete('/signalements/:id/commentaires/:commentaireId', requireAuth, async (req, res) => {

@@ -12,10 +12,14 @@ import {
   genererTokenReinitialisation,
   reinitialiserMotDePasse,
   recupererProfil,
-  mettreAJourPseudo
+  mettreAJourPseudo,
+  mettreAJourAvatar
 } from '../auth.js'
 import { envoyerVerificationEmail, envoyerReinitialisationMotDePasse } from '../mailer.js'
 import { requireAuthUtilisateur } from '../middleware/requireAuth.js'
+import { creerUpload, traiterPhoto } from '../photoUpload.js'
+import { supprimerPhoto } from '../storage.js'
+import { contientContenuExplicite } from '../moderation.js'
 
 const router = Router()
 
@@ -35,6 +39,16 @@ const limiteurVerificationCode = rateLimit({
   legacyHeaders: false,
   message: { erreur: 'Trop de tentatives, réessayez plus tard.' }
 })
+
+const limiteurAvatar = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erreur: 'Trop de tentatives, réessayez plus tard.' }
+})
+
+const uploadAvatar = creerUpload({ fileSize: 3 * 1024 * 1024, files: 1 })
 
 const limiteurInscription = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -142,6 +156,35 @@ router.patch('/profil', requireAuthUtilisateur, async (req, res) => {
   const resultat = await mettreAJourPseudo(req.utilisateur.id, req.body?.pseudo)
   if (resultat.erreur) return res.status(400).json({ erreur: resultat.erreur })
   res.json(resultat)
+})
+
+router.patch('/avatar', requireAuthUtilisateur, limiteurAvatar, uploadAvatar.single('avatar'), async (req, res) => {
+  if (!req.utilisateur) {
+    return res.status(400).json({ erreur: 'Non applicable pour un compte admin.' })
+  }
+  if (!req.file) {
+    return res.status(400).json({ erreur: 'Aucune image envoyée (formats acceptés : jpg, png, webp, gif).' })
+  }
+  if (await contientContenuExplicite(req.file.buffer)) {
+    return res.status(400).json({ erreur: 'Cette photo a été refusée (contenu inapproprié détecté).' })
+  }
+
+  const ancienProfil = await recupererProfil(req.utilisateur.id)
+  const avatarUrl = await traiterPhoto(req.file, { largeurMax: 256 })
+  await mettreAJourAvatar(req.utilisateur.id, avatarUrl)
+  if (ancienProfil?.avatarUrl) await supprimerPhoto(ancienProfil.avatarUrl)
+
+  res.json({ avatarUrl })
+})
+
+router.delete('/avatar', requireAuthUtilisateur, async (req, res) => {
+  if (!req.utilisateur) {
+    return res.status(400).json({ erreur: 'Non applicable pour un compte admin.' })
+  }
+  const profil = await recupererProfil(req.utilisateur.id)
+  if (profil?.avatarUrl) await supprimerPhoto(profil.avatarUrl)
+  await mettreAJourAvatar(req.utilisateur.id, null)
+  res.status(204).end()
 })
 
 router.post('/mot-de-passe-oublie', limiteurMotDePasseOublie, async (req, res) => {

@@ -27,6 +27,7 @@ export const useCitoyenStore = defineStore('citoyen', {
       nom: chargerNom(),
       estConnecte: Boolean(token),
       pseudo: '',
+      avatarUrl: '',
       email: '',
       telephone: '',
       emailVerifie: false
@@ -92,6 +93,7 @@ export const useCitoyenStore = defineStore('citoyen', {
       this.nom = ''
       this.estConnecte = false
       this.pseudo = ''
+      this.avatarUrl = ''
       this.email = ''
       this.telephone = ''
       this.emailVerifie = false
@@ -186,6 +188,7 @@ export const useCitoyenStore = defineStore('citoyen', {
         }
         const profil = await reponse.json()
         this.pseudo = profil.pseudo || ''
+        this.avatarUrl = profil.avatarUrl || ''
         this.email = profil.email || ''
         this.telephone = profil.telephone || ''
         this.emailVerifie = Boolean(profil.emailVerifie)
@@ -215,6 +218,47 @@ export const useCitoyenStore = defineStore('citoyen', {
       const donnees = await reponse.json()
       this.pseudo = donnees.pseudo || ''
       return { succes: true }
+    },
+
+    async televerserAvatar(fichier) {
+      let reponse
+      try {
+        const formData = new FormData()
+        formData.set('avatar', fichier)
+        reponse = await fetch('/api/auth/avatar', {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${this.token}` },
+          body: formData
+        })
+      } catch {
+        return { succes: false, erreur: "Impossible de contacter le serveur." }
+      }
+
+      if (!reponse.ok) {
+        const corps = await reponse.json().catch(() => ({}))
+        return { succes: false, erreur: corps.erreur || 'Envoi impossible.' }
+      }
+
+      const donnees = await reponse.json()
+      this.avatarUrl = donnees.avatarUrl || ''
+      return { succes: true }
+    },
+
+    async supprimerAvatar() {
+      try {
+        const reponse = await fetch('/api/auth/avatar', {
+          method: 'DELETE',
+          headers: { Authorization: `Bearer ${this.token}` }
+        })
+        if (!reponse.ok) {
+          const corps = await reponse.json().catch(() => ({}))
+          return { succes: false, erreur: corps.erreur || 'Suppression impossible.' }
+        }
+        this.avatarUrl = ''
+        return { succes: true }
+      } catch {
+        return { succes: false, erreur: "Impossible de contacter le serveur." }
+      }
     }
   }
 })

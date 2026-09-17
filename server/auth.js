@@ -231,7 +231,7 @@ const REGEX_PSEUDO = /^[a-zA-Z0-9 _-]{2,24}$/
 
 export async function recupererProfil(utilisateurId) {
   const { rows } = await db.query(
-    'SELECT nom, email, telephone, pseudo, email_verifie FROM utilisateurs WHERE id = $1',
+    'SELECT nom, email, telephone, pseudo, avatar_url, email_verifie FROM utilisateurs WHERE id = $1',
     [utilisateurId]
   )
   const utilisateur = rows[0]
@@ -241,8 +241,13 @@ export async function recupererProfil(utilisateurId) {
     email: utilisateur.email,
     telephone: utilisateur.telephone,
     pseudo: utilisateur.pseudo,
+    avatarUrl: utilisateur.avatar_url,
     emailVerifie: utilisateur.email_verifie
   }
+}
+
+export async function mettreAJourAvatar(utilisateurId, avatarUrl) {
+  await db.query('UPDATE utilisateurs SET avatar_url = $1 WHERE id = $2', [avatarUrl, utilisateurId])
 }
 
 // Renvoie { erreur } ou { pseudo }. Le pseudo est ce qui est affiché publiquement
