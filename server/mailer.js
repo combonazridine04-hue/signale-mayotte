@@ -1,16 +1,30 @@
-// Envoi d'email via l'API HTTPS de Resend (https://resend.com), pas en SMTP :
-// Render bloque les connexions SMTP sortantes sur ses instances (anti-abus),
-// donc Gmail/nodemailer échouait silencieusement en production.
+// Envoi d'email par API HTTPS, jamais en SMTP : Render bloque les connexions SMTP
+// sortantes sur ses instances (anti-abus), donc Gmail/nodemailer échouait en silence.
+//
+// Brevo est prioritaire sur Resend : Resend refuse (403) tout destinataire autre que
+// le propriétaire du compte tant qu'un nom de domaine n'est pas vérifié, ce qui
+// empêchait les citoyens de recevoir leur code. Brevo demande seulement de valider
+// une adresse d'expédition, sans domaine à acheter.
+const BREVO_API_KEY = process.env.BREVO_API_KEY
+const BREVO_EXPEDITEUR = process.env.BREVO_EXPEDITEUR
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 const RESEND_FROM = process.env.RESEND_FROM || 'Signale Mayotte <onboarding@resend.dev>'
+const NOM_EXPEDITEUR = 'Signale Mayotte'
 const destinataire = process.env.EMAIL_DESTINATAIRE || 'benoblock440@gmail.com'
 const SITE_URL = (process.env.SITE_URL || 'http://localhost:5173').replace(/\/$/, '')
 
-if (!RESEND_API_KEY) {
-  console.warn('[mailer] RESEND_API_KEY non configuré (.env) : notifications email désactivées.')
+const fournisseur = BREVO_API_KEY && BREVO_EXPEDITEUR ? 'brevo' : RESEND_API_KEY ? 'resend' : null
+
+if (BREVO_API_KEY && !BREVO_EXPEDITEUR) {
+  console.warn("[mailer] BREVO_API_KEY fourni sans BREVO_EXPEDITEUR (l'adresse validée chez Brevo) : Brevo ignoré.")
+}
+if (!fournisseur) {
+  console.warn('[mailer] Aucun fournisseur email configuré (BREVO_API_KEY ou RESEND_API_KEY) : notifications désactivées.')
+} else {
+  console.log(`[mailer] Fournisseur email : ${fournisseur}`)
 }
 
-export const mailerActif = Boolean(RESEND_API_KEY)
+export const mailerActif = Boolean(fournisseur)
 
 function echapperHtml(valeur) {
   return String(valeur)
@@ -21,31 +35,55 @@ function echapperHtml(valeur) {
     .replace(/'/g, '&#39;')
 }
 
-async function envoyerEmail({ to, subject, text, html, replyTo }) {
-  if (!RESEND_API_KEY) return
+async function envoyerViaBrevo({ to, subject, text, html, replyTo }) {
+  const reponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': BREVO_API_KEY,
+      'content-type': 'application/json',
+      accept: 'application/json'
+    },
+    body: JSON.stringify({
+      sender: { name: NOM_EXPEDITEUR, email: BREVO_EXPEDITEUR },
+      to: [{ email: to }],
+      subject,
+      textContent: text,
+      htmlContent: html,
+      ...(replyTo ? { replyTo: { email: replyTo } } : {})
+    })
+  })
+  return reponse
+}
+
+async function envoyerViaResend({ to, subject, text, html, replyTo }) {
+  return fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from: RESEND_FROM,
+      to: [to],
+      subject,
+      text,
+      html,
+      ...(replyTo ? { reply_to: replyTo } : {})
+    })
+  })
+}
+
+async function envoyerEmail(message) {
+  if (!fournisseur) return
 
   try {
-    const reponse = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: RESEND_FROM,
-        to: [to],
-        subject,
-        text,
-        html,
-        ...(replyTo ? { reply_to: replyTo } : {})
-      })
-    })
+    const reponse = fournisseur === 'brevo' ? await envoyerViaBrevo(message) : await envoyerViaResend(message)
     if (!reponse.ok) {
       const corps = await reponse.text().catch(() => '')
-      console.error('[mailer] Échec envoi email (Resend) :', reponse.status, corps)
+      console.error(`[mailer] Échec envoi email (${fournisseur}) :`, reponse.status, corps)
     }
   } catch (e) {
-    console.error('[mailer] Échec envoi email (Resend) :', e.message)
+    console.error(`[mailer] Échec envoi email (${fournisseur}) :`, e.message)
   }
 }
 
