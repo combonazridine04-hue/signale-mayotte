@@ -2,6 +2,7 @@
 import { computed, reactive, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
+import ChampMotDePasse from '../components/ChampMotDePasse.vue'
 import logo from '../assets/img/logo.svg'
 
 const router = useRouter()
@@ -120,31 +121,29 @@ const inscrire = async () => {
             <div class="row g-3">
               <div class="col-12 col-sm-6">
                 <label for="motDePasse" class="form-label">Mot de passe</label>
-                <input
+                <ChampMotDePasse
                   id="motDePasse"
                   v-model="formulaire.motDePasse"
-                  type="password"
                   autocomplete="new-password"
-                  class="form-control"
                   :class="{ 'is-invalid': soumis && erreurs.motDePasse }"
-                />
-                <div class="invalid-feedback">Au moins 8 caractères.</div>
+                >
+                  <div class="invalid-feedback">Au moins 8 caractères.</div>
+                </ChampMotDePasse>
               </div>
               <div class="col-12 col-sm-6">
                 <label for="confirmationMotDePasse" class="form-label">Confirmation</label>
-                <input
+                <ChampMotDePasse
                   id="confirmationMotDePasse"
                   v-model="formulaire.confirmationMotDePasse"
-                  type="password"
                   autocomplete="new-password"
-                  class="form-control"
                   :class="{
                     'is-invalid': formulaire.confirmationMotDePasse.length > 0 && erreurs.confirmation,
                     'is-valid': formulaire.confirmationMotDePasse.length > 0 && !erreurs.confirmation
                   }"
-                />
-                <div class="invalid-feedback">Les mots de passe ne correspondent pas.</div>
-                <div class="valid-feedback">Les mots de passe correspondent.</div>
+                >
+                  <div class="invalid-feedback">Les mots de passe ne correspondent pas.</div>
+                  <div class="valid-feedback">Les mots de passe correspondent.</div>
+                </ChampMotDePasse>
               </div>
             </div>
 

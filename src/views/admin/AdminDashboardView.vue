@@ -9,6 +9,7 @@ import { useUiStore } from '../../stores/uiStore.js'
 import { STATUTS } from '../../models/signalement.js'
 import { apiFetch } from '../../utils/api.js'
 import FilterBar from '../../components/FilterBar.vue'
+import ChampMotDePasse from '../../components/ChampMotDePasse.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -532,15 +533,15 @@ const changerStatut = async (id, statut) => {
             <form class="admin-form" @submit.prevent="changerMotDePasse">
               <div class="admin-form-field">
                 <label for="mdp-actuel">Mot de passe actuel</label>
-                <input id="mdp-actuel" v-model="motDePasseForm.actuel" type="password" required autocomplete="current-password" />
+                <ChampMotDePasse id="mdp-actuel" v-model="motDePasseForm.actuel" required autocomplete="current-password" classe-input="" />
               </div>
               <div class="admin-form-field">
                 <label for="mdp-nouveau">Nouveau mot de passe</label>
-                <input id="mdp-nouveau" v-model="motDePasseForm.nouveau" type="password" required minlength="8" autocomplete="new-password" />
+                <ChampMotDePasse id="mdp-nouveau" v-model="motDePasseForm.nouveau" required minlength="8" autocomplete="new-password" classe-input="" />
               </div>
               <div class="admin-form-field">
                 <label for="mdp-confirmation">Confirmer le nouveau mot de passe</label>
-                <input id="mdp-confirmation" v-model="motDePasseForm.confirmation" type="password" required minlength="8" autocomplete="new-password" />
+                <ChampMotDePasse id="mdp-confirmation" v-model="motDePasseForm.confirmation" required minlength="8" autocomplete="new-password" classe-input="" />
               </div>
               <div v-if="erreurMotDePasse" class="admin-form-erreur">{{ erreurMotDePasse }}</div>
               <div v-if="succesMotDePasse" class="admin-form-succes">Mot de passe modifié avec succès.</div>
@@ -587,7 +588,7 @@ const changerStatut = async (id, statut) => {
               </div>
               <div class="admin-form-field">
                 <label for="nouveau-mdp">Mot de passe</label>
-                <input id="nouveau-mdp" v-model="nouveauCompte.motDePasse" type="password" required minlength="8" autocomplete="new-password" />
+                <ChampMotDePasse id="nouveau-mdp" v-model="nouveauCompte.motDePasse" required minlength="8" autocomplete="new-password" classe-input="" />
               </div>
               <div v-if="erreurNouveauCompte" class="admin-form-erreur">{{ erreurNouveauCompte }}</div>
               <button type="submit" class="admin-btn admin-btn--primary" :disabled="creationEnCours">

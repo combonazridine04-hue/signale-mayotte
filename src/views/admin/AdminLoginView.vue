@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore.js'
+import ChampMotDePasse from '../../components/ChampMotDePasse.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -46,7 +47,7 @@ const connecter = async (event) => {
 
       <div class="admin-field">
         <label for="motDePasse">Mot de passe</label>
-        <input id="motDePasse" name="motDePasse" type="password" autocomplete="current-password" required />
+        <ChampMotDePasse id="motDePasse" name="motDePasse" autocomplete="current-password" required classe-input="" />
       </div>
 
       <div v-if="messageErreur" class="admin-login-erreur">{{ messageErreur }}</div>

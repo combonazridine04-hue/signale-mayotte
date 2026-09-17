@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
+import ChampMotDePasse from '../components/ChampMotDePasse.vue'
 import logo from '../assets/img/logo.svg'
 
 const router = useRouter()
@@ -64,13 +65,11 @@ const connecter = async () => {
 
             <div class="mb-3">
               <label for="motDePasse" class="form-label">Mot de passe</label>
-              <input
+              <ChampMotDePasse
                 id="motDePasse"
                 v-model="motDePasse"
-                type="password"
                 autocomplete="current-password"
                 required
-                class="form-control"
               />
               <div class="text-end mt-1">
                 <RouterLink to="/mot-de-passe-oublie" class="small">Mot de passe oublié ?</RouterLink>

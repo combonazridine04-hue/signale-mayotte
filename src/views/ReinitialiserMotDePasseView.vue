@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
+import ChampMotDePasse from '../components/ChampMotDePasse.vue'
 import logo from '../assets/img/logo.svg'
 
 const route = useRoute()
@@ -69,30 +70,27 @@ const valider = async () => {
 
               <div class="mb-3">
                 <label for="motDePasse" class="form-label">Nouveau mot de passe</label>
-                <input
+                <ChampMotDePasse
                   id="motDePasse"
                   v-model="motDePasse"
-                  type="password"
                   autocomplete="new-password"
                   autofocus
                   required
-                  class="form-control"
                 />
               </div>
 
               <div class="mb-3">
                 <label for="confirmation" class="form-label">Confirmation</label>
-                <input
+                <ChampMotDePasse
                   id="confirmation"
                   v-model="confirmation"
-                  type="password"
                   autocomplete="new-password"
                   required
-                  class="form-control"
                   :class="{ 'is-invalid': confirmationInvalide, 'is-valid': confirmationValide }"
-                />
-                <div class="invalid-feedback">Les mots de passe ne correspondent pas.</div>
-                <div class="valid-feedback">Les mots de passe correspondent.</div>
+                >
+                  <div class="invalid-feedback">Les mots de passe ne correspondent pas.</div>
+                  <div class="valid-feedback">Les mots de passe correspondent.</div>
+                </ChampMotDePasse>
               </div>
 
               <div v-if="messageErreur" class="alert alert-danger py-2 mb-0">{{ messageErreur }}</div>

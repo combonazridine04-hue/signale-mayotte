@@ -1,0 +1,43 @@
+.champ-mdp {
+  position: relative;
+}
+
+.champ-mdp input {
+  /* Place pour le bouton œil, sans que le texte passe dessous. */
+  padding-right: 2.75rem;
+}
+
+/* Bootstrap ajoute sa propre icône de validation à droite : elle entrerait en
+   collision avec l'œil. La bordure colorée suffit à signaler l'état. */
+.champ-mdp .form-control.is-invalid,
+.champ-mdp .form-control.is-valid {
+  background-image: none;
+}
+
+.champ-mdp-oeil {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 2.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--app-muted);
+  cursor: pointer;
+  border-radius: 0 6px 6px 0;
+  transition: color 0.15s ease;
+}
+
+.champ-mdp-oeil:hover,
+.champ-mdp-oeil:focus-visible {
+  color: var(--app-text);
+}
+
+.champ-mdp-oeil svg {
+  width: 20px;
+  height: 20px;
+}
