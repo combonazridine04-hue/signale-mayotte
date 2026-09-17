@@ -265,6 +265,46 @@ const ajouterCommentaire = async () => {
   }
 }
 
+// Les commentaires arrivent à plat : on les regroupe en fils (un commentaire + ses réponses),
+// classés du plus ancien au plus récent à l'intérieur de chaque fil.
+const filsCommentaires = computed(() => {
+  const commentaires = signalementStore.signalementCourant?.commentaires || []
+  const racines = commentaires.filter((c) => !c.parentId)
+  return racines.map((racine) => ({
+    ...racine,
+    reponses: commentaires.filter((c) => c.parentId === racine.id)
+  }))
+})
+
+const reponseA = ref(null)
+const texteReponse = ref('')
+const envoiReponseEnCours = ref(false)
+const erreurReponse = ref('')
+
+const ouvrirReponse = (commentaire) => {
+  reponseA.value = reponseA.value === commentaire.id ? null : commentaire.id
+  texteReponse.value = ''
+  erreurReponse.value = ''
+}
+
+const envoyerReponse = async (parentId) => {
+  if (texteReponse.value.trim().length < 3) return
+  envoiReponseEnCours.value = true
+  erreurReponse.value = ''
+  try {
+    await signalementStore.ajouterCommentaire(signalementStore.signalementCourant.id, {
+      texte: texteReponse.value.trim(),
+      parentId
+    })
+    texteReponse.value = ''
+    reponseA.value = null
+  } catch (e) {
+    erreurReponse.value = e.message
+  } finally {
+    envoiReponseEnCours.value = false
+  }
+}
+
 const supprimerCommentaire = async (commentaireId) => {
   if (!(await uiStore.confirmer('Supprimer définitivement ce commentaire ?'))) return
   try {
@@ -498,23 +538,26 @@ const marquerResolu = async () => {
               <div class="info-box mt-4">
                 <span>Commentaires</span>
 
-                <ul v-if="signalementStore.signalementCourant.commentaires?.length" class="detail-suivi mt-2 mb-3">
-                  <li v-for="c in signalementStore.signalementCourant.commentaires" :key="c.id" class="detail-suivi-item">
+                <ul v-if="filsCommentaires.length" class="detail-suivi mt-2 mb-3">
+                  <li v-for="fil in filsCommentaires" :key="fil.id" class="detail-suivi-item">
                     <div class="d-flex align-items-center gap-2">
                       <div class="detail-commentaire-avatar">
-                        <img v-if="c.auteurAvatarUrl" :src="c.auteurAvatarUrl" alt="" />
-                        <span v-else>{{ c.auteur.charAt(0).toUpperCase() }}</span>
+                        <img v-if="fil.auteurAvatarUrl" :src="fil.auteurAvatarUrl" alt="" />
+                        <span v-else>{{ fil.auteur.charAt(0).toUpperCase() }}</span>
                       </div>
-                      <p class="mb-0 fw-semibold">{{ c.auteur }}</p>
+                      <p class="mb-0 fw-semibold">{{ fil.auteur }}</p>
                     </div>
-                    <p class="mb-0">{{ c.texte }}</p>
-                    <div class="d-flex align-items-center gap-2">
-                      <span class="text-secondary small" :title="dateComplete(c.dateCreation)">{{ dateRelative(c.dateCreation) }}</span>
+                    <p class="mb-0">{{ fil.texte }}</p>
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                      <span class="text-secondary small" :title="dateComplete(fil.dateCreation)">{{ dateRelative(fil.dateCreation) }}</span>
+                      <button v-if="peutAgir" type="button" class="btn btn-link btn-sm p-0" @click="ouvrirReponse(fil)">
+                        {{ reponseA === fil.id ? 'Annuler' : 'Répondre' }}
+                      </button>
                       <button
                         v-if="peutAgir && !authStore.estConnecte"
                         type="button"
                         class="btn btn-link btn-sm p-0"
-                        @click="signalerCommentaire(c.id)"
+                        @click="signalerCommentaire(fil.id)"
                       >
                         🚩 Signaler
                       </button>
@@ -522,11 +565,69 @@ const marquerResolu = async () => {
                         v-if="authStore.estConnecte"
                         type="button"
                         class="btn btn-link btn-sm text-danger p-0"
-                        @click="supprimerCommentaire(c.id)"
+                        @click="supprimerCommentaire(fil.id)"
                       >
                         Supprimer
                       </button>
                     </div>
+
+                    <!-- Réponses -->
+                    <ul v-if="fil.reponses.length" class="commentaire-reponses">
+                      <li v-for="r in fil.reponses" :key="r.id" class="commentaire-reponse">
+                        <div class="d-flex align-items-center gap-2">
+                          <div class="detail-commentaire-avatar">
+                            <img v-if="r.auteurAvatarUrl" :src="r.auteurAvatarUrl" alt="" />
+                            <span v-else>{{ r.auteur.charAt(0).toUpperCase() }}</span>
+                          </div>
+                          <p class="mb-0 fw-semibold">{{ r.auteur }}</p>
+                        </div>
+                        <p class="mb-0">{{ r.texte }}</p>
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                          <span class="text-secondary small" :title="dateComplete(r.dateCreation)">{{ dateRelative(r.dateCreation) }}</span>
+                          <button v-if="peutAgir" type="button" class="btn btn-link btn-sm p-0" @click="ouvrirReponse(fil)">
+                            Répondre
+                          </button>
+                          <button
+                            v-if="peutAgir && !authStore.estConnecte"
+                            type="button"
+                            class="btn btn-link btn-sm p-0"
+                            @click="signalerCommentaire(r.id)"
+                          >
+                            🚩 Signaler
+                          </button>
+                          <button
+                            v-if="authStore.estConnecte"
+                            type="button"
+                            class="btn btn-link btn-sm text-danger p-0"
+                            @click="supprimerCommentaire(r.id)"
+                          >
+                            Supprimer
+                          </button>
+                        </div>
+                      </li>
+                    </ul>
+
+                    <!-- Formulaire de réponse -->
+                    <form v-if="reponseA === fil.id" class="mt-2" novalidate @submit.prevent="envoyerReponse(fil.id)">
+                      <div class="d-flex gap-2">
+                        <textarea
+                          v-model="texteReponse"
+                          class="form-control form-control-sm"
+                          rows="2"
+                          maxlength="1000"
+                          :placeholder="`Répondre à ${fil.auteur}...`"
+                          autofocus
+                        ></textarea>
+                        <button
+                          type="submit"
+                          class="btn btn-outline-secondary btn-sm text-nowrap align-self-start"
+                          :disabled="envoiReponseEnCours || texteReponse.trim().length < 3"
+                        >
+                          Répondre
+                        </button>
+                      </div>
+                      <p v-if="erreurReponse" class="text-danger small mt-1 mb-0">{{ erreurReponse }}</p>
+                    </form>
                   </li>
                 </ul>
                 <p v-else class="text-secondary small mt-2 mb-3">Aucun commentaire pour le moment. Soyez le premier à réagir.</p>

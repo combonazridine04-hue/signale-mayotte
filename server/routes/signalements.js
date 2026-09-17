@@ -123,7 +123,14 @@ function mapCommentaire(row) {
   // Si l'auteur a un compte encore actif, on affiche son pseudo/nom/avatar ACTUELS (pas
   // celui au moment du commentaire) : changer son profil doit s'appliquer à tout l'historique.
   const auteur = row.auteur_pseudo_actuel || row.auteur_nom_actuel || row.auteur
-  return { id: row.id, auteur, auteurAvatarUrl: row.auteur_avatar_actuel || null, texte: row.texte, dateCreation: row.date_creation }
+  return {
+    id: row.id,
+    parentId: row.parent_id || null,
+    auteur,
+    auteurAvatarUrl: row.auteur_avatar_actuel || null,
+    texte: row.texte,
+    dateCreation: row.date_creation
+  }
 }
 
 router.get('/signalements/count', async (req, res) => {
@@ -514,7 +521,7 @@ router.delete('/signalements/:id/mises-a-jour/:miseAJourId', requireAuth, async 
 
 router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCommentaire, async (req, res) => {
   const id = Number(req.params.id)
-  const { texte = '' } = req.body || {}
+  const { texte = '', parentId = null } = req.body || {}
   // L'auteur affiché vient toujours du compte connecté, jamais d'un champ du formulaire :
   // ça empêche de se faire passer pour quelqu'un d'autre. Le pseudo (s'il est défini)
   // est affiché à la place du vrai nom pour préserver la confidentialité promise à l'inscription.
@@ -544,17 +551,44 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
   if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
   const signalement = existant[0]
 
+  // Réponse à un commentaire : on vérifie qu'il appartient bien à CE signalement, sinon
+  // on pourrait rattacher une réponse au fil d'un autre signalement.
+  let parent = null
+  if (parentId) {
+    const { rows: parents } = await db.query(
+      `SELECT c.id, c.parent_id, c.utilisateur_id, u.email AS email_auteur, u.email_verifie
+       FROM commentaires c
+       LEFT JOIN utilisateurs u ON u.id = c.utilisateur_id
+       WHERE c.id = $1 AND c.signalement_id = $2`,
+      [Number(parentId), id]
+    )
+    if (!parents.length) return res.status(400).json({ erreur: 'Commentaire introuvable.' })
+    parent = parents[0]
+  }
+
+  // Un seul niveau d'imbrication : répondre à une réponse rattache au commentaire
+  // d'origine, sinon les fils deviennent illisibles sur téléphone.
+  const parentFinal = parent ? parent.parent_id || parent.id : null
+
   const { rows } = await db.query(
-    'INSERT INTO commentaires (signalement_id, auteur, texte, date_creation, utilisateur_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-    [id, auteur, texte.trim(), new Date().toISOString(), req.utilisateur?.id || null]
+    'INSERT INTO commentaires (signalement_id, auteur, texte, date_creation, utilisateur_id, parent_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+    [id, auteur, texte.trim(), new Date().toISOString(), req.utilisateur?.id || null, parentFinal]
   )
 
-  // Prévient l'auteur du signalement qu'on lui a répondu. On n'écrit jamais à une adresse
-  // de compte non vérifiée (elle peut être erronée), et on ne se notifie pas soi-même.
-  const emailAuteur = signalement.email_contact || (signalement.email_verifie ? signalement.email_compte : null)
+  // On n'écrit jamais à l'adresse d'un compte non vérifiée (elle peut être erronée),
+  // et personne n'est notifié de son propre message.
+  const emailSignalement = signalement.email_contact || (signalement.email_verifie ? signalement.email_compte : null)
   const commenteSonPropreSignalement = req.utilisateur && signalement.utilisateur_id === req.utilisateur.id
-  if (emailAuteur && !commenteSonPropreSignalement) {
-    envoyerNouveauCommentaire(signalement, emailAuteur, { auteur, texte: texte.trim() })
+  if (emailSignalement && !commenteSonPropreSignalement) {
+    envoyerNouveauCommentaire(signalement, emailSignalement, { auteur, texte: texte.trim(), estReponse: false })
+  }
+
+  // Si c'est une réponse, l'auteur du commentaire visé est prévenu à son tour —
+  // sauf s'il a déjà reçu la notification ci-dessus en tant qu'auteur du signalement.
+  const emailParent = parent?.email_verifie ? parent.email_auteur : null
+  const repondASoiMeme = req.utilisateur && parent?.utilisateur_id === req.utilisateur.id
+  if (emailParent && !repondASoiMeme && emailParent !== emailSignalement) {
+    envoyerNouveauCommentaire(signalement, emailParent, { auteur, texte: texte.trim(), estReponse: true })
   }
 
   res.status(201).json({ ...mapCommentaire(rows[0]), auteurAvatarUrl })

@@ -138,6 +138,9 @@ await db.query(`
   )
 `)
 await db.query(`ALTER TABLE commentaires ADD COLUMN IF NOT EXISTS utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL`)
+// Réponses aux commentaires. CASCADE : supprimer un commentaire emporte ses réponses,
+// qui n'auraient plus de sens isolées.
+await db.query(`ALTER TABLE commentaires ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES commentaires(id) ON DELETE CASCADE`)
 
 const donneesDemo = [
   {
