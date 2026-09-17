@@ -3,7 +3,12 @@ import crypto from 'node:crypto'
 import { rateLimit } from 'express-rate-limit'
 import { db } from '../db.js'
 import { CATEGORIES, COMMUNES, STATUTS } from '../../src/models/signalement.js'
-import { envoyerNotificationSignalement, envoyerConfirmationSignalement, envoyerChangementStatut } from '../mailer.js'
+import {
+  envoyerNotificationSignalement,
+  envoyerConfirmationSignalement,
+  envoyerChangementStatut,
+  envoyerNouveauCommentaire
+} from '../mailer.js'
 import { requireAuth, requireAuthUtilisateur } from '../middleware/requireAuth.js'
 import { sessionValide } from '../auth.js'
 import { supprimerPhoto } from '../storage.js'
@@ -528,13 +533,29 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
     return res.status(400).json({ erreur: 'Le commentaire ne doit pas dépasser 1000 caractères.' })
   }
 
-  const { rows: existant } = await db.query('SELECT id FROM signalements WHERE id = $1', [id])
+  const { rows: existant } = await db.query(
+    `SELECT s.id, s.categorie, s.commune, s.utilisateur_id, s.email_contact,
+            u.email AS email_compte, u.email_verifie
+     FROM signalements s
+     LEFT JOIN utilisateurs u ON u.id = s.utilisateur_id
+     WHERE s.id = $1`,
+    [id]
+  )
   if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
+  const signalement = existant[0]
 
   const { rows } = await db.query(
     'INSERT INTO commentaires (signalement_id, auteur, texte, date_creation, utilisateur_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
     [id, auteur, texte.trim(), new Date().toISOString(), req.utilisateur?.id || null]
   )
+
+  // Prévient l'auteur du signalement qu'on lui a répondu. On n'écrit jamais à une adresse
+  // de compte non vérifiée (elle peut être erronée), et on ne se notifie pas soi-même.
+  const emailAuteur = signalement.email_contact || (signalement.email_verifie ? signalement.email_compte : null)
+  const commenteSonPropreSignalement = req.utilisateur && signalement.utilisateur_id === req.utilisateur.id
+  if (emailAuteur && !commenteSonPropreSignalement) {
+    envoyerNouveauCommentaire(signalement, emailAuteur, { auteur, texte: texte.trim() })
+  }
 
   res.status(201).json({ ...mapCommentaire(rows[0]), auteurAvatarUrl })
 })
