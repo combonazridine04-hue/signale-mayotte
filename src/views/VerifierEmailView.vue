@@ -50,8 +50,8 @@ const renvoyer = async () => {
             <template v-else>
               <h1 class="h4 fw-bold mb-2">Confirmez votre email</h1>
               <p class="text-secondary mb-3">
-                On vient de vous envoyer un code à 6 chiffres par email. Saisissez-le ci-dessous
-                (il expire dans 30 minutes).
+                On vient de vous envoyer un code à 6 chiffres par email (pensez à vérifier vos
+                spams). Saisissez-le ci-dessous (il expire dans 30 minutes).
               </p>
 
               <form class="text-start" novalidate @submit.prevent="confirmer">
