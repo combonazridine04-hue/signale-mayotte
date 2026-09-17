@@ -10,7 +10,9 @@ import {
   confirmerEmailUtilisateur,
   regenererTokenVerification,
   genererTokenReinitialisation,
-  reinitialiserMotDePasse
+  reinitialiserMotDePasse,
+  recupererProfil,
+  mettreAJourPseudo
 } from '../auth.js'
 import { envoyerVerificationEmail, envoyerReinitialisationMotDePasse } from '../mailer.js'
 import { requireAuthUtilisateur } from '../middleware/requireAuth.js'
@@ -122,6 +124,24 @@ router.post('/connexion', limiteurConnexionUtilisateur, async (req, res) => {
   }
 
   res.json({ token: creerSessionUtilisateur(utilisateur), nom: utilisateur.nom })
+})
+
+router.get('/profil', requireAuthUtilisateur, async (req, res) => {
+  if (!req.utilisateur) {
+    return res.status(400).json({ erreur: 'Non applicable pour un compte admin.' })
+  }
+  const profil = await recupererProfil(req.utilisateur.id)
+  if (!profil) return res.status(404).json({ erreur: 'Compte introuvable.' })
+  res.json(profil)
+})
+
+router.patch('/profil', requireAuthUtilisateur, async (req, res) => {
+  if (!req.utilisateur) {
+    return res.status(400).json({ erreur: 'Non applicable pour un compte admin.' })
+  }
+  const resultat = await mettreAJourPseudo(req.utilisateur.id, req.body?.pseudo)
+  if (resultat.erreur) return res.status(400).json({ erreur: resultat.erreur })
+  res.json(resultat)
 })
 
 router.post('/mot-de-passe-oublie', limiteurMotDePasseOublie, async (req, res) => {

@@ -25,7 +25,11 @@ export const useCitoyenStore = defineStore('citoyen', {
     return {
       token,
       nom: chargerNom(),
-      estConnecte: Boolean(token)
+      estConnecte: Boolean(token),
+      pseudo: '',
+      email: '',
+      telephone: '',
+      emailVerifie: false
     }
   },
 
@@ -87,6 +91,10 @@ export const useCitoyenStore = defineStore('citoyen', {
       this.token = ''
       this.nom = ''
       this.estConnecte = false
+      this.pseudo = ''
+      this.email = ''
+      this.telephone = ''
+      this.emailVerifie = false
       sessionStorage.removeItem(STORAGE_KEY)
       sessionStorage.removeItem(STORAGE_KEY_NOM)
 
@@ -164,6 +172,48 @@ export const useCitoyenStore = defineStore('citoyen', {
         return { succes: false, erreur: corps.erreur || 'Code invalide.' }
       }
 
+      return { succes: true }
+    },
+
+    async chargerProfil() {
+      try {
+        const reponse = await fetch('/api/auth/profil', {
+          headers: { Authorization: `Bearer ${this.token}` }
+        })
+        if (!reponse.ok) {
+          const corps = await reponse.json().catch(() => ({}))
+          return { succes: false, erreur: corps.erreur || 'Impossible de charger le profil.' }
+        }
+        const profil = await reponse.json()
+        this.pseudo = profil.pseudo || ''
+        this.email = profil.email || ''
+        this.telephone = profil.telephone || ''
+        this.emailVerifie = Boolean(profil.emailVerifie)
+        return { succes: true }
+      } catch {
+        return { succes: false, erreur: "Impossible de contacter le serveur." }
+      }
+    },
+
+    async mettreAJourPseudo(pseudo) {
+      let reponse
+      try {
+        reponse = await fetch('/api/auth/profil', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+          body: JSON.stringify({ pseudo })
+        })
+      } catch {
+        return { succes: false, erreur: "Impossible de contacter le serveur." }
+      }
+
+      if (!reponse.ok) {
+        const corps = await reponse.json().catch(() => ({}))
+        return { succes: false, erreur: corps.erreur || 'Mise à jour impossible.' }
+      }
+
+      const donnees = await reponse.json()
+      this.pseudo = donnees.pseudo || ''
       return { succes: true }
     }
   }

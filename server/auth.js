@@ -226,3 +226,34 @@ export function creerSessionUtilisateur(utilisateur) {
   })
   return token
 }
+
+const REGEX_PSEUDO = /^[a-zA-Z0-9 _-]{2,24}$/
+
+export async function recupererProfil(utilisateurId) {
+  const { rows } = await db.query(
+    'SELECT nom, email, telephone, pseudo, email_verifie FROM utilisateurs WHERE id = $1',
+    [utilisateurId]
+  )
+  const utilisateur = rows[0]
+  if (!utilisateur) return null
+  return {
+    nom: utilisateur.nom,
+    email: utilisateur.email,
+    telephone: utilisateur.telephone,
+    pseudo: utilisateur.pseudo,
+    emailVerifie: utilisateur.email_verifie
+  }
+}
+
+// Renvoie { erreur } ou { pseudo }. Le pseudo est ce qui est affiché publiquement
+// (commentaires...) à la place du vrai nom, pour laisser le choix à l'utilisateur.
+export async function mettreAJourPseudo(utilisateurId, pseudo) {
+  const valeur = typeof pseudo === 'string' ? pseudo.trim() : ''
+
+  if (valeur && !REGEX_PSEUDO.test(valeur)) {
+    return { erreur: 'Le pseudo doit contenir entre 2 et 24 caractères (lettres, chiffres, espaces, - ou _).' }
+  }
+
+  await db.query('UPDATE utilisateurs SET pseudo = $1 WHERE id = $2', [valeur || null, utilisateurId])
+  return { pseudo: valeur || null }
+}

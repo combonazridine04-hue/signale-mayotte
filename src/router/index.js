@@ -14,6 +14,7 @@ import MotDePasseOublieView from '../views/MotDePasseOublieView.vue'
 import ReinitialiserMotDePasseView from '../views/ReinitialiserMotDePasseView.vue'
 import ConfidentialiteView from '../views/ConfidentialiteView.vue'
 import MesSignalementsView from '../views/MesSignalementsView.vue'
+import ProfilView from '../views/ProfilView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 import { useAuthStore } from '../stores/authStore.js'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
@@ -86,6 +87,12 @@ const routes = [
     path: '/mes-signalements',
     name: 'mes-signalements',
     component: MesSignalementsView,
+    meta: { requiresAuthCitoyen: true }
+  },
+  {
+    path: '/profil',
+    name: 'profil',
+    component: ProfilView,
     meta: { requiresAuthCitoyen: true }
   },
   {

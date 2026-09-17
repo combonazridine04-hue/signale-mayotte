@@ -76,20 +76,19 @@ const citoyenStore = useCitoyenStore()
           <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" />
         </svg>
       </RouterLink>
-      <button
+      <RouterLink
         v-else
-        type="button"
+        to="/profil"
         class="icon-pill-link"
-        :aria-label="`Déconnexion (${citoyenStore.nom})`"
-        :title="`Connecté : ${citoyenStore.nom} — cliquer pour se déconnecter`"
-        @click="citoyenStore.deconnecter()"
+        exact-active-class="active"
+        :aria-label="`Mon profil (${citoyenStore.nom})`"
+        :title="`Connecté : ${citoyenStore.nom} — mon profil`"
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-          <path d="M16 17l5-5-5-5" />
-          <path d="M21 12H9" />
+          <circle cx="12" cy="8" r="4" />
+          <path d="M4 20c0-4.4 3.6-7 8-7s8 2.6 8 7" />
         </svg>
-      </button>
+      </RouterLink>
 
     </nav>
   </header>

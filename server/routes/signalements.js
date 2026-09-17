@@ -524,8 +524,13 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
   const id = Number(req.params.id)
   const { texte = '' } = req.body || {}
   // L'auteur affiché vient toujours du compte connecté, jamais d'un champ du formulaire :
-  // ça empêche de se faire passer pour quelqu'un d'autre.
-  const auteur = req.utilisateur ? req.utilisateur.nom : `Admin (${req.admin.identifiant})`
+  // ça empêche de se faire passer pour quelqu'un d'autre. Le pseudo (s'il est défini)
+  // est affiché à la place du vrai nom pour préserver la confidentialité promise à l'inscription.
+  let auteur = `Admin (${req.admin?.identifiant})`
+  if (req.utilisateur) {
+    const { rows } = await db.query('SELECT nom, pseudo FROM utilisateurs WHERE id = $1', [req.utilisateur.id])
+    auteur = rows[0]?.pseudo || rows[0]?.nom || req.utilisateur.nom
+  }
 
   if (texte.trim().length < 3) {
     return res.status(400).json({ erreur: 'Le commentaire doit contenir au moins 3 caractères.' })
