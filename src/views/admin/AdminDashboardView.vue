@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore.js'
 import { useSignalementStore } from '../../stores/signalementStore.js'
@@ -8,6 +8,7 @@ import { useAdminStore } from '../../stores/adminStore.js'
 import { useUiStore } from '../../stores/uiStore.js'
 import { STATUTS } from '../../models/signalement.js'
 import { apiFetch } from '../../utils/api.js'
+import FilterBar from '../../components/FilterBar.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -135,12 +136,32 @@ const compteurs = computed(() => signalementStore.stats)
 
 const nbPages = computed(() => Math.max(1, Math.ceil(signalementStore.totalFiltre / signalementStore.parPage)))
 
+const filtresSignalements = ref({ commune: '', categorie: '', statut: '', recherche: '', tri: 'recent' })
+let delaiRechercheAdmin = null
+
+function rafraichirSignalements(page = 1) {
+  signalementStore.charger(filtresSignalements.value, page)
+}
+
+watch(
+  () => [filtresSignalements.value.commune, filtresSignalements.value.categorie, filtresSignalements.value.statut, filtresSignalements.value.tri],
+  () => rafraichirSignalements(1)
+)
+
+watch(
+  () => filtresSignalements.value.recherche,
+  () => {
+    clearTimeout(delaiRechercheAdmin)
+    delaiRechercheAdmin = setTimeout(() => rafraichirSignalements(1), 300)
+  }
+)
+
 function pagePrecedente() {
-  if (signalementStore.page > 1) signalementStore.charger({}, signalementStore.page - 1)
+  if (signalementStore.page > 1) rafraichirSignalements(signalementStore.page - 1)
 }
 
 function pageSuivante() {
-  if (signalementStore.page < nbPages.value) signalementStore.charger({}, signalementStore.page + 1)
+  if (signalementStore.page < nbPages.value) rafraichirSignalements(signalementStore.page + 1)
 }
 
 const exportEnCours = ref(false)
@@ -179,7 +200,7 @@ const supprimerSignalement = async (id) => {
     signalementStore.chargerStats()
     // Si on vient de vider la page courante (et qu'il en existe une précédente), on y retourne.
     if (!signalementStore.signalements.length && signalementStore.page > 1) {
-      await signalementStore.charger({}, signalementStore.page - 1)
+      await rafraichirSignalements(signalementStore.page - 1)
     }
   } catch (e) {
     uiStore.alerter(e.message)
@@ -370,6 +391,8 @@ const changerStatut = async (id, statut) => {
         </div>
 
         <div v-else-if="section === 'signalements'" class="admin-panel">
+          <FilterBar v-model="filtresSignalements" class="mb-3" />
+
           <p v-if="signalementStore.chargement" class="admin-muted">Chargement...</p>
           <p v-else-if="!signalementStore.signalements.length" class="admin-muted">Aucun signalement.</p>
           <table v-else class="admin-table">

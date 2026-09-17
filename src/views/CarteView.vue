@@ -5,6 +5,7 @@ import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useSignalementStore } from '../stores/signalementStore.js'
 import { ajouterCoucheTuiles } from '../utils/tuiles.js'
+import { CATEGORIES, COMMUNES, STATUTS } from '../models/signalement.js'
 
 const MAYOTTE = [-12.8275, 45.1662]
 
@@ -20,6 +21,13 @@ const signalementStore = useSignalementStore()
 const conteneur = ref(null)
 let carte = null
 let couche = null
+
+const filtres = ref({ commune: '', categorie: '', statut: '' })
+const filtresActifs = computed(() => Boolean(filtres.value.commune || filtres.value.categorie || filtres.value.statut))
+
+function reinitialiserFiltres() {
+  filtres.value = { commune: '', categorie: '', statut: '' }
+}
 
 const signalementsLocalises = computed(() =>
   signalementStore.signalements.filter((s) => s.latitude && s.longitude)
@@ -57,10 +65,14 @@ function dessinerMarqueurs() {
   })
 }
 
-onMounted(async () => {
+function rafraichir() {
   // 50 = plafond max accepté par l'API : la carte doit montrer le plus de signalements
   // possible, pas la page réduite utilisée par les listes paginées.
-  await signalementStore.charger({}, 1, 50)
+  return signalementStore.charger(filtres.value, 1, 50)
+}
+
+onMounted(async () => {
+  await rafraichir()
   await nextTick()
 
   carte = L.map(conteneur.value, { attributionControl: false }).setView(MAYOTTE, 11)
@@ -71,6 +83,7 @@ onMounted(async () => {
 })
 
 watch(signalementsLocalises, dessinerMarqueurs)
+watch(() => [filtres.value.commune, filtres.value.categorie, filtres.value.statut], rafraichir)
 
 onBeforeUnmount(() => {
   carte?.remove()
@@ -84,10 +97,37 @@ onBeforeUnmount(() => {
     <div class="carte-panneau card-glass">
       <p class="section-kicker mb-1">Carte des signalements</p>
       <p class="mb-2">
-        <strong>{{ signalementsLocalises.length }}</strong> / {{ signalementStore.signalements.length }} signalement{{ signalementStore.signalements.length > 1 ? 's' : '' }} localisé{{ signalementsLocalises.length > 1 ? 's' : '' }}
+        <strong>{{ signalementsLocalises.length }}</strong> signalement{{ signalementsLocalises.length > 1 ? 's' : '' }} localisé{{ signalementsLocalises.length > 1 ? 's' : '' }}
+        <span v-if="signalementStore.totalFiltre > 50" class="text-secondary small d-block">
+          (sur {{ signalementStore.totalFiltre }} correspondants au total, seuls les 50 premiers sont pris en compte)
+        </span>
       </p>
+
+      <div class="carte-filtres mb-2">
+        <select v-model="filtres.commune" class="form-select form-select-sm mb-1" aria-label="Filtrer par commune">
+          <option value="">Toutes les communes</option>
+          <option v-for="commune in COMMUNES" :key="commune" :value="commune">{{ commune }}</option>
+        </select>
+        <select v-model="filtres.categorie" class="form-select form-select-sm mb-1" aria-label="Filtrer par catégorie">
+          <option value="">Toutes les catégories</option>
+          <option v-for="categorie in CATEGORIES" :key="categorie" :value="categorie">{{ categorie }}</option>
+        </select>
+        <select v-model="filtres.statut" class="form-select form-select-sm" aria-label="Filtrer par statut">
+          <option value="">Tous les statuts</option>
+          <option v-for="statut in STATUTS" :key="statut" :value="statut">{{ statut }}</option>
+        </select>
+        <button
+          v-if="filtresActifs"
+          type="button"
+          class="btn btn-link btn-sm p-0 mt-1"
+          @click="reinitialiserFiltres"
+        >
+          Réinitialiser les filtres
+        </button>
+      </div>
+
       <p v-if="!signalementsLocalises.length" class="text-secondary small mb-2">
-        Aucun signalement localisé pour le moment. Indiquez un lieu en signalant un problème pour qu'il apparaisse ici.
+        Aucun signalement localisé {{ filtresActifs ? 'pour ces filtres' : 'pour le moment' }}.
       </p>
       <ul class="carte-legende">
         <li><span class="carte-marker-point carte-marker-signale"></span> Signalé</li>
