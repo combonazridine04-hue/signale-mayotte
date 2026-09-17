@@ -43,6 +43,8 @@ export const useCitoyenStore = defineStore('citoyen', {
       this.estConnecte = true
       sessionStorage.setItem(STORAGE_KEY, donnees.token)
       sessionStorage.setItem(STORAGE_KEY_NOM, this.nom)
+      // Récupère pseudo et photo pour que la barre de navigation les affiche tout de suite.
+      this.chargerProfil()
     },
 
     async inscrire({ nom, email, telephone, motDePasse, site_web }) {
@@ -182,11 +184,16 @@ export const useCitoyenStore = defineStore('citoyen', {
     },
 
     async chargerProfil() {
+      if (!this.token) return { succes: false, erreur: 'Non connecté.' }
+
       try {
         const reponse = await fetch('/api/auth/profil', {
           headers: { Authorization: `Bearer ${this.token}` }
         })
         if (!reponse.ok) {
+          // Les sessions vivent en mémoire côté serveur : après un redéploiement elles
+          // disparaissent. Sans ça le site continue d'afficher "connecté" avec un jeton mort.
+          if (reponse.status === 401) this.deconnecter()
           const corps = await reponse.json().catch(() => ({}))
           return { succes: false, erreur: corps.erreur || 'Impossible de charger le profil.' }
         }

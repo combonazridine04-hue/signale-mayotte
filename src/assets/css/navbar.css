@@ -30,6 +30,7 @@
 }
 
 .icon-pill-link {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -41,6 +42,87 @@
   color: var(--app-muted);
   cursor: pointer;
   transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+/* Libellé au survol : la barre n'affiche que des icônes, sans texte on devine mal. */
+.nav-infobulle {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.92);
+  border: 1px solid var(--nav-border);
+  color: var(--text-main);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  text-align: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.icon-pill-link:hover .nav-infobulle,
+.icon-pill-link:focus-visible .nav-infobulle {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Sur écran tactile il n'y a pas de survol : l'infobulle ne sert à rien et pourrait
+   déborder de l'écran sur les icônes de bord. */
+@media (hover: none) {
+  .nav-infobulle {
+    display: none;
+  }
+}
+
+.nav-infobulle-nom {
+  display: block;
+}
+
+.nav-infobulle-detail {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.68rem;
+  font-weight: 500;
+  color: var(--app-muted);
+}
+
+/* Avatar + pastille verte : indique d'un coup d'œil qu'on est connecté. */
+.nav-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--nav-border);
+  color: var(--text-main);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.nav-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.icon-pill-profil::after {
+  content: '';
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--nav-bg);
 }
 
 .icon-pill-link svg {
