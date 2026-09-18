@@ -554,7 +554,7 @@ const marquerResolu = async () => {
                         {{ reponseA === fil.id ? 'Annuler' : 'Répondre' }}
                       </button>
                       <button
-                        v-if="peutAgir && !authStore.estConnecte"
+                        v-if="peutAgir && !authStore.estConnecte && !fil.estMien"
                         type="button"
                         class="btn btn-link btn-sm p-0"
                         @click="signalerCommentaire(fil.id)"
@@ -562,7 +562,7 @@ const marquerResolu = async () => {
                         🚩 Signaler
                       </button>
                       <button
-                        v-if="authStore.estConnecte"
+                        v-if="authStore.estConnecte || fil.estMien"
                         type="button"
                         class="btn btn-link btn-sm text-danger p-0"
                         @click="supprimerCommentaire(fil.id)"
@@ -588,7 +588,7 @@ const marquerResolu = async () => {
                             Répondre
                           </button>
                           <button
-                            v-if="peutAgir && !authStore.estConnecte"
+                            v-if="peutAgir && !authStore.estConnecte && !r.estMien"
                             type="button"
                             class="btn btn-link btn-sm p-0"
                             @click="signalerCommentaire(r.id)"
@@ -596,7 +596,7 @@ const marquerResolu = async () => {
                             🚩 Signaler
                           </button>
                           <button
-                            v-if="authStore.estConnecte"
+                            v-if="authStore.estConnecte || r.estMien"
                             type="button"
                             class="btn btn-link btn-sm text-danger p-0"
                             @click="supprimerCommentaire(r.id)"

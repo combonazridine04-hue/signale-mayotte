@@ -136,7 +136,7 @@ function mapMiseAJour(row) {
   return { id: row.id, texte: row.texte, dateCreation: row.date_creation }
 }
 
-function mapCommentaire(row) {
+function mapCommentaire(row, utilisateurId = null) {
   // Si l'auteur a un compte encore actif, on affiche son pseudo/nom/avatar ACTUELS (pas
   // celui au moment du commentaire) : changer son profil doit s'appliquer à tout l'historique.
   const auteur = row.auteur_pseudo_actuel || row.auteur_nom_actuel || row.auteur
@@ -146,7 +146,9 @@ function mapCommentaire(row) {
     auteur,
     auteurAvatarUrl: row.auteur_avatar_actuel || null,
     texte: row.texte,
-    dateCreation: row.date_creation
+    dateCreation: row.date_creation,
+    // Permet au client de proposer la suppression sans révéler l'identité des autres auteurs.
+    estMien: Boolean(utilisateurId && row.utilisateur_id === utilisateurId)
   }
 }
 
@@ -279,7 +281,7 @@ router.get('/signalements/:id', async (req, res) => {
   res.json({
     ...mapRow(rows[0], estAdmin),
     misesAJour: misesAJour.map(mapMiseAJour),
-    commentaires: commentaires.map(mapCommentaire),
+    commentaires: commentaires.map((c) => mapCommentaire(c, session?.utilisateurId || null)),
     dejaSoutenu
   })
 })
@@ -615,12 +617,24 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
   res.status(201).json({ ...mapCommentaire(rows[0]), auteurAvatarUrl })
 })
 
-router.delete('/signalements/:id/commentaires/:commentaireId', requireAuth, async (req, res) => {
-  const { rowCount } = await db.query('DELETE FROM commentaires WHERE id = $1 AND signalement_id = $2', [
-    Number(req.params.commentaireId),
-    Number(req.params.id)
-  ])
-  if (!rowCount) return res.status(404).json({ erreur: 'Commentaire introuvable.' })
+// Un citoyen doit pouvoir retirer son propre commentaire : sans ça, publier une
+// information personnelle par erreur oblige à écrire à un administrateur.
+router.delete('/signalements/:id/commentaires/:commentaireId', requireAuthUtilisateur, async (req, res) => {
+  const commentaireId = Number(req.params.commentaireId)
+  const signalementId = Number(req.params.id)
+
+  const { rows } = await db.query(
+    'SELECT utilisateur_id FROM commentaires WHERE id = $1 AND signalement_id = $2',
+    [commentaireId, signalementId]
+  )
+  if (!rows.length) return res.status(404).json({ erreur: 'Commentaire introuvable.' })
+
+  const estAuteur = req.utilisateur && rows[0].utilisateur_id === req.utilisateur.id
+  if (!req.admin && !estAuteur) {
+    return res.status(403).json({ erreur: 'Vous ne pouvez supprimer que vos propres commentaires.' })
+  }
+
+  await db.query('DELETE FROM commentaires WHERE id = $1', [commentaireId])
   res.status(204).end()
 })
 

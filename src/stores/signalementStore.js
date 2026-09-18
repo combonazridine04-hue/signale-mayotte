@@ -214,7 +214,11 @@ export const useSignalementStore = defineStore('signalement', {
       const reponse = await apiFetch(`/api/signalements/${id}/commentaires/${commentaireId}`, { method: 'DELETE' })
       await traiterReponse(reponse)
       if (this.signalementCourant?.id === id) {
-        this.signalementCourant.commentaires = this.signalementCourant.commentaires.filter((c) => c.id !== commentaireId)
+        // Le serveur supprime aussi les réponses (CASCADE) : sans ça elles resteraient
+        // affichées, rattachées à un commentaire qui n'existe plus.
+        this.signalementCourant.commentaires = this.signalementCourant.commentaires.filter(
+          (c) => c.id !== commentaireId && c.parentId !== commentaireId
+        )
       }
     },
 
