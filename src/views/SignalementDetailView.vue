@@ -84,6 +84,16 @@ watch(
 
 const peutSupprimer = computed(() => authStore.estConnecte || Boolean(monToken.value))
 
+// L'auteur corrige son signalement tant qu'il n'est pas pris en charge ; ensuite les
+// services travaillent dessus et seul un administrateur peut encore l'ajuster.
+const peutModifier = computed(() => {
+  const signalement = signalementStore.signalementCourant
+  if (!signalement) return false
+  if (authStore.estConnecte) return true
+  if (signalement.statut !== 'Signalé') return false
+  return Boolean(signalement.estMien || monToken.value)
+})
+
 const choisirImage = (index) => {
   indexImageActive.value = index
   imageEnErreur.value = false
@@ -402,6 +412,12 @@ const marquerResolu = async () => {
                   :datetime="signalementStore.signalementCourant.dateSignalement"
                   :title="dateComplete(signalementStore.signalementCourant.dateSignalement)"
                 >{{ dateRelative(signalementStore.signalementCourant.dateSignalement) }}</time>
+                <span
+                  v-if="signalementStore.signalementCourant.dateModification"
+                  :title="dateComplete(signalementStore.signalementCourant.dateModification)"
+                >
+                  · modifié {{ dateRelative(signalementStore.signalementCourant.dateModification) }}
+                </span>
               </p>
 
               <StatutSuivi
@@ -421,14 +437,19 @@ const marquerResolu = async () => {
                 <span class="d-block">(visible par l'admin uniquement)</span>
               </p>
 
-              <div v-if="authStore.estConnecte || peutSupprimer || peutAgir" class="d-flex flex-wrap gap-2 mt-3">
-                <button v-if="authStore.estConnecte" type="button" class="btn btn-outline-secondary btn-sm" @click="ouvrirEdition">
+              <div v-if="peutModifier || peutSupprimer || peutAgir" class="d-flex flex-wrap gap-2 mt-3">
+                <button v-if="peutModifier" type="button" class="btn btn-outline-secondary btn-sm" @click="ouvrirEdition">
                   Modifier
                 </button>
                 <button v-if="peutSupprimer" type="button" class="btn btn-outline-danger btn-sm" @click="supprimer">
                   Supprimer
                 </button>
-                <button v-if="peutAgir" type="button" class="btn btn-outline-warning btn-sm" @click="signalerCeSignalement">
+                <button
+                  v-if="peutAgir && !signalementStore.signalementCourant.estMien && !monToken"
+                  type="button"
+                  class="btn btn-outline-warning btn-sm"
+                  @click="signalerCeSignalement"
+                >
                   🚩 Signaler ce contenu
                 </button>
               </div>

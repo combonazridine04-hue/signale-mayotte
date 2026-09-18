@@ -74,6 +74,19 @@ function estAutoriseASupprimer(req, existant) {
   return Boolean(tokenSuppression) && tokenSuppression === existant.token_suppression
 }
 
+// L'auteur peut corriger son signalement (faute de frappe, mauvaise commune...) tant
+// qu'il est encore « Signalé ». Dès qu'il est pris en charge, les services travaillent
+// dessus : le contenu ne doit plus changer sous leurs yeux. L'admin reste libre de corriger.
+function estAutoriseAModifier(req, existant) {
+  const session = sessionDeLaRequete(req)
+  if (session?.type === 'admin') return true
+  if (existant.statut !== 'Signalé') return false
+  if (session?.type === 'utilisateur' && session.utilisateurId === existant.utilisateur_id) return true
+
+  const tokenSuppression = req.query.token || req.body?.token
+  return Boolean(tokenSuppression) && tokenSuppression === existant.token_suppression
+}
+
 const traiterPhoto = traiterPhotoPartage
 
 async function traiterPhotos(fichiers) {
@@ -109,7 +122,7 @@ async function emailSuiviSignalement(signalementId) {
   return ligne.email_contact || (ligne.email_verifie ? ligne.email_compte : null)
 }
 
-function mapRow(row, avecAuteur = false) {
+function mapRow(row, avecAuteur = false, utilisateurId = null) {
   const base = {
     id: row.id,
     categorie: row.categorie,
@@ -120,9 +133,13 @@ function mapRow(row, avecAuteur = false) {
     statut: row.statut,
     dateSignalement: row.date_signalement,
     dateResolution: row.date_resolution || '',
+    dateModification: row.date_modification || '',
     latitude: row.latitude,
     longitude: row.longitude,
-    nbSoutiens: row.nb_soutiens || 0
+    nbSoutiens: row.nb_soutiens || 0,
+    // Permet au client de proposer la correction à l'auteur, sans révéler qui sont
+    // les auteurs des autres signalements.
+    estMien: Boolean(utilisateurId && row.utilisateur_id === utilisateurId)
   }
   // Identité du créateur : jamais publique, visible uniquement par l'admin (traçabilité anti-abus).
   if (avecAuteur) {
@@ -234,7 +251,7 @@ router.get('/signalements/mes', requireAuthUtilisateur, async (req, res) => {
     'SELECT * FROM signalements WHERE utilisateur_id = $1 ORDER BY date_signalement DESC',
     [req.utilisateur.id]
   )
-  res.json({ signalements: rows.map((r) => mapRow(r)) })
+  res.json({ signalements: rows.map((r) => mapRow(r, false, req.utilisateur.id)) })
 })
 
 router.get('/signalements/:id', async (req, res) => {
@@ -280,7 +297,7 @@ router.get('/signalements/:id', async (req, res) => {
   }
 
   res.json({
-    ...mapRow(rows[0], estAdmin),
+    ...mapRow(rows[0], estAdmin, session?.utilisateurId || null),
     misesAJour: misesAJour.map(mapMiseAJour),
     commentaires: commentaires.map((c) => mapCommentaire(c, session?.utilisateurId || null)),
     dejaSoutenu
@@ -329,8 +346,14 @@ router.get('/signalements', async (req, res) => {
     paramsPage
   )
 
-  const estAdmin = sessionDeLaRequete(req)?.type === 'admin'
-  res.json({ signalements: rows.map((r) => mapRow(r, estAdmin)), total, page, parPage })
+  const sessionListe = sessionDeLaRequete(req)
+  const estAdmin = sessionListe?.type === 'admin'
+  res.json({
+    signalements: rows.map((r) => mapRow(r, estAdmin, sessionListe?.utilisateurId || null)),
+    total,
+    page,
+    parPage
+  })
 })
 
 router.post('/signalements/:id/soutenir', requireAuthUtilisateur, limiteurSoutien, async (req, res) => {
@@ -407,7 +430,7 @@ router.post('/signalements', requireAuthUtilisateur, limiteurCreation, upload.ar
     [categorie, commune, description.trim(), photos, dateSignalement, lat, lon, emailValide, tokenSuppression, req.utilisateur?.id || null]
   )
 
-  const signalementCree = mapRow(rows[0])
+  const signalementCree = mapRow(rows[0], false, req.utilisateur?.id || null)
   envoyerNotificationSignalement(signalementCree)
   if (emailValide) {
     envoyerConfirmationSignalement(signalementCree, emailValide, tokenSuppression)
@@ -459,13 +482,21 @@ router.patch('/signalements/:id', requireAuth, upload.single('photoResolution'),
   res.json(signalementMisAJour)
 })
 
-router.put('/signalements/:id', requireAuth, upload.array('photos', MAX_PHOTOS), async (req, res) => {
+router.put('/signalements/:id', upload.array('photos', MAX_PHOTOS), async (req, res) => {
   const id = Number(req.params.id)
   const { categorie, commune, description, latitude, longitude } = req.body
 
   const { rows: rowsExistant } = await db.query('SELECT * FROM signalements WHERE id = $1', [id])
   const existant = rowsExistant[0]
   if (!existant) return res.status(404).json({ erreur: 'Signalement introuvable.' })
+
+  if (!estAutoriseAModifier(req, existant)) {
+    return res.status(403).json({
+      erreur: existant.statut === 'Signalé'
+        ? 'Vous ne pouvez modifier que vos propres signalements.'
+        : 'Ce signalement est déjà pris en charge : il n\'est plus modifiable.'
+    })
+  }
 
   if (!CATEGORIES.includes(categorie)) {
     return res.status(400).json({ erreur: 'Catégorie invalide.' })
@@ -505,10 +536,13 @@ router.put('/signalements/:id', requireAuth, upload.array('photos', MAX_PHOTOS),
   const lat = latitude ? Number(latitude) : existant.latitude
   const lon = longitude ? Number(longitude) : existant.longitude
 
+  // Trace la correction : sur un registre public, le contenu ne doit pas pouvoir
+  // changer en silence après coup.
   const { rows } = await db.query(
-    `UPDATE signalements SET categorie = $1, commune = $2, description = $3, photos = $4, latitude = $5, longitude = $6
-     WHERE id = $7 RETURNING *`,
-    [categorie, commune, description.trim(), photos, lat, lon, id]
+    `UPDATE signalements SET categorie = $1, commune = $2, description = $3, photos = $4, latitude = $5, longitude = $6,
+            date_modification = $7
+     WHERE id = $8 RETURNING *`,
+    [categorie, commune, description.trim(), photos, lat, lon, new Date().toISOString(), id]
   )
 
   res.json(mapRow(rows[0]))

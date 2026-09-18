@@ -90,6 +90,7 @@ await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS token_verifica
 await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS token_verification_expire TIMESTAMPTZ`)
 await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS token_reinitialisation TEXT`)
 await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS token_reinitialisation_expire TIMESTAMPTZ`)
+await db.query(`ALTER TABLE signalements ADD COLUMN IF NOT EXISTS date_modification TEXT`)
 await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS pseudo TEXT`)
 await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS avatar_url TEXT`)
 
