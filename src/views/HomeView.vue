@@ -1,6 +1,7 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import Hero from '../components/Hero.vue'
+import CommentCaMarche from '../components/CommentCaMarche.vue'
 import FilterBar from '../components/FilterBar.vue'
 import SignalementCard from '../components/SignalementCard.vue'
 import SignalementCardSkeleton from '../components/SignalementCardSkeleton.vue'
@@ -44,6 +45,8 @@ onMounted(() => rafraichir(1))
 <template>
   <main>
     <Hero />
+
+    <CommentCaMarche />
 
     <section class="signalements-section">
       <div class="container">
