@@ -61,7 +61,7 @@ const inscrire = async () => {
           <p class="text-secondary">
             Un compte gratuit est nécessaire pour signaler un problème, soutenir un
             signalement existant ou laisser un commentaire. Ça nous permet de savoir
-            qui contribue et de limiter les abus — ton identité reste privée, jamais
+            qui contribue et de limiter les abus — votre identité reste privée, jamais
             affichée publiquement.
           </p>
           <div class="d-flex align-items-center gap-2 mt-4">

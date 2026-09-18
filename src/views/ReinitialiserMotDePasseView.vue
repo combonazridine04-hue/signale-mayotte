@@ -51,7 +51,7 @@ const valider = async () => {
           <p class="section-kicker">Espace citoyen</p>
           <h1 class="fw-bold">Nouveau mot de passe</h1>
           <p class="text-secondary">
-            Choisis un nouveau mot de passe pour ton compte.
+            Choisissez un nouveau mot de passe pour votre compte.
           </p>
           <div class="d-flex align-items-center gap-2 mt-4">
             <img :src="logo" alt="" width="36" height="36" />
@@ -63,7 +63,7 @@ const valider = async () => {
           <div class="card-glass rounded p-4 shadow-sm">
             <template v-if="succes">
               <h2 class="h5 fw-bold text-success mb-2">Mot de passe mis à jour !</h2>
-              <p class="text-secondary mb-0">Tu vas être redirigé vers la connexion...</p>
+              <p class="text-secondary mb-0">Vous allez être redirigé vers la page de connexion...</p>
             </template>
             <form v-else novalidate @submit.prevent="valider">
               <h2 class="h5 fw-bold mb-3">Choisir un nouveau mot de passe</h2>

@@ -37,7 +37,7 @@ const connecter = async () => {
           <p class="section-kicker">Espace citoyen</p>
           <h1 class="fw-bold">Connexion</h1>
           <p class="text-secondary">
-            Connecte-toi pour signaler un problème, soutenir un signalement existant
+            Connectez-vous pour signaler un problème, soutenir un signalement existant
             ou laisser un commentaire.
           </p>
           <div class="d-flex align-items-center gap-2 mt-4">

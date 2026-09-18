@@ -92,7 +92,8 @@ const envoyer = async () => {
           <h1 class="fw-bold">Signaler un problème</h1>
           <p class="text-secondary">
             Décrivez le problème que vous constatez : dépôt sauvage, route abîmée,
-            éclairage en panne, fuite d'eau... Aucun compte n'est nécessaire.
+            éclairage en panne, fuite d'eau... Votre identité reste privée : elle
+            n'est jamais affichée publiquement.
           </p>
         </div>
 

@@ -91,7 +91,7 @@ const renvoyerVerification = async () => {
   renvoiEnCours.value = true
   renvoiMessage.value = ''
   const resultat = await citoyenStore.renvoyerVerificationEmail()
-  renvoiMessage.value = resultat.succes ? 'Code renvoyé, vérifie ta boîte mail.' : resultat.erreur
+  renvoiMessage.value = resultat.succes ? 'Code renvoyé, vérifiez votre boîte mail.' : resultat.erreur
   renvoiEnCours.value = false
 }
 
@@ -194,7 +194,7 @@ const deconnecter = () => {
                 <div class="card-glass rounded p-4 h-100">
                   <h2 class="h6 fw-bold mb-2">Pseudo public</h2>
                   <p class="text-secondary small mb-3">
-                    Affiché à la place de ton nom complet sur tes commentaires. Laisse vide pour rester anonyme.
+                    Affiché à la place de votre nom complet sur vos commentaires. Laissez vide pour rester anonyme.
                   </p>
 
                   <form novalidate @submit.prevent="enregistrer">
@@ -240,7 +240,7 @@ const deconnecter = () => {
 
                   <div v-if="citoyenStore.email && !citoyenStore.emailVerifie" class="mt-3">
                     <p class="text-secondary small mb-1">
-                      Confirme ton email pour pouvoir envoyer des signalements.
+                      Confirmez votre email pour pouvoir envoyer des signalements.
                     </p>
                     <RouterLink to="/verifier-email" class="btn btn-outline-primary btn-sm me-2">Saisir mon code</RouterLink>
                     <button type="button" class="btn btn-link btn-sm p-0" :disabled="renvoiEnCours" @click="renvoyerVerification">
@@ -268,7 +268,7 @@ const deconnecter = () => {
               <div v-if="signalementStore.chargement" class="text-secondary small">Chargement...</div>
 
               <div v-else-if="!derniersSignalements.length" class="text-center py-3">
-                <p class="text-secondary mb-3">Tu n'as encore envoyé aucun signalement.</p>
+                <p class="text-secondary mb-3">Vous n'avez encore envoyé aucun signalement.</p>
                 <RouterLink to="/signaler" class="btn btn-primary btn-sm">Faire mon premier signalement</RouterLink>
               </div>
 

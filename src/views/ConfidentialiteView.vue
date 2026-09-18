@@ -9,7 +9,7 @@
           <div class="card-glass rounded p-4 shadow-sm confidentialite-contenu">
             <h2 class="h5 fw-bold">Pourquoi un compte est nécessaire</h2>
             <p class="text-secondary">
-              Depuis peu, envoyer un signalement, soutenir un signalement existant ou laisser un
+              Envoyer un signalement, soutenir un signalement existant ou laisser un
               commentaire nécessite un compte. C'est uniquement pour limiter les abus (faux
               signalements, contenus inappropriés) : ça nous permet, en tant qu'administrateurs,
               de savoir qui a envoyé quoi si besoin de modérer.
@@ -26,7 +26,7 @@
             <ul class="text-secondary">
               <li><strong>Public</strong> (sans compte) : catégorie, commune, description, photos, statut et commentaires des signalements. Votre identité (nom, email, téléphone) n'est <strong>jamais</strong> affichée publiquement sur un signalement.</li>
               <li><strong>Administrateurs du site</strong> : peuvent voir qui a créé un signalement (nom, email ou téléphone), uniquement pour la modération.</li>
-              <li>Vos commentaires affichent le nom associé à votre compte (comme sur un forum classique), pas votre email ni votre téléphone.</li>
+              <li>Vos commentaires affichent le pseudo choisi dans votre profil, ou à défaut le nom associé à votre compte — jamais votre email ni votre téléphone. Vous pouvez modifier ce pseudo à tout moment depuis votre profil.</li>
             </ul>
 
             <h2 class="h5 fw-bold mt-4">Combien de temps</h2>

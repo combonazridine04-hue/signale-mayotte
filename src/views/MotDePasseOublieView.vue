@@ -26,7 +26,7 @@ const envoyer = async () => {
           <p class="section-kicker">Espace citoyen</p>
           <h1 class="fw-bold">Mot de passe oublié</h1>
           <p class="text-secondary">
-            Indique l'email de ton compte, on t'envoie un lien pour choisir un nouveau mot de passe.
+            Indiquez l'email de votre compte : nous vous envoyons un lien pour choisir un nouveau mot de passe.
           </p>
           <div class="d-flex align-items-center gap-2 mt-4">
             <img :src="logo" alt="" width="36" height="36" />
@@ -40,7 +40,7 @@ const envoyer = async () => {
               <h2 class="h5 fw-bold mb-2">Email envoyé</h2>
               <p class="text-secondary mb-0">
                 Si un compte existe avec cet email, un lien de réinitialisation vient de lui être envoyé.
-                Vérifie ta boîte de réception (et les spams).
+                Vérifiez votre boîte de réception (et les spams).
               </p>
             </template>
             <form v-else novalidate @submit.prevent="envoyer">
