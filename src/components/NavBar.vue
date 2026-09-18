@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
+import ClocheNotifications from './ClocheNotifications.vue'
 
 const citoyenStore = useCitoyenStore()
 
@@ -85,8 +86,10 @@ const initiale = computed(() => (citoyenStore.pseudo || citoyenStore.nom || '?')
         <span class="nav-infobulle">Se connecter</span>
       </RouterLink>
 
+      <ClocheNotifications v-if="citoyenStore.estConnecte" />
+
       <RouterLink
-        v-else
+        v-if="citoyenStore.estConnecte"
         to="/profil"
         class="icon-pill-link icon-pill-profil"
         exact-active-class="active"

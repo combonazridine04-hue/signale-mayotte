@@ -142,6 +142,20 @@ await db.query(`ALTER TABLE commentaires ADD COLUMN IF NOT EXISTS utilisateur_id
 // qui n'auraient plus de sens isolées.
 await db.query(`ALTER TABLE commentaires ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES commentaires(id) ON DELETE CASCADE`)
 
+// Notifications affichées dans le site. L'email ne suffit pas : la plupart des comptes
+// n'ont pas d'adresse vérifiée et ne recevraient donc jamais rien.
+await db.query(`
+  CREATE TABLE IF NOT EXISTS notifications (
+    id SERIAL PRIMARY KEY,
+    utilisateur_id INTEGER NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,
+    signalement_id INTEGER REFERENCES signalements(id) ON DELETE CASCADE,
+    texte TEXT NOT NULL,
+    lue BOOLEAN NOT NULL DEFAULT false,
+    date_creation TEXT NOT NULL
+  )
+`)
+await db.query(`CREATE INDEX IF NOT EXISTS idx_notifications_utilisateur ON notifications (utilisateur_id, lue)`)
+
 const donneesDemo = [
   {
     categorie: 'Dépôt sauvage / déchets',

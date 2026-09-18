@@ -32,7 +32,9 @@ export const useCitoyenStore = defineStore('citoyen', {
       telephone: '',
       emailVerifie: false,
       creeLe: '',
-      stats: { signalements: 0, resolus: 0, soutiens: 0 }
+      stats: { signalements: 0, resolus: 0, soutiens: 0 },
+      notifications: [],
+      notificationsNonLues: 0
     }
   },
 
@@ -98,6 +100,8 @@ export const useCitoyenStore = defineStore('citoyen', {
       this.estConnecte = false
       this.pseudo = ''
       this.avatarUrl = ''
+      this.notifications = []
+      this.notificationsNonLues = 0
       this.creeLe = ''
       this.stats = { signalements: 0, resolus: 0, soutiens: 0 }
       this.email = ''
@@ -231,6 +235,35 @@ export const useCitoyenStore = defineStore('citoyen', {
       const donnees = await reponse.json()
       this.pseudo = donnees.pseudo || ''
       return { succes: true }
+    },
+
+    async chargerNotifications() {
+      if (!this.token) return
+      try {
+        const reponse = await fetch('/api/notifications', {
+          headers: { Authorization: `Bearer ${this.token}` }
+        })
+        if (!reponse.ok) return
+        const donnees = await reponse.json()
+        this.notifications = donnees.notifications || []
+        this.notificationsNonLues = donnees.nonLues || 0
+      } catch {
+        // Une notification manquée ne doit rien casser dans la navigation.
+      }
+    },
+
+    async marquerNotificationsLues() {
+      if (!this.notificationsNonLues) return
+      this.notificationsNonLues = 0
+      this.notifications = this.notifications.map((n) => ({ ...n, lue: true }))
+      try {
+        await fetch('/api/notifications/lues', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${this.token}` }
+        })
+      } catch {
+        // Sans conséquence : elles seront remarquées lues au prochain chargement.
+      }
     },
 
     async televerserAvatar(fichier) {

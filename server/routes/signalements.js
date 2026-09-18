@@ -15,6 +15,7 @@ import { sessionValide } from '../auth.js'
 import { supprimerPhoto } from '../storage.js'
 import { contientContenuExplicite } from '../moderation.js'
 import { creerUpload, traiterPhoto as traiterPhotoPartage } from '../photoUpload.js'
+import { creerNotification } from '../notifications.js'
 
 const MAX_PHOTOS = 5
 
@@ -446,9 +447,11 @@ router.patch('/signalements/:id', requireAuth, upload.single('photoResolution'),
 
   const signalementMisAJour = mapRow(rows[0])
   if (existant.statut !== statut) {
-    // Prévient aussi les comptes citoyens : signaler exige un compte, donc presque
-    // personne ne remplit l'email de contact optionnel — ils n'apprenaient jamais
-    // que leur problème avait été traité.
+    creerNotification(existant.utilisateur_id, {
+      signalementId: id,
+      texte: `Votre signalement (${existant.categorie} — ${existant.commune}) est maintenant « ${statut} »`
+    })
+
     const destinataire = await emailSuiviSignalement(id)
     if (destinataire) envoyerChangementStatut(signalementMisAJour, destinataire)
   }
@@ -522,11 +525,19 @@ router.post('/signalements/:id/mises-a-jour', requireAuth, async (req, res) => {
     return res.status(400).json({ erreur: 'Le message ne doit pas dépasser 1000 caractères.' })
   }
 
-  const { rows: existant } = await db.query('SELECT id, categorie, commune FROM signalements WHERE id = $1', [id])
+  const { rows: existant } = await db.query(
+    'SELECT id, categorie, commune, utilisateur_id FROM signalements WHERE id = $1',
+    [id]
+  )
   if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
   // Un suivi publié sans prévenir personne ne sert à rien : le citoyen ne revient pas
   // consulter la page de lui-même.
+  creerNotification(existant[0].utilisateur_id, {
+    signalementId: id,
+    texte: `Du nouveau sur votre signalement (${existant[0].categorie} — ${existant[0].commune})`
+  })
+
   const destinataire = await emailSuiviSignalement(id)
   if (destinataire) envoyerMiseAJourSignalement(existant[0], destinataire, texte.trim())
 
@@ -600,18 +611,33 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
   )
 
   // Personne n'est notifié de son propre message.
-  const emailSignalement = await emailSuiviSignalement(id)
   const commenteSonPropreSignalement = req.utilisateur && signalement.utilisateur_id === req.utilisateur.id
-  if (emailSignalement && !commenteSonPropreSignalement) {
-    envoyerNouveauCommentaire(signalement, emailSignalement, { auteur, texte: texte.trim(), estReponse: false })
+  if (!commenteSonPropreSignalement) {
+    // Dans le site : fonctionne pour tout le monde, email vérifié ou non.
+    creerNotification(signalement.utilisateur_id, {
+      signalementId: id,
+      texte: `${auteur} a réagi à votre signalement (${signalement.categorie} — ${signalement.commune})`
+    })
+
+    const emailSignalement = await emailSuiviSignalement(id)
+    if (emailSignalement) {
+      envoyerNouveauCommentaire(signalement, emailSignalement, { auteur, texte: texte.trim(), estReponse: false })
+    }
   }
 
   // Si c'est une réponse, l'auteur du commentaire visé est prévenu à son tour —
-  // sauf s'il a déjà reçu la notification ci-dessus en tant qu'auteur du signalement.
-  const emailParent = parent?.email_verifie ? parent.email_auteur : null
+  // sauf s'il vient déjà d'être prévenu en tant qu'auteur du signalement.
   const repondASoiMeme = req.utilisateur && parent?.utilisateur_id === req.utilisateur.id
-  if (emailParent && !repondASoiMeme && emailParent !== emailSignalement) {
-    envoyerNouveauCommentaire(signalement, emailParent, { auteur, texte: texte.trim(), estReponse: true })
+  const parentDejaPrevenu = parent && parent.utilisateur_id === signalement.utilisateur_id && !commenteSonPropreSignalement
+  if (parent && !repondASoiMeme && !parentDejaPrevenu) {
+    creerNotification(parent.utilisateur_id, {
+      signalementId: id,
+      texte: `${auteur} a répondu à votre commentaire`
+    })
+
+    if (parent.email_verifie && parent.email_auteur) {
+      envoyerNouveauCommentaire(signalement, parent.email_auteur, { auteur, texte: texte.trim(), estReponse: true })
+    }
   }
 
   res.status(201).json({ ...mapCommentaire(rows[0]), auteurAvatarUrl })
