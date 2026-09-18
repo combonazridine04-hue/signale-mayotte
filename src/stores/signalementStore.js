@@ -58,6 +58,24 @@ export const useSignalementStore = defineStore('signalement', {
 
     // Version publique de chargerStats : /api/signalements/stats est réservé aux admins,
     // l'accueil doit pouvoir afficher les compteurs à un visiteur non connecté.
+    async chercherSimilaires({ categorie, commune, latitude, longitude }) {
+      try {
+        const params = new URLSearchParams({ categorie })
+        if (latitude && longitude) {
+          params.set('latitude', latitude)
+          params.set('longitude', longitude)
+        } else if (commune) {
+          params.set('commune', commune)
+        }
+        const reponse = await apiFetch(`/api/signalements/similaires?${params.toString()}`)
+        const donnees = await traiterReponse(reponse)
+        return donnees?.signalements || []
+      } catch {
+        // La recherche de doublons ne doit jamais empêcher d'envoyer un signalement.
+        return []
+      }
+    },
+
     async chargerStatsPubliques() {
       try {
         const reponse = await apiFetch('/api/signalements/stats-publiques')

@@ -244,6 +244,46 @@ router.get('/signalements/export.csv', requireAuth, async (req, res) => {
   res.send(BOM + lignes.join('\n'))
 })
 
+// Signalements proches et non résolus, proposés avant l'envoi d'un nouveau signalement.
+// But : transformer un doublon en soutien. Deux personnes qui signalent le même trou ne
+// sont pas du spam, mais un problème qui touche plusieurs habitants — et un signalement
+// très soutenu pèse davantage que dix signalements dispersés.
+router.get('/signalements/similaires', async (req, res) => {
+  const { categorie = '', commune = '' } = req.query
+  const latitude = Number(req.query.latitude)
+  const longitude = Number(req.query.longitude)
+  const aDesCoordonnees = Number.isFinite(latitude) && Number.isFinite(longitude)
+
+  if (!CATEGORIES.includes(categorie)) return res.json({ signalements: [] })
+
+  // ~400 m : au-delà, il s'agit le plus souvent d'un autre problème dans la même rue.
+  const RAYON_DEGRES = 0.0036
+
+  let requete
+  let params
+  if (aDesCoordonnees) {
+    // Types explicites : sans cast, Postgres ne sait pas résoudre l'opérateur entre
+    // deux paramètres non typés ("operator is not unique: unknown - unknown").
+    requete = `SELECT * FROM signalements
+       WHERE statut <> 'Résolu' AND categorie = $1
+         AND latitude BETWEEN $2::float8 - $4::float8 AND $2::float8 + $4::float8
+         AND longitude BETWEEN $3::float8 - $4::float8 AND $3::float8 + $4::float8
+       ORDER BY (POWER(latitude - $2::float8, 2) + POWER(longitude - $3::float8, 2)) ASC
+       LIMIT 3`
+    params = [categorie, latitude, longitude, RAYON_DEGRES]
+  } else {
+    if (!COMMUNES.includes(commune)) return res.json({ signalements: [] })
+    requete = `SELECT * FROM signalements
+       WHERE statut <> 'Résolu' AND categorie = $1 AND commune = $2
+       ORDER BY date_signalement DESC
+       LIMIT 3`
+    params = [categorie, commune]
+  }
+
+  const { rows } = await db.query(requete, params)
+  res.json({ signalements: rows.map((r) => mapRow(r)) })
+})
+
 router.get('/signalements/mes', requireAuthUtilisateur, async (req, res) => {
   if (!req.utilisateur) return res.json({ signalements: [] })
 

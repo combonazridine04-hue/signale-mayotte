@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { CATEGORIES, COMMUNES, ORGANISME_PAR_CATEGORIE } from '../models/signalement.js'
 import { useSignalementStore } from '../stores/signalementStore.js'
@@ -7,6 +7,7 @@ import { useCitoyenStore } from '../stores/citoyenStore.js'
 import PhotoDropzone from '../components/PhotoDropzone.vue'
 import LocationPicker from '../components/LocationPicker.vue'
 import OrganismeCompetent from '../components/OrganismeCompetent.vue'
+import { dateRelative } from '../utils/dates.js'
 
 const router = useRouter()
 const signalementStore = useSignalementStore()
@@ -44,12 +45,55 @@ const soumis = ref(false)
 const erreurs = computed(() => ({
   categorie: formulaire.categorie === '',
   commune: formulaire.commune === '',
-  description: formulaire.description.trim().length < 10
+  description: formulaire.description.trim().length < 10,
+  // Sans point sur la carte, les services ne savent pas où intervenir et on ne peut
+  // pas repérer qu'un voisin a déjà signalé le même problème.
+  localisation: !formulaire.latitude || !formulaire.longitude
 }))
 
 const formulaireValide = computed(() => !Object.values(erreurs.value).some(Boolean))
 
 const organismeCompetent = computed(() => ORGANISME_PAR_CATEGORIE[formulaire.categorie] || null)
+
+// Doublons : on ne bloque jamais l'envoi, on propose de soutenir le signalement existant.
+// Un signalement très soutenu pèse plus lourd que dix signalements dispersés.
+const similaires = ref([])
+const doublonsIgnores = ref(false)
+let delaiSimilaires = null
+
+const chercherSimilaires = () => {
+  clearTimeout(delaiSimilaires)
+  if (!formulaire.categorie || (!formulaire.commune && !formulaire.latitude)) {
+    similaires.value = []
+    return
+  }
+
+  delaiSimilaires = setTimeout(async () => {
+    similaires.value = await signalementStore.chercherSimilaires({
+      categorie: formulaire.categorie,
+      commune: formulaire.commune,
+      latitude: formulaire.latitude,
+      longitude: formulaire.longitude
+    })
+  }, 400)
+}
+
+watch(
+  () => [formulaire.categorie, formulaire.commune, formulaire.latitude, formulaire.longitude],
+  () => {
+    doublonsIgnores.value = false
+    chercherSimilaires()
+  }
+)
+
+const soutenirExistant = async (signalement) => {
+  try {
+    await signalementStore.soutenir(signalement.id)
+    router.push(`/signalements/${signalement.id}`)
+  } catch (e) {
+    erreurEnvoi.value = e.message
+  }
+}
 
 const envoyer = async () => {
   soumis.value = true
@@ -165,8 +209,51 @@ const envoyer = async () => {
             </div>
 
             <div class="mb-3">
-              <label class="form-label">Localisation (facultatif)</label>
+              <label class="form-label">Localisation</label>
+              <p class="text-secondary small mb-2">
+                Indispensable pour que les services sachent où intervenir. Utilisez votre position
+                actuelle, ou placez le point sur la carte.
+              </p>
               <LocationPicker v-model:latitude="formulaire.latitude" v-model:longitude="formulaire.longitude" />
+              <p v-if="soumis && erreurs.localisation" class="text-danger small mt-2 mb-0">
+                Indiquez le lieu du problème avant d'envoyer.
+              </p>
+            </div>
+
+            <!-- Doublons : proposer de soutenir plutôt que de republier le même problème -->
+            <div v-if="similaires.length && !doublonsIgnores" class="doublons mb-3">
+              <p class="doublons-titre">
+                {{ similaires.length > 1 ? 'Des problèmes similaires ont' : 'Un problème similaire a' }}
+                déjà été signalé ici
+              </p>
+              <p class="doublons-intro">
+                Soutenez-le plutôt que d'en créer un nouveau : un signalement soutenu par
+                plusieurs habitants est traité en priorité.
+              </p>
+
+              <ul class="doublons-liste">
+                <li v-for="s in similaires" :key="s.id" class="doublons-item">
+                  <div class="doublons-item-texte">
+                    <strong>{{ s.categorie }} — {{ s.commune }}</strong>
+                    <span class="doublons-item-description">{{ s.description }}</span>
+                    <span class="doublons-item-meta">
+                      {{ dateRelative(s.dateSignalement) }} · {{ s.nbSoutiens }} soutien{{ s.nbSoutiens > 1 ? 's' : '' }}
+                    </span>
+                  </div>
+                  <div class="doublons-item-actions">
+                    <button type="button" class="btn btn-success btn-sm" @click="soutenirExistant(s)">
+                      Je soutiens
+                    </button>
+                    <RouterLink :to="`/signalements/${s.id}`" class="btn btn-outline-secondary btn-sm">
+                      Voir
+                    </RouterLink>
+                  </div>
+                </li>
+              </ul>
+
+              <button type="button" class="btn btn-link btn-sm p-0" @click="doublonsIgnores = true">
+                Ce n'est pas le même problème, je continue
+              </button>
             </div>
 
             <div v-if="erreurEnvoi" class="alert alert-danger py-2">
