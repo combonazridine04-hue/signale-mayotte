@@ -2,8 +2,10 @@
 import { onMounted } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useSignalementStore } from '../stores/signalementStore.js'
+import { useCitoyenStore } from '../stores/citoyenStore.js'
 
 const signalementStore = useSignalementStore()
+const citoyenStore = useCitoyenStore()
 
 onMounted(() => {
   signalementStore.chargerCompteur()
@@ -27,6 +29,12 @@ onMounted(() => {
         <div class="d-flex flex-wrap align-items-center gap-3 mt-2">
           <RouterLink to="/signaler" class="btn btn-success btn-lg">
             Faire un signalement
+          </RouterLink>
+
+          <!-- L'accueil reste public (il explique la plateforme aux nouveaux venus) ;
+               une personne connectée y trouve simplement l'entrée de son espace. -->
+          <RouterLink v-if="citoyenStore.estConnecte" to="/dashboard" class="btn btn-outline-light btn-lg">
+            Mon espace
           </RouterLink>
 
           <!-- Tant que le compteur n'est pas chargé, on n'affiche rien : sur connexion

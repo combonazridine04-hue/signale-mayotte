@@ -32,7 +32,7 @@ const imageEnErreur = ref(false)
 const indexImageActive = ref(0)
 
 const modeEdition = ref(false)
-const formulaire = reactive({ categorie: '', commune: '', description: '', latitude: null, longitude: null })
+const formulaire = reactive({ categorie: '', commune: '', description: '', latitude: null, longitude: null, urgent: false })
 const fichiersPhotos = ref([])
 const photosConservees = ref([])
 const envoiEnCours = ref(false)
@@ -106,6 +106,7 @@ const ouvrirEdition = () => {
   formulaire.description = s.description
   formulaire.latitude = s.latitude
   formulaire.longitude = s.longitude
+  formulaire.urgent = Boolean(s.urgent)
   fichiersPhotos.value = []
   photosConservees.value = [...s.photoUrls]
   soumis.value = false
@@ -129,6 +130,7 @@ const enregistrer = async () => {
     donnees.set('commune', formulaire.commune)
     donnees.set('description', formulaire.description)
     donnees.set('photosConservees', JSON.stringify(photosConservees.value))
+    donnees.set('urgent', formulaire.urgent ? 'true' : 'false')
     if (formulaire.latitude && formulaire.longitude) {
       donnees.set('latitude', formulaire.latitude)
       donnees.set('longitude', formulaire.longitude)
@@ -403,7 +405,12 @@ const marquerResolu = async () => {
         <div class="col-12 col-lg-6">
           <div class="card-glass rounded p-4">
             <template v-if="!modeEdition">
-              <span class="badge text-bg-secondary mb-2">{{ signalementStore.signalementCourant.categorie }}</span>
+              <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                <span class="badge text-bg-secondary">{{ signalementStore.signalementCourant.categorie }}</span>
+                <span v-if="signalementStore.signalementCourant.urgent" class="badge-urgent">
+                  Urgent — danger signalé
+                </span>
+              </div>
               <h1 class="fw-bold">{{ signalementStore.signalementCourant.commune }}</h1>
               <p class="text-secondary">{{ signalementStore.signalementCourant.description }}</p>
               <p class="text-secondary small">
@@ -733,8 +740,22 @@ const marquerResolu = async () => {
               </div>
 
               <div class="mb-3">
-                <label class="form-label">Localisation (facultatif)</label>
+                <label class="form-label">Localisation</label>
                 <LocationPicker v-model:latitude="formulaire.latitude" v-model:longitude="formulaire.longitude" />
+              </div>
+
+              <div class="bloc-urgence mb-3" :class="{ actif: formulaire.urgent }">
+                <div class="form-check mb-0">
+                  <input id="edit-urgent" v-model="formulaire.urgent" class="form-check-input" type="checkbox" />
+                  <label class="form-check-label fw-semibold" for="edit-urgent">
+                    <span class="bloc-urgence-pastille" aria-hidden="true">SOS</span>
+                    Danger immédiat pour les habitants
+                  </label>
+                </div>
+                <p class="bloc-urgence-aide mb-0">
+                  À cocher uniquement en cas de risque réel. Le signalement apparaîtra en
+                  tête de liste.
+                </p>
               </div>
 
               <div v-if="erreurEnvoi" class="alert alert-danger py-2">{{ erreurEnvoi }}</div>

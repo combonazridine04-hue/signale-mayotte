@@ -16,6 +16,7 @@ import { supprimerPhoto } from '../storage.js'
 import { contientContenuExplicite } from '../moderation.js'
 import { creerUpload, traiterPhoto as traiterPhotoPartage } from '../photoUpload.js'
 import { creerNotification } from '../notifications.js'
+import { nomPublic } from '../../shared/nomPublic.js'
 
 const MAX_PHOTOS = 5
 
@@ -137,6 +138,7 @@ function mapRow(row, avecAuteur = false, utilisateurId = null) {
     latitude: row.latitude,
     longitude: row.longitude,
     nbSoutiens: row.nb_soutiens || 0,
+    urgent: Boolean(row.urgent),
     // Permet au client de proposer la correction à l'auteur, sans révéler qui sont
     // les auteurs des autres signalements.
     estMien: Boolean(utilisateurId && row.utilisateur_id === utilisateurId)
@@ -157,7 +159,8 @@ function mapMiseAJour(row) {
 function mapCommentaire(row, utilisateurId = null) {
   // Si l'auteur a un compte encore actif, on affiche son pseudo/nom/avatar ACTUELS (pas
   // celui au moment du commentaire) : changer son profil doit s'appliquer à tout l'historique.
-  const auteur = row.auteur_pseudo_actuel || row.auteur_nom_actuel || row.auteur
+  // Le pseudo est affiché tel quel ; un vrai nom est toujours abrégé en « Prénom N. ».
+  const auteur = row.auteur_pseudo_actuel || nomPublic(row.auteur_nom_actuel || row.auteur)
   return {
     id: row.id,
     parentId: row.parent_id || null,
@@ -228,11 +231,11 @@ router.get('/signalements/export.csv', requireAuth, async (req, res) => {
   )
 
   const echapperCsv = (valeur) => `"${String(valeur ?? '').replace(/"/g, '""')}"`
-  const entetes = ['id', 'categorie', 'commune', 'description', 'statut', 'date_signalement', 'date_resolution', 'latitude', 'longitude', 'nb_soutiens', 'auteur_nom', 'auteur_email', 'auteur_telephone']
+  const entetes = ['id', 'categorie', 'commune', 'description', 'statut', 'urgent', 'date_signalement', 'date_resolution', 'latitude', 'longitude', 'nb_soutiens', 'auteur_nom', 'auteur_email', 'auteur_telephone']
   const lignes = [entetes.join(',')]
   for (const row of rows) {
     lignes.push(
-      [row.id, row.categorie, row.commune, row.description, row.statut, row.date_signalement, row.date_resolution, row.latitude, row.longitude, row.nb_soutiens, row.auteur_nom, row.auteur_email, row.auteur_telephone]
+      [row.id, row.categorie, row.commune, row.description, row.statut, row.urgent ? 'oui' : 'non', row.date_signalement, row.date_resolution, row.latitude, row.longitude, row.nb_soutiens, row.auteur_nom, row.auteur_email, row.auteur_telephone]
         .map(echapperCsv)
         .join(',')
     )
@@ -345,7 +348,7 @@ router.get('/signalements/:id', async (req, res) => {
 })
 
 router.get('/signalements', async (req, res) => {
-  const { commune = '', categorie = '', statut = '', recherche = '', tri = 'recent' } = req.query
+  const { commune = '', categorie = '', statut = '', recherche = '', tri = 'recent', urgent = '' } = req.query
   const page = Math.max(1, Number(req.query.page) || 1)
   const parPage = Math.min(50, Math.max(1, Number(req.query.parPage) || 12))
 
@@ -368,10 +371,20 @@ router.get('/signalements', async (req, res) => {
     params.push(`%${recherche.trim()}%`)
     conditions.push(`(description ILIKE $${params.length} OR commune ILIKE $${params.length} OR categorie ILIKE $${params.length})`)
   }
+  if (urgent === '1' || urgent === 'true') {
+    conditions.push(`urgent = true`)
+  }
 
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
-  const ordre = tri === 'ancien' ? 'ASC' : tri === 'populaire' ? 'nb_soutiens DESC, date_signalement' : 'date_signalement'
-  const sens = tri === 'ancien' ? 'ASC' : 'DESC'
+  // Liste blanche : `tri` vient de l'URL, il ne doit jamais arriver tel quel dans le SQL.
+  const TRIS = {
+    recent: 'date_signalement DESC',
+    ancien: 'date_signalement ASC',
+    populaire: 'nb_soutiens DESC, date_signalement DESC'
+  }
+  // Les urgences passent devant quel que soit le tri choisi : un danger immédiat n'a pas
+  // à attendre la deuxième page parce qu'il a été signalé hier.
+  const ordre = `urgent DESC, ${TRIS[tri] || TRIS.recent}`
 
   const { rows: rowsCompte } = await db.query(`SELECT COUNT(*)::int AS count FROM signalements ${where}`, params)
   const total = rowsCompte[0].count
@@ -382,7 +395,7 @@ router.get('/signalements', async (req, res) => {
      FROM signalements s
      LEFT JOIN utilisateurs u ON u.id = s.utilisateur_id
      ${where}
-     ORDER BY ${ordre} ${sens} LIMIT $${paramsPage.length - 1} OFFSET $${paramsPage.length}`,
+     ORDER BY ${ordre} LIMIT $${paramsPage.length - 1} OFFSET $${paramsPage.length}`,
     paramsPage
   )
 
@@ -437,7 +450,7 @@ router.post('/signalements', requireAuthUtilisateur, limiteurCreation, upload.ar
     }
   }
 
-  const { categorie, commune, description, latitude, longitude, email } = req.body
+  const { categorie, commune, description, latitude, longitude, email, urgent } = req.body
 
   if (!CATEGORIES.includes(categorie)) {
     return res.status(400).json({ erreur: 'Catégorie invalide.' })
@@ -462,12 +475,14 @@ router.post('/signalements', requireAuthUtilisateur, limiteurCreation, upload.ar
   const lat = latitude ? Number(latitude) : null
   const lon = longitude ? Number(longitude) : null
   const tokenSuppression = crypto.randomBytes(24).toString('hex')
+  // FormData n'envoie que des chaînes : « false » est une chaîne non vide et serait vrai.
+  const estUrgent = urgent === 'true' || urgent === '1' || urgent === true
 
   const { rows } = await db.query(
-    `INSERT INTO signalements (categorie, commune, description, photos, statut, date_signalement, latitude, longitude, email_contact, token_suppression, utilisateur_id)
-     VALUES ($1, $2, $3, $4, 'Signalé', $5, $6, $7, $8, $9, $10)
+    `INSERT INTO signalements (categorie, commune, description, photos, statut, date_signalement, latitude, longitude, email_contact, token_suppression, utilisateur_id, urgent)
+     VALUES ($1, $2, $3, $4, 'Signalé', $5, $6, $7, $8, $9, $10, $11)
      RETURNING *`,
-    [categorie, commune, description.trim(), photos, dateSignalement, lat, lon, emailValide, tokenSuppression, req.utilisateur?.id || null]
+    [categorie, commune, description.trim(), photos, dateSignalement, lat, lon, emailValide, tokenSuppression, req.utilisateur?.id || null, estUrgent]
   )
 
   const signalementCree = mapRow(rows[0], false, req.utilisateur?.id || null)
@@ -524,7 +539,7 @@ router.patch('/signalements/:id', requireAuth, upload.single('photoResolution'),
 
 router.put('/signalements/:id', upload.array('photos', MAX_PHOTOS), async (req, res) => {
   const id = Number(req.params.id)
-  const { categorie, commune, description, latitude, longitude } = req.body
+  const { categorie, commune, description, latitude, longitude, urgent } = req.body
 
   const { rows: rowsExistant } = await db.query('SELECT * FROM signalements WHERE id = $1', [id])
   const existant = rowsExistant[0]
@@ -580,9 +595,19 @@ router.put('/signalements/:id', upload.array('photos', MAX_PHOTOS), async (req, 
   // changer en silence après coup.
   const { rows } = await db.query(
     `UPDATE signalements SET categorie = $1, commune = $2, description = $3, photos = $4, latitude = $5, longitude = $6,
-            date_modification = $7
-     WHERE id = $8 RETURNING *`,
-    [categorie, commune, description.trim(), photos, lat, lon, new Date().toISOString(), id]
+            urgent = $7, date_modification = $8
+     WHERE id = $9 RETURNING *`,
+    [
+      categorie,
+      commune,
+      description.trim(),
+      photos,
+      lat,
+      lon,
+      urgent === 'true' || urgent === '1' || urgent === true,
+      new Date().toISOString(),
+      id
+    ]
   )
 
   res.json(mapRow(rows[0]))
@@ -642,7 +667,7 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
   let auteurAvatarUrl = null
   if (req.utilisateur) {
     const { rows } = await db.query('SELECT nom, pseudo, avatar_url FROM utilisateurs WHERE id = $1', [req.utilisateur.id])
-    auteur = rows[0]?.pseudo || rows[0]?.nom || req.utilisateur.nom
+    auteur = rows[0]?.pseudo || nomPublic(rows[0]?.nom || req.utilisateur.nom)
     auteurAvatarUrl = rows[0]?.avatar_url || null
   }
 

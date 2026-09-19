@@ -41,3 +41,37 @@
   width: 20px;
   height: 20px;
 }
+
+/* Jauge de force du mot de passe (inscription, réinitialisation). */
+.jauge-mdp {
+  margin-top: 8px;
+}
+
+.jauge-mdp-barres {
+  display: flex;
+  gap: 4px;
+}
+
+.jauge-mdp-barre {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.3);
+  transition: background-color 0.2s ease;
+}
+
+.jauge-mdp-barre.niveau-1 { background: #ef4444; }
+.jauge-mdp-barre.niveau-2 { background: #f59e0b; }
+.jauge-mdp-barre.niveau-3 { background: #eab308; }
+.jauge-mdp-barre.niveau-4 { background: #22c55e; }
+
+.jauge-mdp-texte {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+  color: var(--app-muted);
+}
+
+.texte-niveau-1 { color: #ef4444; }
+.texte-niveau-2 { color: #f59e0b; }
+.texte-niveau-3 { color: #eab308; }
+.texte-niveau-4 { color: #22c55e; }

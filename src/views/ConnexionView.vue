@@ -20,7 +20,9 @@ const connecter = async () => {
 
   const resultat = await citoyenStore.connecter(identifiant.value.trim(), motDePasse.value)
   if (resultat.succes) {
-    router.push(route.query.retour || { name: 'accueil' })
+    // Après connexion on arrive dans son espace (signalements, suivi, nouvelles),
+    // sauf si on venait d'une page précise : dans ce cas on y retourne.
+    router.push(route.query.retour || { name: 'mes-signalements' })
   } else {
     messageErreur.value = resultat.erreur
   }
@@ -40,10 +42,10 @@ const connecter = async () => {
             Connectez-vous pour signaler un problème, soutenir un signalement existant
             ou laisser un commentaire.
           </p>
-          <div class="d-flex align-items-center gap-2 mt-4">
+          <RouterLink to="/" class="lien-marque d-inline-flex align-items-center gap-2 mt-4" aria-label="Signale Mayotte — retour à l'accueil">
             <img :src="logo" alt="" width="36" height="36" />
             <span class="fw-bold">Signale Mayotte</span>
-          </div>
+          </RouterLink>
         </div>
 
         <div class="col-12 col-lg-6">

@@ -165,3 +165,89 @@
   gap: 8px;
   flex-shrink: 0;
 }
+
+/* --- Signalement urgent --- */
+
+.bloc-urgence {
+  padding: 14px 16px;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.07);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.bloc-urgence.actif {
+  border-color: rgba(239, 68, 68, 0.75);
+  background: rgba(239, 68, 68, 0.14);
+}
+
+.bloc-urgence .form-check-input:checked {
+  background-color: #ef4444;
+  border-color: #ef4444;
+}
+
+.bloc-urgence-pastille {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  vertical-align: 1px;
+}
+
+.bloc-urgence-aide {
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: var(--app-muted);
+}
+
+.bloc-urgence-secours {
+  margin-top: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #ef4444;
+}
+
+/* Badge affiché sur la carte du signalement et sur sa page. */
+.badge-urgent {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.badge-urgent::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  animation: pulsation-urgence 1.6s ease-in-out infinite;
+}
+
+@keyframes pulsation-urgence {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* Une animation qui clignote en continu peut gêner, voire déclencher un malaise. */
+@media (prefers-reduced-motion: reduce) {
+  .badge-urgent::before {
+    animation: none;
+  }
+}
+
+.signalement-card.est-urgent {
+  border-color: rgba(239, 68, 68, 0.55);
+}

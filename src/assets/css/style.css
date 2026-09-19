@@ -398,3 +398,20 @@ main {
     min-height: 240px;
   }
 }
+
+/* Bloc de marque cliquable sur les pages connexion / inscription / mot de passe. */
+.lien-marque {
+  text-decoration: none;
+  color: inherit;
+}
+
+.lien-marque:hover,
+.lien-marque:focus-visible {
+  color: var(--accent);
+}
+
+/* Le gris par défaut de Bootstrap pour .form-text est prévu pour un fond clair :
+   sur le fond sombre du site, l'aide sous les champs était illisible. */
+.form-text {
+  color: var(--app-muted);
+}

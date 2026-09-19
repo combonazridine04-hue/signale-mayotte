@@ -9,7 +9,7 @@ import { useSignalementStore } from '../stores/signalementStore.js'
 
 const signalementStore = useSignalementStore()
 
-const filtres = ref({ commune: '', categorie: '', statut: '', recherche: '', tri: 'recent' })
+const filtres = ref({ commune: '', categorie: '', statut: '', recherche: '', tri: 'recent', urgent: false })
 
 let delaiRecherche = null
 
@@ -17,7 +17,7 @@ function rafraichir(page = 1) {
   signalementStore.charger(filtres.value, page)
 }
 
-watch(() => [filtres.value.commune, filtres.value.categorie, filtres.value.statut, filtres.value.tri], () => rafraichir(1))
+watch(() => [filtres.value.commune, filtres.value.categorie, filtres.value.statut, filtres.value.tri, filtres.value.urgent], () => rafraichir(1))
 
 watch(
   () => filtres.value.recherche,

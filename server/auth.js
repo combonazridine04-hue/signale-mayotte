@@ -1,6 +1,8 @@
 import { randomBytes, randomInt } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { db } from './db.js'
+import { normaliserTelephone as normaliserNumero, telephoneValide } from '../shared/telephone.js'
+import { motDePasseInterdit } from '../shared/motDePasse.js'
 
 const DUREE_SESSION_MS = 12 * 60 * 60 * 1000 // 12h
 // token -> { type: 'admin', adminId, identifiant, expiration }
@@ -84,8 +86,11 @@ function normaliserEmail(email) {
   return typeof email === 'string' && email.trim() ? email.trim().toLowerCase() : null
 }
 
+// Stocké sous forme canonique (10 chiffres, sans espace) : sans ça « 0639000000 » et
+// « 06 39 00 00 00 » créent deux comptes différents malgré la contrainte d'unicité.
 function normaliserTelephone(telephone) {
-  return typeof telephone === 'string' && telephone.trim() ? telephone.trim() : null
+  if (typeof telephone !== 'string' || !telephone.trim()) return null
+  return normaliserNumero(telephone) || null
 }
 
 const DUREE_CODE_VERIFICATION_MS = 30 * 60 * 1000 // 30min
@@ -104,8 +109,12 @@ export async function inscrireUtilisateur({ nom, email, telephone, motDePasse })
   if (!emailNormalise && !telephoneNormalise) {
     return { erreur: 'Renseignez un email ou un numéro de téléphone.' }
   }
-  if (!motDePasse || motDePasse.length < 8) {
-    return { erreur: 'Le mot de passe doit contenir au moins 8 caractères.' }
+  if (telephoneNormalise && !telephoneValide(telephoneNormalise)) {
+    return { erreur: 'Le numéro doit contenir 10 chiffres et commencer par 0 (ex. 06 39 06 50 31).' }
+  }
+  const refus = motDePasseInterdit(motDePasse)
+  if (refus) {
+    return { erreur: refus }
   }
 
   const hash = await bcrypt.hash(motDePasse, 12)
@@ -202,9 +211,15 @@ export async function verifierIdentifiantsUtilisateur(identifiant, motDePasse) {
   if (typeof identifiant !== 'string' || typeof motDePasse !== 'string') return null
 
   const valeur = identifiant.trim().toLowerCase()
+  // On cherche le numéro tel qu'il a été tapé ET sous sa forme canonique : les comptes
+  // créés avant la normalisation ont pu être enregistrés avec des espaces.
+  const numeros = [identifiant.trim()]
+  const numeroCanonique = normaliserTelephone(identifiant)
+  if (numeroCanonique && !numeros.includes(numeroCanonique)) numeros.push(numeroCanonique)
+
   const { rows } = await db.query(
-    'SELECT * FROM utilisateurs WHERE LOWER(email) = $1 OR telephone = $2',
-    [valeur, identifiant.trim()]
+    'SELECT * FROM utilisateurs WHERE LOWER(email) = $1 OR telephone = ANY($2::text[])',
+    [valeur, numeros]
   )
   const utilisateur = rows[0]
   if (!utilisateur) {

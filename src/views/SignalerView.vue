@@ -31,7 +31,8 @@ const formulaire = reactive({
   description: '',
   email: '',
   latitude: null,
-  longitude: null
+  longitude: null,
+  urgent: false
 })
 
 // Champ piège anti-robot : reste vide pour un visiteur humain, ne pas le retirer.
@@ -108,6 +109,7 @@ const envoyer = async () => {
     donnees.set('commune', formulaire.commune)
     donnees.set('description', formulaire.description)
     donnees.set('site_web', siteWeb.value)
+    donnees.set('urgent', formulaire.urgent ? 'true' : 'false')
     if (formulaire.email) donnees.set('email', formulaire.email)
     if (formulaire.latitude && formulaire.longitude) {
       donnees.set('latitude', formulaire.latitude)
@@ -201,6 +203,34 @@ const envoyer = async () => {
             <div class="mb-3">
               <label class="form-label">Photos (facultatif)</label>
               <PhotoDropzone v-model="fichiersPhotos" />
+            </div>
+
+            <!--
+              Urgence : un simple drapeau sur le signalement. Il le fait remonter en tête
+              de liste, sans créer un circuit parallèle que personne ne surveillerait.
+            -->
+            <div class="bloc-urgence mb-3" :class="{ actif: formulaire.urgent }">
+              <div class="form-check mb-0">
+                <input
+                  id="urgent"
+                  v-model="formulaire.urgent"
+                  class="form-check-input"
+                  type="checkbox"
+                />
+                <label class="form-check-label fw-semibold" for="urgent">
+                  <span class="bloc-urgence-pastille" aria-hidden="true">SOS</span>
+                  Danger immédiat pour les habitants
+                </label>
+              </div>
+              <p class="bloc-urgence-aide mb-0">
+                À cocher uniquement en cas de risque réel : câble électrique à terre, route
+                effondrée, fuite d'eau importante, ravine bouchée avant la pluie. Le
+                signalement apparaîtra en tête de liste.
+              </p>
+              <p v-if="formulaire.urgent" class="bloc-urgence-secours mb-0">
+                En cas d'urgence vitale, n'attendez pas ce site : appelez le 15 (SAMU),
+                le 18 (pompiers) ou le 17 (police).
+              </p>
             </div>
 
             <div class="honeypot-field" aria-hidden="true">

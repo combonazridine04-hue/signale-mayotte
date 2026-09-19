@@ -21,7 +21,7 @@ const imageEnErreur = ref(false)
 
 <template>
   <RouterLink :to="`/signalements/${signalement.id}`" class="text-decoration-none">
-    <div class="signalement-card card h-100">
+    <div class="signalement-card card h-100" :class="{ 'est-urgent': signalement.urgent }">
       <img
         v-if="signalement.photoUrls?.[0] && !imageEnErreur"
         :src="signalement.photoUrls[0]"
@@ -34,6 +34,9 @@ const imageEnErreur = ref(false)
           <span class="badge text-bg-secondary">{{ signalement.categorie }}</span>
           <span class="badge" :class="badgeClasses[signalement.statut]">{{ signalement.statut }}</span>
         </div>
+        <p v-if="signalement.urgent" class="mb-2">
+          <span class="badge-urgent">Urgent</span>
+        </p>
         <h3 class="h6 card-title mb-1">{{ signalement.commune }}</h3>
         <p class="card-text card-text-clamp text-secondary small mb-0">{{ signalement.description }}</p>
 

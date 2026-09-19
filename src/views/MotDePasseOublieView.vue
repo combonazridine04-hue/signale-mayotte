@@ -28,10 +28,10 @@ const envoyer = async () => {
           <p class="text-secondary">
             Indiquez l'email de votre compte : nous vous envoyons un lien pour choisir un nouveau mot de passe.
           </p>
-          <div class="d-flex align-items-center gap-2 mt-4">
+          <RouterLink to="/" class="lien-marque d-inline-flex align-items-center gap-2 mt-4" aria-label="Signale Mayotte — retour à l'accueil">
             <img :src="logo" alt="" width="36" height="36" />
             <span class="fw-bold">Signale Mayotte</span>
-          </div>
+          </RouterLink>
         </div>
 
         <div class="col-12 col-lg-6">

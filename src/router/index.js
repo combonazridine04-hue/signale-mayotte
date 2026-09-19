@@ -93,9 +93,12 @@ const routes = [
   },
   {
     path: '/mes-signalements',
+    // `/dashboard` est l'adresse attendue par la plupart des gens pour « mon espace » :
+    // l'alias évite de casser les liens déjà partagés vers /mes-signalements.
+    alias: '/dashboard',
     name: 'mes-signalements',
     component: MesSignalementsView,
-    meta: { titre: 'Mes signalements', requiresAuthCitoyen: true }
+    meta: { titre: 'Mon espace', requiresAuthCitoyen: true }
   },
   {
     path: '/profil',

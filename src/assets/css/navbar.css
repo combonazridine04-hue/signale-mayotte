@@ -14,8 +14,8 @@
   pointer-events: auto;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px;
+  gap: 8px;
+  padding: 10px 12px;
   background: var(--nav-bg);
   border: 1px solid var(--nav-border);
   border-radius: 999px;
@@ -34,8 +34,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   border: 0;
   border-radius: 50%;
   background: transparent;
@@ -93,8 +93,8 @@
 
 /* Avatar + pastille verte : indique d'un coup d'œil qu'on est connecté. */
 .nav-avatar {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   overflow: hidden;
   display: flex;
@@ -126,8 +126,8 @@
 }
 
 .icon-pill-link svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 .icon-pill-link:hover,
@@ -148,7 +148,26 @@
   }
 
   .icon-pill-link {
-    width: 38px;
-    height: 38px;
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* Huit icônes (connecté) sur un écran de 360 px : sans ça la pilule dépasse
+   de l'écran et la dernière icône devient inatteignable. */
+@media (max-width: 380px) {
+  .icon-pill-link {
+    width: 36px;
+    height: 36px;
+  }
+
+  .icon-pill-link svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .nav-avatar {
+    width: 28px;
+    height: 28px;
   }
 }

@@ -17,6 +17,7 @@ import {
   mettreAJourAvatar
 } from '../auth.js'
 import { envoyerVerificationEmail, envoyerReinitialisationMotDePasse } from '../mailer.js'
+import { motDePasseInterdit } from '../../shared/motDePasse.js'
 import { requireAuthUtilisateur } from '../middleware/requireAuth.js'
 import { creerUpload, traiterPhoto } from '../photoUpload.js'
 import { supprimerPhoto } from '../storage.js'
@@ -212,8 +213,9 @@ router.post('/mot-de-passe-oublie', limiteurMotDePasseOublie, async (req, res) =
 router.post('/reinitialiser-mot-de-passe', async (req, res) => {
   const { token, motDePasse } = req.body || {}
 
-  if (!motDePasse || motDePasse.length < 8) {
-    return res.status(400).json({ erreur: 'Le mot de passe doit contenir au moins 8 caractères.' })
+  const refus = motDePasseInterdit(motDePasse)
+  if (refus) {
+    return res.status(400).json({ erreur: refus })
   }
 
   const ok = await reinitialiserMotDePasse(token, motDePasse)

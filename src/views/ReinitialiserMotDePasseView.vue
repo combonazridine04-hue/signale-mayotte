@@ -3,7 +3,9 @@ import { computed, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
 import ChampMotDePasse from '../components/ChampMotDePasse.vue'
+import JaugeMotDePasse from '../components/JaugeMotDePasse.vue'
 import logo from '../assets/img/logo.svg'
+import { motDePasseInterdit } from '../../shared/motDePasse.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -21,8 +23,9 @@ const confirmationValide = computed(() => confirmation.value.length > 0 && confi
 const valider = async () => {
   messageErreur.value = ''
 
-  if (motDePasse.value.length < 8) {
-    messageErreur.value = 'Le mot de passe doit contenir au moins 8 caractères.'
+  const refus = motDePasseInterdit(motDePasse.value)
+  if (refus) {
+    messageErreur.value = refus
     return
   }
   if (motDePasse.value !== confirmation.value) {
@@ -53,10 +56,10 @@ const valider = async () => {
           <p class="text-secondary">
             Choisissez un nouveau mot de passe pour votre compte.
           </p>
-          <div class="d-flex align-items-center gap-2 mt-4">
+          <RouterLink to="/" class="lien-marque d-inline-flex align-items-center gap-2 mt-4" aria-label="Signale Mayotte — retour à l'accueil">
             <img :src="logo" alt="" width="36" height="36" />
             <span class="fw-bold">Signale Mayotte</span>
-          </div>
+          </RouterLink>
         </div>
 
         <div class="col-12 col-lg-6">
@@ -77,6 +80,7 @@ const valider = async () => {
                   autofocus
                   required
                 />
+                <JaugeMotDePasse :mot-de-passe="motDePasse" />
               </div>
 
               <div class="mb-3">

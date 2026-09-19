@@ -93,6 +93,10 @@ await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS token_reinitia
 await db.query(`ALTER TABLE signalements ADD COLUMN IF NOT EXISTS date_modification TEXT`)
 await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS pseudo TEXT`)
 await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS avatar_url TEXT`)
+// Signalement urgent : un simple drapeau sur le signalement plutôt qu'un circuit séparé,
+// pour que le danger immédiat (fil électrique à terre, fuite, route coupée) remonte en tête
+// de liste sans dupliquer tout le système.
+await db.query(`ALTER TABLE signalements ADD COLUMN IF NOT EXISTS urgent BOOLEAN NOT NULL DEFAULT false`)
 
 await db.query(`
   CREATE TABLE IF NOT EXISTS signalements_abus (

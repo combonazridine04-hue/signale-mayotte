@@ -3,7 +3,10 @@ import { computed, reactive, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
 import ChampMotDePasse from '../components/ChampMotDePasse.vue'
+import JaugeMotDePasse from '../components/JaugeMotDePasse.vue'
 import logo from '../assets/img/logo.svg'
+import { erreurTelephone, formaterTelephone, normaliserTelephone, telephoneValide } from '../../shared/telephone.js'
+import { motDePasseInterdit } from '../../shared/motDePasse.js'
 
 const router = useRouter()
 const citoyenStore = useCitoyenStore()
@@ -21,10 +24,24 @@ const soumis = ref(false)
 const erreurEnvoi = ref('')
 const envoiEnCours = ref(false)
 
+// Le champ téléphone n'accepte que des chiffres et s'affiche par paires pendant la frappe :
+// l'utilisateur voit tout de suite si son numéro fait bien 10 chiffres.
+const saisirTelephone = (evenement) => {
+  formulaire.telephone = formaterTelephone(evenement.target.value)
+}
+
+const messageTelephone = computed(() => erreurTelephone(formulaire.telephone))
+const messageMotDePasse = computed(() =>
+  formulaire.motDePasse ? motDePasseInterdit(formulaire.motDePasse) : ''
+)
+
 const erreurs = computed(() => ({
   nom: formulaire.nom.trim().length < 2,
   contact: !formulaire.email.trim() && !formulaire.telephone.trim(),
-  motDePasse: formulaire.motDePasse.length < 8,
+  // Un numéro entamé mais incomplet est une erreur : sinon le compte part avec un
+  // contact inutilisable et l'habitant ne sera jamais rappelé.
+  telephone: Boolean(formulaire.telephone.trim()) && !telephoneValide(formulaire.telephone),
+  motDePasse: Boolean(motDePasseInterdit(formulaire.motDePasse)),
   confirmation: formulaire.confirmationMotDePasse !== formulaire.motDePasse
 }))
 const formulaireValide = computed(() => !Object.values(erreurs.value).some(Boolean))
@@ -38,12 +55,12 @@ const inscrire = async () => {
   const resultat = await citoyenStore.inscrire({
     nom: formulaire.nom.trim(),
     email: formulaire.email.trim(),
-    telephone: formulaire.telephone.trim(),
+    telephone: normaliserTelephone(formulaire.telephone),
     motDePasse: formulaire.motDePasse,
     site_web: siteWeb.value
   })
   if (resultat.succes) {
-    router.push(resultat.emailAConfirmer ? { name: 'verifier-email' } : { name: 'accueil' })
+    router.push(resultat.emailAConfirmer ? { name: 'verifier-email' } : { name: 'mes-signalements' })
   } else {
     erreurEnvoi.value = resultat.erreur
   }
@@ -64,10 +81,10 @@ const inscrire = async () => {
             qui contribue et de limiter les abus — votre identité reste privée, jamais
             affichée publiquement.
           </p>
-          <div class="d-flex align-items-center gap-2 mt-4">
+          <RouterLink to="/" class="lien-marque d-inline-flex align-items-center gap-2 mt-4" aria-label="Signale Mayotte — retour à l'accueil">
             <img :src="logo" alt="" width="36" height="36" />
             <span class="fw-bold">Signale Mayotte</span>
-          </div>
+          </RouterLink>
         </div>
 
         <div class="col-12 col-lg-7">
@@ -105,14 +122,22 @@ const inscrire = async () => {
                 <label for="telephone" class="form-label">Téléphone</label>
                 <input
                   id="telephone"
-                  v-model="formulaire.telephone"
+                  :value="formulaire.telephone"
                   type="tel"
+                  inputmode="numeric"
                   autocomplete="tel"
-                  placeholder="ex. 0639 00 00 00"
+                  maxlength="14"
+                  placeholder="06 39 06 50 31"
                   class="form-control"
-                  :class="{ 'is-invalid': soumis && erreurs.contact }"
+                  :class="{
+                    'is-invalid': (soumis && erreurs.contact) || Boolean(messageTelephone),
+                    'is-valid': formulaire.telephone.length > 0 && !messageTelephone
+                  }"
+                  @input="saisirTelephone"
                 />
-                <div class="invalid-feedback">Renseignez au moins l'un des deux (email ou téléphone).</div>
+                <div v-if="messageTelephone" class="invalid-feedback d-block">{{ messageTelephone }}</div>
+                <div v-else class="invalid-feedback">Renseignez au moins l'un des deux (email ou téléphone).</div>
+                <div class="form-text">10 chiffres, ex. 06 39 06 50 31.</div>
               </div>
             </div>
 
@@ -125,10 +150,12 @@ const inscrire = async () => {
                   id="motDePasse"
                   v-model="formulaire.motDePasse"
                   autocomplete="new-password"
-                  :class="{ 'is-invalid': soumis && erreurs.motDePasse }"
+                  :class="{ 'is-invalid': (soumis && erreurs.motDePasse) || Boolean(messageMotDePasse) }"
                 >
-                  <div class="invalid-feedback">Au moins 8 caractères.</div>
+                  <div v-if="messageMotDePasse" class="invalid-feedback d-block">{{ messageMotDePasse }}</div>
+                  <div v-else class="invalid-feedback">Au moins 8 caractères.</div>
                 </ChampMotDePasse>
+                <JaugeMotDePasse :mot-de-passe="formulaire.motDePasse" />
               </div>
               <div class="col-12 col-sm-6">
                 <label for="confirmationMotDePasse" class="form-label">Confirmation</label>

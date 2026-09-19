@@ -7,10 +7,11 @@ import logo from '../assets/img/logo.svg'
     <div class="container">
       <div class="footer-grid">
         <div class="footer-brand">
-          <div class="footer-brand-title">
+          <!-- Le logo ramène à l'accueil : c'est le réflexe attendu sur tout site. -->
+          <RouterLink to="/" class="footer-brand-title" aria-label="Signale Mayotte — retour à l'accueil">
             <img :src="logo" alt="" class="footer-logo" />
             <h2>Signale Mayotte</h2>
-          </div>
+          </RouterLink>
           <p>
             La plateforme citoyenne pour signaler les problèmes du quotidien
             (déchets, voirie, éclairage, eau) dans toutes les communes de Mayotte.

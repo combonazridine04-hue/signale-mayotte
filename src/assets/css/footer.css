@@ -112,3 +112,15 @@
     margin-top: 40px;
   }
 }
+
+/* Le bloc de marque est un lien vers l'accueil : il ne doit pas pour autant
+   ressembler à un lien de navigation (pas de soulignement, pas de couleur d'accent). */
+a.footer-brand-title {
+  text-decoration: none;
+  color: inherit;
+}
+
+a.footer-brand-title:hover h2,
+a.footer-brand-title:focus-visible h2 {
+  color: var(--accent);
+}

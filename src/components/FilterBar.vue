@@ -3,12 +3,12 @@ import { computed } from 'vue'
 import { CATEGORIES, COMMUNES, STATUTS } from '../models/signalement.js'
 
 const filtres = defineModel({
-  default: () => ({ commune: '', categorie: '', statut: '', recherche: '', tri: 'recent' })
+  default: () => ({ commune: '', categorie: '', statut: '', recherche: '', tri: 'recent', urgent: false })
 })
 
 const filtresActifs = computed(() => {
   return Boolean(
-    filtres.value.commune || filtres.value.categorie || filtres.value.statut || filtres.value.recherche || filtres.value.tri !== 'recent'
+    filtres.value.commune || filtres.value.categorie || filtres.value.statut || filtres.value.recherche || filtres.value.tri !== 'recent' || filtres.value.urgent
   )
 })
 
@@ -18,6 +18,7 @@ const reinitialiser = () => {
   filtres.value.statut = ''
   filtres.value.recherche = ''
   filtres.value.tri = 'recent'
+  filtres.value.urgent = false
 }
 </script>
 
@@ -65,6 +66,15 @@ const reinitialiser = () => {
         <option value="ancien">Plus anciens</option>
         <option value="populaire">Plus soutenus</option>
       </select>
+    </div>
+
+    <div class="col-6 col-md-4 d-flex align-items-center">
+      <div class="form-check mb-0">
+        <input id="filtre-urgent" v-model="filtres.urgent" class="form-check-input" type="checkbox" />
+        <label class="form-check-label" for="filtre-urgent">
+          Urgences seulement
+        </label>
+      </div>
     </div>
 
     <div class="col-12 col-md-4">

@@ -129,7 +129,7 @@ onBeforeUnmount(() => {
       <span v-if="latitude && longitude" class="text-secondary small">
         {{ latitude.toFixed(5) }}, {{ longitude.toFixed(5) }}
       </span>
-      <span v-else class="text-secondary small">Cliquez sur la carte pour indiquer un lieu (facultatif)</span>
+      <span v-else class="text-secondary small">Cliquez sur la carte pour indiquer le lieu du problème</span>
     </div>
     <p v-if="erreurLocalisation" class="text-secondary small mb-0 mt-1">{{ erreurLocalisation }}</p>
   </div>
