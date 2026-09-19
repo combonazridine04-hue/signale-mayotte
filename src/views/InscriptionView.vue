@@ -4,9 +4,29 @@ import { RouterLink, useRouter } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
 import ChampMotDePasse from '../components/ChampMotDePasse.vue'
 import JaugeMotDePasse from '../components/JaugeMotDePasse.vue'
+import PanneauAide from '../components/PanneauAide.vue'
 import logo from '../assets/img/logo.svg'
 import { erreurTelephone, formaterTelephone, normaliserTelephone, telephoneValide } from '../../shared/telephone.js'
 import { motDePasseInterdit } from '../../shared/motDePasse.js'
+
+const avantages = [
+  {
+    titre: 'Signaler un problème',
+    texte: 'Photo, lieu exact sur la carte, catégorie : le bon service est identifié automatiquement.'
+  },
+  {
+    titre: 'Suivre ce que ça devient',
+    texte: "Vous êtes prévenu quand le statut change et quand quelqu'un réagit à votre signalement."
+  },
+  {
+    titre: 'Soutenir et commenter',
+    texte: 'Appuyer un problème déjà signalé près de chez vous lui donne plus de poids.'
+  },
+  {
+    titre: 'Corriger vos signalements',
+    texte: "Tant qu'un signalement n'est pas pris en charge, vous pouvez le modifier ou le retirer."
+  }
+]
 
 const router = useRouter()
 const citoyenStore = useCitoyenStore()
@@ -81,6 +101,8 @@ const inscrire = async () => {
             qui contribue et de limiter les abus — votre identité reste privée, jamais
             affichée publiquement.
           </p>
+          <PanneauAide titre="Avec un compte, vous pouvez" :points="avantages" />
+
           <RouterLink to="/" class="lien-marque d-inline-flex align-items-center gap-2 mt-4" aria-label="Signale Mayotte — retour à l'accueil">
             <img :src="logo" alt="" width="36" height="36" />
             <span class="fw-bold">Signale Mayotte</span>

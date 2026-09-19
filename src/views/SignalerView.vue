@@ -7,7 +7,29 @@ import { useCitoyenStore } from '../stores/citoyenStore.js'
 import PhotoDropzone from '../components/PhotoDropzone.vue'
 import LocationPicker from '../components/LocationPicker.vue'
 import OrganismeCompetent from '../components/OrganismeCompetent.vue'
+import PanneauAide from '../components/PanneauAide.vue'
 import { dateRelative } from '../utils/dates.js'
+
+// Ce qui distingue un signalement traité d'un signalement qui traîne. Rédigé à partir
+// de ce que la plateforme fait réellement : point sur la carte, photo, statut public.
+const conseils = [
+  {
+    titre: 'Placez le point sur la carte',
+    texte: "Une commune seule ne suffit pas à envoyer une équipe. Le lieu exact, c'est ce qui permet d'intervenir."
+  },
+  {
+    titre: 'Ajoutez une photo',
+    texte: "Elle évite les allers-retours pour vérifier, et prouve l'état du problème à la date du signalement."
+  },
+  {
+    titre: "Décrivez ce qu'on voit",
+    texte: "Depuis quand, quelle ampleur, ce que ça empêche. Deux phrases précises valent mieux qu'un paragraphe vague."
+  },
+  {
+    titre: 'Vérifiez les signalements voisins',
+    texte: "S'il existe déjà, soutenez-le : un problème signalé par dix habitants passe avant dix signalements séparés."
+  }
+]
 
 const router = useRouter()
 const signalementStore = useSignalementStore()
@@ -141,6 +163,12 @@ const envoyer = async () => {
             éclairage en panne, fuite d'eau... Votre identité reste privée : elle
             n'est jamais affichée publiquement.
           </p>
+
+          <PanneauAide
+            titre="Pour un signalement vite traité"
+            :points="conseils"
+            note="Votre nom n'apparaît jamais en entier : les autres habitants voient votre pseudo, ou votre prénom suivi de l'initiale de votre nom."
+          />
         </div>
 
         <div class="col-12 col-lg-7">

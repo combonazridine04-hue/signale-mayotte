@@ -64,6 +64,20 @@ export function sessionValide(token) {
   return session
 }
 
+// Une session n'était supprimée de la mémoire que si quelqu'un s'en resservait. Celles
+// dont personne ne revient (onglet fermé, appareil éteint) y restaient indéfiniment :
+// sur un hébergement à 512 Mo, ça finit par peser. On balaie une fois par heure.
+const INTERVALLE_MENAGE_MS = 60 * 60 * 1000
+
+const menageSessions = setInterval(() => {
+  const maintenant = Date.now()
+  for (const [token, session] of sessions) {
+    if (maintenant > session.expiration) sessions.delete(token)
+  }
+}, INTERVALLE_MENAGE_MS)
+// Ne doit pas empêcher le processus de s'arrêter (tests, redéploiement).
+menageSessions.unref?.()
+
 export function revoquerSession(token) {
   sessions.delete(token)
 }

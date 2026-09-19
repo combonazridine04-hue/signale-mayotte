@@ -1,6 +1,18 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import { apiFetch } from '../utils/api.js'
+import PanneauAide from '../components/PanneauAide.vue'
+
+// L'ancienne page affichait un email, un téléphone et une adresse qui n'existent pas
+// (contact@signale-mayotte.yt, 02 69 00 00 00). Un contact faux est pire que pas de
+// contact : quelqu'un écrit ou appelle, et personne ne répond jamais.
+const motifs = [
+  { titre: 'Une erreur sur un signalement', texte: 'Contenu déplacé, doublon, information fausse à corriger.' },
+  { titre: 'Un souci avec votre compte', texte: 'Email de confirmation jamais reçu, connexion impossible.' },
+  { titre: 'Une question sur la plateforme', texte: "Comment elle fonctionne, ce qu'elle fait de vos données." },
+  { titre: 'Une proposition', texte: 'Une idée, un manque, un partenariat avec une commune ou une association.' }
+]
 
 const formulaire = reactive({
   nom: '',
@@ -61,14 +73,22 @@ const envoyer = async () => {
       <div class="row g-5">
         <div class="col-12 col-lg-5">
           <p class="section-kicker">Contact</p>
-          <h1 class="fw-bold">Contacter la mairie</h1>
+          <h1 class="fw-bold">Nous écrire</h1>
           <p class="text-secondary">
-            Une question sur un signalement ou sur la plateforme ? Écrivez-nous.
+            Ce message arrive à l'équipe qui gère la plateforme. Pour signaler un
+            problème sur le terrain, passez plutôt par le formulaire de signalement :
+            il est suivi, public, et transmis au bon service.
           </p>
+
+          <PanneauAide titre="Écrivez-nous plutôt pour" :points="motifs" />
+
           <div class="contact-panel mt-4">
-            <p class="mb-1"><strong>Email :</strong> contact@signale-mayotte.yt</p>
-            <p class="mb-1"><strong>Téléphone :</strong> 02 69 00 00 00</p>
-            <p class="mb-0"><strong>Adresse :</strong> Mamoudzou, Mayotte</p>
+            <p class="mb-2 fw-semibold">Un problème à signaler&nbsp;?</p>
+            <p class="mb-3 text-secondary small">
+              Un dépôt sauvage, un nid-de-poule, un lampadaire éteint, une fuite d'eau
+              ne se traitent pas par email : ils se signalent, pour être suivis.
+            </p>
+            <RouterLink to="/signaler" class="btn btn-success btn-sm">Signaler un problème</RouterLink>
           </div>
         </div>
 

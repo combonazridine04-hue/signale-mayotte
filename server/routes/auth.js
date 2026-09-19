@@ -76,6 +76,18 @@ const limiteurMotDePasseOublie = rateLimit({
   message: { erreur: 'Trop de demandes, réessayez plus tard.' }
 })
 
+// La validation du lien de réinitialisation était la seule route d'authentification
+// sans limite : rien n'empêchait d'y essayer des jetons en rafale. Le jeton fait
+// 64 caractères aléatoires, donc le deviner est hors de portée, mais une route
+// d'authentification non limitée reste une porte ouverte à du bruit inutile.
+const limiteurReinitialisation = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erreur: 'Trop de tentatives, réessayez plus tard.' }
+})
+
 router.post('/login', async (req, res) => {
   const { identifiant, motDePasse } = req.body || {}
 
@@ -210,7 +222,7 @@ router.post('/mot-de-passe-oublie', limiteurMotDePasseOublie, async (req, res) =
   res.status(204).end()
 })
 
-router.post('/reinitialiser-mot-de-passe', async (req, res) => {
+router.post('/reinitialiser-mot-de-passe', limiteurReinitialisation, async (req, res) => {
   const { token, motDePasse } = req.body || {}
 
   const refus = motDePasseInterdit(motDePasse)

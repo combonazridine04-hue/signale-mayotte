@@ -172,7 +172,7 @@ const donneesDemo = [
   {
     categorie: 'Voirie',
     commune: 'Koungou',
-    description: 'Nid de poule important qui endommage les véhicules, rue principale.',
+    description: 'Nid-de-poule important qui endommage les véhicules, rue principale.',
     statut: 'En cours',
     date_signalement: '2026-08-02T10:30:00.000Z'
   },

@@ -3,7 +3,14 @@ import { ref } from 'vue'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
 import ChampMotDePasse from '../components/ChampMotDePasse.vue'
+import PanneauAide from '../components/PanneauAide.vue'
 import logo from '../assets/img/logo.svg'
+
+const espace = [
+  { titre: 'Vos signalements', texte: 'Ce que vous avez signalé, et où chaque dossier en est.' },
+  { titre: 'Vos nouvelles', texte: 'Les changements de statut et les réactions des autres habitants.' },
+  { titre: 'Vos contributions', texte: 'Le nombre de soutiens reçus et de problèmes résolus grâce à vous.' }
+]
 
 const router = useRouter()
 const route = useRoute()
@@ -42,6 +49,12 @@ const connecter = async () => {
             Connectez-vous pour signaler un problème, soutenir un signalement existant
             ou laisser un commentaire.
           </p>
+          <PanneauAide
+            titre="Dans votre espace"
+            :points="espace"
+            note="Vous vous connectez avec votre email ou votre numéro de téléphone, au choix."
+          />
+
           <RouterLink to="/" class="lien-marque d-inline-flex align-items-center gap-2 mt-4" aria-label="Signale Mayotte — retour à l'accueil">
             <img :src="logo" alt="" width="36" height="36" />
             <span class="fw-bold">Signale Mayotte</span>

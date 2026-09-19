@@ -45,7 +45,7 @@ const annee = new Date().getFullYear()
 
         <div class="footer-colonne">
           <h2>Nous joindre</h2>
-          <RouterLink to="/contact">Écrire à la mairie</RouterLink>
+          <RouterLink to="/contact">Nous écrire</RouterLink>
           <RouterLink to="/confidentialite">Confidentialité</RouterLink>
           <p class="footer-lieu">Mayotte, 976</p>
         </div>

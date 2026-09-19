@@ -1,0 +1,91 @@
+/* Panneau d'accompagnement des formulaires (colonne de gauche). */
+
+.panneau-aide {
+  margin-top: 28px;
+  padding: 20px 22px;
+  border: 1px solid var(--glass-border);
+  border-radius: 14px;
+  background: var(--glass-bg);
+}
+
+@supports ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+  .panneau-aide {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+}
+
+.panneau-aide-titre {
+  margin: 0 0 14px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+}
+
+.panneau-aide-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.panneau-aide-liste li {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.panneau-aide-puce {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.16);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: var(--accent);
+}
+
+.panneau-aide-puce svg {
+  width: 13px;
+  height: 13px;
+}
+
+.panneau-aide-liste strong {
+  display: block;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.panneau-aide-texte {
+  display: block;
+  margin-top: 2px;
+  color: var(--app-muted);
+}
+
+.panneau-aide-note {
+  margin: 16px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--glass-border);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--app-muted);
+}
+
+/* Le formulaire est souvent bien plus haut que la colonne de gauche : on garde le
+   panneau visible pendant qu'on le remplit, au lieu de le laisser filer vers le haut. */
+@media (min-width: 992px) {
+  .panneau-aide {
+    position: sticky;
+    top: 24px;
+  }
+}
