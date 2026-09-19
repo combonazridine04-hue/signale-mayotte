@@ -5,20 +5,22 @@
    de chaque page. */
 
 .site-footer {
-  padding: 56px 0 24px;
+  padding: 44px 0 20px;
   color: var(--app-text);
   background: var(--app-bg);
   border-top: 1px solid var(--glass-border);
   font-size: 0.92rem;
-  /* La barre de navigation flotte à 24 px du bas de l'écran : sans cette réserve,
-     elle recouvre la dernière ligne du pied de page une fois tout en bas. */
-  padding-bottom: calc(24px + 96px);
+  /* La barre de navigation flotte en bas de l'écran et occupe exactement 94 px
+     (70 de haut, posée à 24 du bord). Sans cette réserve elle recouvre la dernière
+     ligne du pied de page une fois tout en bas. On garde 10 px de dégagement et pas
+     un de plus : c'est de l'espace perdu en bas de chaque page du site. */
+  padding-bottom: 104px;
 }
 
 .footer-grid {
   display: grid;
   grid-template-columns: minmax(240px, 1.6fr) repeat(3, minmax(150px, 1fr));
-  gap: 32px 28px;
+  gap: 28px;
 }
 
 /* --- Bloc de marque --- */
@@ -107,7 +109,7 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin: 36px 0 0;
+  margin: 28px 0 0;
   padding: 10px 14px;
   border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: 10px;
