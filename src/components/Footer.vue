@@ -51,17 +51,6 @@ const annee = new Date().getFullYear()
         </div>
       </div>
 
-      <!-- Un site de signalement n'est pas une ligne de secours : le rappeler là où
-           l'œil finit sa course coûte peu et peut éviter une perte de temps grave. -->
-      <p class="footer-urgence">
-        <span class="footer-urgence-icone" aria-hidden="true">⚠</span>
-        <span>
-          En cas d'urgence vitale, n'utilisez pas ce site : appelez le
-          <a href="tel:15">15</a> (SAMU), le <a href="tel:18">18</a> (pompiers)
-          ou le <a href="tel:17">17</a> (police).
-        </span>
-      </p>
-
       <div class="footer-bottom">
         <p>© {{ annee }} Signale Mayotte</p>
         <p>Projet fil rouge — données publiques, identités privées.</p>

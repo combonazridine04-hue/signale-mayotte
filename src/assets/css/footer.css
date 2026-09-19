@@ -100,41 +100,6 @@
   color: var(--app-muted);
 }
 
-/* --- Rappel des secours --- */
-
-.footer-urgence {
-  /* Deux éléments seulement : le pictogramme, puis TOUT le texte. Si la phrase était
-     posée directement dans le conteneur flex, chaque bout devenait un élément à part
-     et le pictogramme se retrouvait seul sur sa ligne sur téléphone. */
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 28px 0 0;
-  padding: 10px 14px;
-  border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: 10px;
-  background: rgba(239, 68, 68, 0.06);
-  color: var(--app-muted);
-  font-size: 0.85rem;
-}
-
-.footer-urgence-icone {
-  flex-shrink: 0;
-  color: #f87171;
-  line-height: 1.5;
-}
-
-.footer-urgence a {
-  color: #f87171;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.footer-urgence a:hover,
-.footer-urgence a:focus-visible {
-  text-decoration: underline;
-}
-
 /* --- Bas de page --- */
 
 .footer-bottom {
