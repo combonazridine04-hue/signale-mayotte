@@ -1,10 +1,13 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { nextTick, onMounted, onUnmounted, ref } from 'vue'
 import * as THREE from 'three'
 import { feature } from 'topojson-client'
 import worldAtlas from 'world-atlas/countries-110m.json'
 
 const canvasEl = ref(null)
+// Change de valeur pour forcer Vue à remplacer l'élément canvas (seule façon de
+// récupérer un contexte WebGL après une perte définitive).
+const cleCanvas = ref(0)
 
 const RADIUS = 2
 const BASE_SPEED = 0.00035
@@ -21,6 +24,8 @@ let lastFrameTime = 0
 let lastScrollY = 0
 let velocity = BASE_SPEED
 let prefersReducedMotion = false
+let contextePerdu = false
+let delaiReprise = null
 
 function latLonToVector3(lat, lon, radius) {
   const phi = (90 - lat) * (Math.PI / 180)
@@ -136,31 +141,110 @@ function onResize() {
   updateComposition()
 }
 
+// Libère la scène et le contexte WebGL avant d'en reconstruire un : sans ça chaque
+// reprise laissait l'ancien derrière elle, et le navigateur finit par refuser d'en
+// créer de nouveaux (limite d'une quinzaine de contextes par onglet).
+function libererScene() {
+  if (animationId) cancelAnimationFrame(animationId)
+  animationId = null
+
+  scene?.traverse((objet) => {
+    objet.geometry?.dispose()
+    objet.material?.dispose()
+  })
+  renderer?.dispose()
+  renderer = null
+  scene = null
+  camera = null
+  globe = null
+}
+
+function attacherCanvas() {
+  canvasEl.value.addEventListener('webglcontextlost', onContextLost, false)
+  canvasEl.value.addEventListener('webglcontextrestored', onContextRestored, false)
+}
+
+function detacherCanvas() {
+  canvasEl.value?.removeEventListener('webglcontextlost', onContextLost)
+  canvasEl.value?.removeEventListener('webglcontextrestored', onContextRestored)
+}
+
 function onContextLost(event) {
   // Les navigateurs mobiles récupèrent agressivement les contextes WebGL sous
   // pression mémoire (changement d'onglet, mise en arrière-plan...). Sans ce
   // handler, le canvas reste vide en permanence après coup.
   event.preventDefault()
+  contextePerdu = true
   if (animationId) cancelAnimationFrame(animationId)
   animationId = null
+
+  // `webglcontextrestored` n'arrive pas toujours — sur mobile, souvent jamais. On ne
+  // se contente donc pas de l'attendre : on retente nous-mêmes un peu plus tard, et à
+  // chaque retour au premier plan. C'était la cause du globe qui disparaissait
+  // définitivement après un passage sur une autre application.
+  clearTimeout(delaiReprise)
+  delaiReprise = setTimeout(reprendre, 1500)
 }
 
 function onContextRestored() {
+  reprendre()
+}
+
+// Un canvas dont le contexte WebGL est perdu ne peut PAS en obtenir un nouveau :
+// `getContext()` renvoie le même objet, mort. La seule reprise possible, quand le
+// navigateur ne restaure pas de lui-même, est de remplacer l'élément canvas — d'où
+// la clé, qui force Vue à en créer un neuf.
+async function reprendre() {
+  if (document.hidden) return
+
+  libererScene()
+  detacherCanvas()
+  cleCanvas.value += 1
+  await nextTick()
+  if (!canvasEl.value) return
+
+  try {
+    attacherCanvas()
+    lastFrameTime = 0
+    initScene()
+    animationId = requestAnimationFrame(animate)
+    contextePerdu = false
+  } catch {
+    // Toujours indisponible : on réessaiera au prochain retour au premier plan.
+    contextePerdu = true
+  }
+}
+
+function onVisibilite() {
+  if (document.hidden) return
+  if (contextePerdu) {
+    reprendre()
+    return
+  }
+  // Après un long passage en arrière-plan, l'écart entre deux images est énorme :
+  // sans remise à zéro, le globe fait un bond d'un quart de tour au retour.
   lastFrameTime = 0
-  initScene()
-  animationId = requestAnimationFrame(animate)
 }
 
 function animate(time) {
-  const dt = lastFrameTime ? time - lastFrameTime : 16
-  lastFrameTime = time
+  // Une seule exception non rattrapée ici arrête la boucle pour de bon, et le globe
+  // se fige puis disparaît au premier redimensionnement. On préfère perdre une image.
+  try {
+    const dt = lastFrameTime ? Math.min(time - lastFrameTime, 100) : 16
+    lastFrameTime = time
 
-  globe.rotation.y += velocity * dt
-  const targetSpeed = prefersReducedMotion ? 0 : BASE_SPEED
-  velocity += (targetSpeed - velocity) * DAMPING
+    globe.rotation.y += velocity * dt
+    const targetSpeed = prefersReducedMotion ? 0 : BASE_SPEED
+    velocity += (targetSpeed - velocity) * DAMPING
 
-  renderer.render(scene, camera)
-  animationId = requestAnimationFrame(animate)
+    renderer.render(scene, camera)
+    animationId = requestAnimationFrame(animate)
+  } catch {
+    animationId = null
+    contextePerdu = true
+    clearTimeout(delaiReprise)
+    delaiReprise = setTimeout(reprendre, 1500)
+  }
 }
 
 onMounted(() => {
@@ -176,12 +260,12 @@ onMounted(() => {
     velocity = prefersReducedMotion ? 0 : BASE_SPEED
     lastScrollY = window.scrollY
 
-    initScene()
-
-    canvasEl.value.addEventListener('webglcontextlost', onContextLost, false)
-    canvasEl.value.addEventListener('webglcontextrestored', onContextRestored, false)
+    attacherCanvas()
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onResize)
+    document.addEventListener('visibilitychange', onVisibilite)
+
+    initScene()
     animationId = requestAnimationFrame(animate)
   } catch {
     // WebGL indisponible : le fond sombre uni du site reste affiché.
@@ -189,20 +273,16 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-  if (animationId) cancelAnimationFrame(animationId)
-  canvasEl.value?.removeEventListener('webglcontextlost', onContextLost)
-  canvasEl.value?.removeEventListener('webglcontextrestored', onContextRestored)
+  clearTimeout(delaiReprise)
+  detacherCanvas()
   window.removeEventListener('scroll', onScroll)
   window.removeEventListener('resize', onResize)
+  document.removeEventListener('visibilitychange', onVisibilite)
 
-  scene?.traverse((object) => {
-    object.geometry?.dispose()
-    object.material?.dispose()
-  })
-  renderer?.dispose()
+  libererScene()
 })
 </script>
 
 <template>
-  <canvas ref="canvasEl" class="globe-background" aria-hidden="true"></canvas>
+  <canvas :key="cleCanvas" ref="canvasEl" class="globe-background" aria-hidden="true"></canvas>
 </template>
