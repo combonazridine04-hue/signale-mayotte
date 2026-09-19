@@ -71,9 +71,16 @@ function rafraichir() {
   return signalementStore.charger(filtres.value, 1, 50)
 }
 
+// Le chargement des signalements passe par le réseau. Sur l'hébergement gratuit le
+// serveur peut mettre plusieurs secondes à se réveiller : on a largement le temps de
+// quitter la page entre-temps. Sans ce drapeau, la suite s'exécutait quand même et
+// Leaflet plantait sur « Map container not found », le conteneur ayant disparu.
+let demonte = false
+
 onMounted(async () => {
   await rafraichir()
   await nextTick()
+  if (demonte || !conteneur.value) return
 
   carte = L.map(conteneur.value, { attributionControl: false }).setView(MAYOTTE, 11)
   ajouterCoucheTuiles(carte)
@@ -86,7 +93,9 @@ watch(signalementsLocalises, dessinerMarqueurs)
 watch(() => [filtres.value.commune, filtres.value.categorie, filtres.value.statut], rafraichir)
 
 onBeforeUnmount(() => {
+  demonte = true
   carte?.remove()
+  carte = null
 })
 </script>
 

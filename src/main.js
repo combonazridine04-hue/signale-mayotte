@@ -1,5 +1,9 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+// Bootstrap est servi depuis le site et non plus depuis un CDN : une requête bloquante
+// de moins vers un tiers au premier affichage, et rien à autoriser dans la politique de
+// sécurité. Il vient AVANT nos feuilles, pour que les styles du site puissent le surcharger.
+import 'bootstrap/dist/css/bootstrap.min.css'
 import './assets/css/style.css'
 import './assets/css/navbar.css'
 import './assets/css/hero.css'
