@@ -58,6 +58,22 @@ export const useAuthStore = defineStore('auth', {
       return { succes: true }
     },
 
+    // Les sessions vivent en mémoire côté serveur : le moindre redéploiement les efface,
+    // alors que le jeton reste dans le navigateur. Sans cette vérification, l'admin se
+    // croyait connecté, /admin/login le renvoyait vers /admin, et il ne pouvait plus se
+    // reconnecter du tout sans vider son stockage à la main.
+    async verifierSession() {
+      if (!this.token) return
+      try {
+        const reponse = await fetch('/api/admins', {
+          headers: { Authorization: `Bearer ${this.token}` }
+        })
+        if (reponse.status === 401 || reponse.status === 403) this.deconnecter()
+      } catch {
+        // Serveur injoignable : on ne déconnecte pas, ce serait punir une coupure réseau.
+      }
+    },
+
     async deconnecter() {
       const token = this.token
       this.token = ''

@@ -6,6 +6,7 @@ import ThemeToggle from './components/ThemeToggle.vue'
 import DialogueGlobal from './components/DialogueGlobal.vue'
 import { RouterView, useRoute } from 'vue-router'
 import { useCitoyenStore } from './stores/citoyenStore.js'
+import { useAuthStore } from './stores/authStore.js'
 
 const GlobeBackground = defineAsyncComponent({
   loader: () => import('./components/GlobeBackground.vue'),
@@ -21,6 +22,7 @@ const GlobeBackground = defineAsyncComponent({
 
 const route = useRoute()
 const citoyenStore = useCitoyenStore()
+const authStore = useAuthStore()
 
 // Le globe est purement décoratif et pèse ~170 ko compressés (three.js). Signaler un
 // problème ne doit jamais coûter ça à quelqu'un en forfait limité : fréquent à Mayotte,
@@ -52,6 +54,7 @@ onMounted(() => {
   // Au chargement, on récupère le profil (pseudo, photo) pour la barre de navigation,
   // et ça vérifie au passage que la session est toujours valide côté serveur.
   if (citoyenStore.estConnecte) citoyenStore.chargerProfil()
+  if (authStore.estConnecte) authStore.verifierSession()
 
   evaluerGlobe()
 

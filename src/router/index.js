@@ -150,8 +150,12 @@ router.beforeEach((to) => {
   if (to.meta.requiresAuthCitoyen && !authStore.estConnecte && !citoyenStore.estConnecte) {
     return { name: 'connexion', query: { retour: to.fullPath } }
   }
-  if ((to.name === 'connexion' || to.name === 'inscription') && (authStore.estConnecte || citoyenStore.estConnecte)) {
-    return { name: 'accueil' }
+  // Seule une session CITOYEN doit détourner de la connexion citoyenne. Une session
+  // admin n'a rien à voir avec ces pages : la confondre renvoyait silencieusement
+  // l'utilisateur à l'accueil, et le clic sur « Se connecter » semblait ne rien faire.
+  // On l'envoie dans son espace plutôt qu'à l'accueil : le clic a un effet visible.
+  if ((to.name === 'connexion' || to.name === 'inscription') && citoyenStore.estConnecte) {
+    return { name: 'mes-signalements' }
   }
   return true
 })
