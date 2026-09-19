@@ -1,5 +1,6 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Hero from '../components/Hero.vue'
 import CommentCaMarche from '../components/CommentCaMarche.vue'
 import FilterBar from '../components/FilterBar.vue'
@@ -8,8 +9,19 @@ import SignalementCardSkeleton from '../components/SignalementCardSkeleton.vue'
 import { useSignalementStore } from '../stores/signalementStore.js'
 
 const signalementStore = useSignalementStore()
+const route = useRoute()
+const router = useRouter()
 
-const filtres = ref({ commune: '', categorie: '', statut: '', recherche: '', tri: 'recent', urgent: false })
+// Les filtres viennent de l'URL : un lien du pied de page ou un lien partagé
+// (« tous les problèmes de voirie à Koungou ») ouvre la liste déjà filtrée.
+const filtres = ref({
+  commune: route.query.commune || '',
+  categorie: route.query.categorie || '',
+  statut: route.query.statut || '',
+  recherche: route.query.recherche || '',
+  tri: route.query.tri || 'recent',
+  urgent: route.query.urgent === '1'
+})
 
 let delaiRecherche = null
 
@@ -17,13 +29,62 @@ function rafraichir(page = 1) {
   signalementStore.charger(filtres.value, page)
 }
 
-watch(() => [filtres.value.commune, filtres.value.categorie, filtres.value.statut, filtres.value.tri, filtres.value.urgent], () => rafraichir(1))
+// L'URL reflète les filtres, et inversement. Les deux sens comparent avant d'écrire :
+// sans ça, chacun relancerait l'autre indéfiniment.
+function queryDepuisFiltres() {
+  const q = {}
+  for (const cle of ['commune', 'categorie', 'statut', 'recherche', 'tri']) {
+    if (filtres.value[cle] && !(cle === 'tri' && filtres.value[cle] === 'recent')) q[cle] = filtres.value[cle]
+  }
+  if (filtres.value.urgent) q.urgent = '1'
+  return q
+}
+
+function memeQuery(a, b) {
+  const cles = new Set([...Object.keys(a), ...Object.keys(b)])
+  return [...cles].every((c) => (a[c] || '') === (b[c] || ''))
+}
+
+function synchroniserUrl() {
+  const q = queryDepuisFiltres()
+  if (!memeQuery(q, route.query)) router.replace({ path: '/', query: q })
+}
+
+// Cliquer une catégorie du pied de page alors qu'on est DÉJÀ sur l'accueil ne
+// remonte pas le composant : sans cette écoute, le lien ne ferait rien.
+watch(
+  () => route.query,
+  (q) => {
+    if (memeQuery(queryDepuisFiltres(), q)) return
+    filtres.value = {
+      commune: q.commune || '',
+      categorie: q.categorie || '',
+      statut: q.statut || '',
+      recherche: q.recherche || '',
+      tri: q.tri || 'recent',
+      urgent: q.urgent === '1'
+    }
+    rafraichir(1)
+    document.querySelector('.signalements-section')?.scrollIntoView({ behavior: 'smooth' })
+  }
+)
+
+watch(
+  () => [filtres.value.commune, filtres.value.categorie, filtres.value.statut, filtres.value.tri, filtres.value.urgent],
+  () => {
+    synchroniserUrl()
+    rafraichir(1)
+  }
+)
 
 watch(
   () => filtres.value.recherche,
   () => {
     clearTimeout(delaiRecherche)
-    delaiRecherche = setTimeout(() => rafraichir(1), 300)
+    delaiRecherche = setTimeout(() => {
+      synchroniserUrl()
+      rafraichir(1)
+    }, 300)
   }
 )
 
