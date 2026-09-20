@@ -2,7 +2,29 @@
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
+import PanneauAide from '../components/PanneauAide.vue'
 import logo from '../assets/img/logo.svg'
+
+// C'est la page où les gens se retrouvent bloqués. Chaque point correspond à une
+// cause réelle de non-réception, vérifiée dans le code du serveur.
+const aide = [
+  {
+    titre: 'Regardez dans les spams',
+    texte: "L'email arrive parfois dans le courrier indésirable, surtout la première fois."
+  },
+  {
+    titre: "C'est l'adresse du compte qui compte",
+    texte: "Le lien ne part que vers l'adresse enregistrée à l'inscription, pas vers une autre."
+  },
+  {
+    titre: 'Compte créé avec un téléphone ?',
+    texte: "Sans email enregistré, aucun lien ne peut être envoyé. Écrivez-nous depuis la page Contact."
+  },
+  {
+    titre: 'Patientez une minute',
+    texte: "L'envoi n'est pas toujours instantané. Évitez de redemander plusieurs liens : seul le dernier reste valable."
+  }
+]
 
 const citoyenStore = useCitoyenStore()
 
@@ -28,6 +50,12 @@ const envoyer = async () => {
           <p class="text-secondary">
             Indiquez l'email de votre compte : nous vous envoyons un lien pour choisir un nouveau mot de passe.
           </p>
+          <PanneauAide
+            titre="Si l'email n'arrive pas"
+            :points="aide"
+            note="Le lien reste valable une heure. Passé ce délai, redemandez-en un : l'ancien ne fonctionne plus."
+          />
+
           <RouterLink to="/" class="lien-marque d-inline-flex align-items-center gap-2 mt-4" aria-label="Signale Mayotte — retour à l'accueil">
             <img :src="logo" alt="" width="36" height="36" />
             <span class="fw-bold">Signale Mayotte</span>

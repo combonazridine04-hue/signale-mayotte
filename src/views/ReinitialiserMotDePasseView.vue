@@ -4,7 +4,25 @@ import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
 import ChampMotDePasse from '../components/ChampMotDePasse.vue'
 import JaugeMotDePasse from '../components/JaugeMotDePasse.vue'
+import PanneauAide from '../components/PanneauAide.vue'
 import logo from '../assets/img/logo.svg'
+
+// Décrit exactement ce que fait le serveur : le jeton est effacé après usage et
+// toutes les sessions du compte sont révoquées.
+const aide = [
+  {
+    titre: 'Vos autres appareils seront déconnectés',
+    texte: "C'est voulu : si quelqu'un était entré dans votre compte, il en est sorti."
+  },
+  {
+    titre: 'Ce lien ne servira plus',
+    texte: 'Il est effacé dès que le mot de passe est changé. Un nouveau lien devra être redemandé.'
+  },
+  {
+    titre: 'Vous vous reconnectez juste après',
+    texte: "Avec votre email ou votre téléphone, et ce nouveau mot de passe."
+  }
+]
 import { motDePasseInterdit } from '../../shared/motDePasse.js'
 
 const route = useRoute()
@@ -56,6 +74,12 @@ const valider = async () => {
           <p class="text-secondary">
             Choisissez un nouveau mot de passe pour votre compte.
           </p>
+          <PanneauAide
+            titre="Ce qui va se passer"
+            :points="aide"
+            note="Un bon mot de passe est surtout un mot de passe long. Trois mots que vous seul reliez valent mieux qu'une suite de symboles impossible à retenir."
+          />
+
           <RouterLink to="/" class="lien-marque d-inline-flex align-items-center gap-2 mt-4" aria-label="Signale Mayotte — retour à l'accueil">
             <img :src="logo" alt="" width="36" height="36" />
             <span class="fw-bold">Signale Mayotte</span>
