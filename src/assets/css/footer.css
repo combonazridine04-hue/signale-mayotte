@@ -10,11 +10,6 @@
   background: var(--app-bg);
   border-top: 1px solid var(--glass-border);
   font-size: 0.92rem;
-  /* La barre de navigation flotte en bas de l'écran et occupe exactement 94 px
-     (70 de haut, posée à 24 du bord). Sans cette réserve elle recouvre la dernière
-     ligne du pied de page une fois tout en bas. On garde 10 px de dégagement et pas
-     un de plus : c'est de l'espace perdu en bas de chaque page du site. */
-  padding-bottom: 104px;
 }
 
 .footer-grid {
@@ -125,6 +120,14 @@
 
   .footer-brand {
     grid-column: 1 / -1;
+  }
+
+  /* En dessous de cette largeur, le pied de page devient plus haut que l'écran : la
+     barre de navigation ne peut plus se poser au-dessus et reste donc flottante. On
+     garde ici la réserve qui l'empêche de masquer la dernière ligne. Sur grand écran
+     elle se pose au-dessus du pied de page, et cette réserve serait de la place perdue. */
+  .site-footer {
+    padding-bottom: 104px;
   }
 }
 

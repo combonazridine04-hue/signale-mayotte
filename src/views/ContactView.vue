@@ -4,9 +4,10 @@ import { RouterLink } from 'vue-router'
 import { apiFetch } from '../utils/api.js'
 import PanneauAide from '../components/PanneauAide.vue'
 
-// L'ancienne page affichait un email, un téléphone et une adresse qui n'existent pas
-// (contact@signale-mayotte.yt, 02 69 00 00 00). Un contact faux est pire que pas de
-// contact : quelqu'un écrit ou appelle, et personne ne répond jamais.
+// L'adresse contact@signale-mayotte.yt est affichée parce qu'elle va être créée.
+// Le téléphone 02 69 00 00 00 et l'adresse postale, eux, restent retirés : c'étaient
+// des valeurs d'exemple, et un numéro qui ne sonne nulle part fait perdre son temps
+// à celui qui appelle.
 const motifs = [
   { titre: 'Une erreur sur un signalement', texte: 'Contenu déplacé, doublon, information fausse à corriger.' },
   { titre: 'Un souci avec votre compte', texte: 'Email de confirmation jamais reçu, connexion impossible.' },
@@ -81,6 +82,17 @@ const envoyer = async () => {
           </p>
 
           <PanneauAide titre="Écrivez-nous plutôt pour" :points="motifs" />
+
+          <!-- Adresse cliquable : un email affiché en texte brut oblige à le recopier
+               à la main, et se recopie mal sur téléphone. -->
+          <div class="contact-panel mt-4">
+            <!-- Sur une seule ligne : Vue supprime les blancs entre deux balises, et
+                 l'espace après « Email : » disparaissait. -->
+            <p class="mb-1"><strong>Email :</strong> <a href="mailto:contact@signale-mayotte.yt">contact@signale-mayotte.yt</a></p>
+            <p class="mb-0 text-secondary small">
+              Le formulaire ci-contre fait la même chose, sans avoir à ouvrir sa messagerie.
+            </p>
+          </div>
 
           <div class="contact-panel mt-4">
             <p class="mb-2 fw-semibold">Un problème à signaler&nbsp;?</p>

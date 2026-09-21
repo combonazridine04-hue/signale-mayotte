@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
 import ClocheNotifications from './ClocheNotifications.vue'
@@ -8,11 +8,74 @@ const citoyenStore = useCitoyenStore()
 
 const nomAffiche = computed(() => citoyenStore.pseudo || citoyenStore.nom || 'Mon profil')
 const initiale = computed(() => (citoyenStore.pseudo || citoyenStore.nom || '?').charAt(0).toUpperCase())
+
+// La barre flotte au-dessus du contenu, ce qui est pratique en cours de lecture mais
+// recouvrait le pied de page une fois tout en bas. On réservait donc une centaine de
+// pixels vides en bas de CHAQUE page pour l'éviter. Ici elle vient plutôt se poser
+// juste au-dessus du pied de page quand celui-ci arrive : plus de recouvrement, et
+// plus de réserve perdue.
+const pilule = ref(null)
+const MARGE = 14
+let decalage = 0
+let enAttente = false
+let observateur = null
+
+function ajuster() {
+  enAttente = false
+  if (!pilule.value) return
+
+  const pied = document.querySelector('.site-footer')
+  if (!pied) {
+    decalage = 0
+    pilule.value.style.transform = ''
+    return
+  }
+
+  // On repart de la position SANS décalage, sinon chaque calcul s'ajouterait au précédent.
+  const rect = pilule.value.getBoundingClientRect()
+  const basNaturel = rect.bottom + decalage
+  const hautNaturel = rect.top + decalage
+  const hautPied = pied.getBoundingClientRect().top
+
+  const souhaite = Math.round(basNaturel + MARGE - hautPied)
+  // Sur téléphone, le pied de page est plus haut que l'écran : une fois dedans, il n'y a
+  // plus de place au-dessus. Sans cette limite la barre sortait de l'écran par le haut et
+  // devenait inatteignable. On la laisse alors descendre et recouvrir le pied de page :
+  // une barre visible qui cache quelque chose vaut mieux qu'une barre introuvable.
+  const maximum = Math.round(hautNaturel - MARGE)
+
+  decalage = Math.max(0, Math.min(souhaite, maximum))
+  pilule.value.style.transform = decalage ? `translateY(${-decalage}px)` : ''
+}
+
+function planifier() {
+  if (enAttente) return
+  enAttente = true
+  requestAnimationFrame(ajuster)
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', planifier, { passive: true })
+  window.addEventListener('resize', planifier)
+  // La hauteur de la page change aussi sans défilement : chargement des signalements,
+  // ouverture d'un formulaire, images qui arrivent. Sans ça la barre resterait décalée.
+  if (window.ResizeObserver) {
+    observateur = new ResizeObserver(planifier)
+    observateur.observe(document.body)
+  }
+  planifier()
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', planifier)
+  window.removeEventListener('resize', planifier)
+  observateur?.disconnect()
+})
 </script>
 
 <template>
   <header class="site-header">
-    <nav class="icon-pill" aria-label="Navigation principale">
+    <nav ref="pilule" class="icon-pill" aria-label="Navigation principale">
       <RouterLink to="/" class="icon-pill-link" exact-active-class="active" aria-label="Accueil">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 11.5 12 4l9 7.5" />
