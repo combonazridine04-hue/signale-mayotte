@@ -25,9 +25,15 @@ function ajuster() {
   if (!pilule.value) return
 
   const pied = document.querySelector('.site-footer')
-  if (!pied) {
-    decalage = 0
-    pilule.value.style.transform = ''
+  // En dessous de 992 px, le pied de page est plus haut que l'écran : il n'y a jamais
+  // de place au-dessus de lui, et la barre finissait collée en haut de l'écran à
+  // recouvrir le nom du site. Là, elle reste flottante et c'est la réserve prévue dans
+  // la feuille de style à cette largeur qui évite qu'elle masque la dernière ligne.
+  if (!pied || !window.matchMedia('(min-width: 992px)').matches) {
+    if (decalage) {
+      decalage = 0
+      pilule.value.style.transform = ''
+    }
     return
   }
 
@@ -37,14 +43,9 @@ function ajuster() {
   const hautNaturel = rect.top + decalage
   const hautPied = pied.getBoundingClientRect().top
 
-  const souhaite = Math.round(basNaturel + MARGE - hautPied)
-  // Sur téléphone, le pied de page est plus haut que l'écran : une fois dedans, il n'y a
-  // plus de place au-dessus. Sans cette limite la barre sortait de l'écran par le haut et
-  // devenait inatteignable. On la laisse alors descendre et recouvrir le pied de page :
-  // une barre visible qui cache quelque chose vaut mieux qu'une barre introuvable.
+  // Filet de sécurité : la barre doit rester entièrement visible quoi qu'il arrive.
   const maximum = Math.round(hautNaturel - MARGE)
-
-  decalage = Math.max(0, Math.min(souhaite, maximum))
+  decalage = Math.max(0, Math.min(Math.round(basNaturel + MARGE - hautPied), maximum))
   pilule.value.style.transform = decalage ? `translateY(${-decalage}px)` : ''
 }
 
