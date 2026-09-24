@@ -1,177 +1,29 @@
 import { Router } from 'express'
 import crypto from 'node:crypto'
-import { rateLimit } from 'express-rate-limit'
 import { db } from '../db.js'
 import { CATEGORIES, COMMUNES, STATUTS } from '../../src/models/signalement.js'
-import {
-  envoyerNotificationSignalement,
-  envoyerConfirmationSignalement,
-  envoyerChangementStatut,
-  envoyerNouveauCommentaire,
-  envoyerMiseAJourSignalement
-} from '../mailer.js'
+import { envoyerNotificationSignalement, envoyerConfirmationSignalement, envoyerChangementStatut } from '../mailer.js'
 import { requireAuth, requireAuthUtilisateur } from '../middleware/requireAuth.js'
-import { sessionValide } from '../auth.js'
+import { limiteurCreation, limiteurSoutien } from '../middleware/limiteurs.js'
 import { supprimerPhoto } from '../storage.js'
 import { contientContenuExplicite } from '../moderation.js'
-import { creerUpload, traiterPhoto as traiterPhotoPartage } from '../photoUpload.js'
 import { creerNotification } from '../notifications.js'
-import { nomPublic } from '../../shared/nomPublic.js'
+import {
+  estUnRobot,
+  hasherIp,
+  sessionDeLaRequete,
+  estAutoriseASupprimer,
+  estAutoriseAModifier
+} from '../signalements/acces.js'
+import { mapRow, mapMiseAJour, mapCommentaire } from '../signalements/representation.js'
+import { MAX_PHOTOS, upload, traiterPhoto, traiterPhotos, contientUnePhotoInterdite } from '../signalements/photos.js'
+import { emailSuiviSignalement } from '../signalements/suivi.js'
 
-const MAX_PHOTOS = 5
-
-const limiteurCreation = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  limit: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { erreur: 'Trop de signalements envoyés, réessayez plus tard.' }
-})
-
-const limiteurSoutien = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 60,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { erreur: 'Trop de demandes, réessayez plus tard.' }
-})
-
-const limiteurCommentaire = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  limit: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { erreur: 'Trop de commentaires envoyés, réessayez plus tard.' }
-})
-
-const upload = creerUpload({ fileSize: 5 * 1024 * 1024, files: MAX_PHOTOS })
+// Routes des signalements eux-mêmes. Les commentaires et les mises à jour, qui sont
+// des sous-ressources, ont leurs propres fichiers ; les contrôles d'accès, la conversion
+// des données et le traitement des photos vivent dans server/signalements/.
 
 const router = Router()
-
-// Champ piège invisible : un visiteur humain ne le remplit jamais, un bot qui
-// remplit tous les champs automatiquement si.
-function estUnRobot(req) {
-  return Boolean(req.body?.site_web)
-}
-
-function hasherIp(req) {
-  return crypto.createHash('sha256').update(`signale-mayotte-soutien:${req.ip}`).digest('hex')
-}
-
-function sessionDeLaRequete(req) {
-  const entete = req.headers.authorization || ''
-  const token = entete.startsWith('Bearer ') ? entete.slice(7) : ''
-  return sessionValide(token)
-}
-
-// Autorisé si connecté en admin, si c'est le compte citoyen créateur, OU si le token secret
-// de suppression (donné au créateur anonyme historique, jamais exposé ailleurs) correspond.
-function estAutoriseASupprimer(req, existant) {
-  const session = sessionDeLaRequete(req)
-  if (session?.type === 'admin') return true
-  if (session?.type === 'utilisateur' && session.utilisateurId === existant.utilisateur_id) return true
-
-  const tokenSuppression = req.query.token || req.body?.token
-  return Boolean(tokenSuppression) && tokenSuppression === existant.token_suppression
-}
-
-// L'auteur peut corriger son signalement (faute de frappe, mauvaise commune...) tant
-// qu'il est encore « Signalé ». Dès qu'il est pris en charge, les services travaillent
-// dessus : le contenu ne doit plus changer sous leurs yeux. L'admin reste libre de corriger.
-function estAutoriseAModifier(req, existant) {
-  const session = sessionDeLaRequete(req)
-  if (session?.type === 'admin') return true
-  if (existant.statut !== 'Signalé') return false
-  if (session?.type === 'utilisateur' && session.utilisateurId === existant.utilisateur_id) return true
-
-  const tokenSuppression = req.query.token || req.body?.token
-  return Boolean(tokenSuppression) && tokenSuppression === existant.token_suppression
-}
-
-const traiterPhoto = traiterPhotoPartage
-
-async function traiterPhotos(fichiers) {
-  const urls = []
-  for (const fichier of fichiers) {
-    urls.push(await traiterPhoto(fichier))
-  }
-  return urls
-}
-
-// Renvoie true si au moins une des photos envoyées est jugée à caractère explicite
-// (analysée avant tout traitement/envoi, pour ne rien stocker si elle est rejetée).
-async function contientUnePhotoInterdite(fichiers) {
-  for (const fichier of fichiers) {
-    if (await contientContenuExplicite(fichier.buffer)) return true
-  }
-  return false
-}
-
-// À qui écrire pour les nouvelles d'un signalement : l'email de contact laissé
-// volontairement, sinon l'adresse du compte — et seulement si elle a été vérifiée,
-// une adresse mal saisie pouvant appartenir à quelqu'un d'autre.
-async function emailSuiviSignalement(signalementId) {
-  const { rows } = await db.query(
-    `SELECT s.email_contact, u.email AS email_compte, u.email_verifie
-     FROM signalements s
-     LEFT JOIN utilisateurs u ON u.id = s.utilisateur_id
-     WHERE s.id = $1`,
-    [signalementId]
-  )
-  const ligne = rows[0]
-  if (!ligne) return null
-  return ligne.email_contact || (ligne.email_verifie ? ligne.email_compte : null)
-}
-
-function mapRow(row, avecAuteur = false, utilisateurId = null) {
-  const base = {
-    id: row.id,
-    categorie: row.categorie,
-    commune: row.commune,
-    description: row.description,
-    photoUrls: row.photos || [],
-    photoResolution: row.photo_resolution || '',
-    statut: row.statut,
-    dateSignalement: row.date_signalement,
-    dateResolution: row.date_resolution || '',
-    dateModification: row.date_modification || '',
-    latitude: row.latitude,
-    longitude: row.longitude,
-    nbSoutiens: row.nb_soutiens || 0,
-    urgent: Boolean(row.urgent),
-    // Permet au client de proposer la correction à l'auteur, sans révéler qui sont
-    // les auteurs des autres signalements.
-    estMien: Boolean(utilisateurId && row.utilisateur_id === utilisateurId)
-  }
-  // Identité du créateur : jamais publique, visible uniquement par l'admin (traçabilité anti-abus).
-  if (avecAuteur) {
-    base.auteurNom = row.auteur_nom || null
-    base.auteurEmail = row.auteur_email || null
-    base.auteurTelephone = row.auteur_telephone || null
-  }
-  return base
-}
-
-function mapMiseAJour(row) {
-  return { id: row.id, texte: row.texte, dateCreation: row.date_creation }
-}
-
-function mapCommentaire(row, utilisateurId = null) {
-  // Si l'auteur a un compte encore actif, on affiche son pseudo/nom/avatar ACTUELS (pas
-  // celui au moment du commentaire) : changer son profil doit s'appliquer à tout l'historique.
-  // Le pseudo est affiché tel quel ; un vrai nom est toujours abrégé en « Prénom N. ».
-  const auteur = row.auteur_pseudo_actuel || nomPublic(row.auteur_nom_actuel || row.auteur)
-  return {
-    id: row.id,
-    parentId: row.parent_id || null,
-    auteur,
-    auteurAvatarUrl: row.auteur_avatar_actuel || null,
-    texte: row.texte,
-    dateCreation: row.date_creation,
-    // Permet au client de proposer la suppression sans révéler l'identité des autres auteurs.
-    estMien: Boolean(utilisateurId && row.utilisateur_id === utilisateurId)
-  }
-}
 
 router.get('/signalements/count', async (req, res) => {
   const { rows } = await db.query('SELECT COUNT(*)::int AS count FROM signalements')
@@ -661,159 +513,6 @@ router.put('/signalements/:id', upload.array('photos', MAX_PHOTOS), async (req, 
   )
 
   res.json(mapRow(rows[0]))
-})
-
-router.post('/signalements/:id/mises-a-jour', requireAuth, async (req, res) => {
-  const id = Number(req.params.id)
-  const { texte } = req.body || {}
-
-  if (typeof texte !== 'string' || texte.trim().length < 3) {
-    return res.status(400).json({ erreur: 'Le message doit contenir au moins 3 caractères.' })
-  }
-  if (texte.trim().length > 1000) {
-    return res.status(400).json({ erreur: 'Le message ne doit pas dépasser 1000 caractères.' })
-  }
-
-  const { rows: existant } = await db.query(
-    'SELECT id, categorie, commune, utilisateur_id FROM signalements WHERE id = $1',
-    [id]
-  )
-  if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
-
-  // Un suivi publié sans prévenir personne ne sert à rien : le citoyen ne revient pas
-  // consulter la page de lui-même.
-  creerNotification(existant[0].utilisateur_id, {
-    signalementId: id,
-    texte: `Du nouveau sur votre signalement (${existant[0].categorie} — ${existant[0].commune})`
-  })
-
-  const destinataire = await emailSuiviSignalement(id)
-  if (destinataire) envoyerMiseAJourSignalement(existant[0], destinataire, texte.trim())
-
-  const { rows } = await db.query(
-    'INSERT INTO mises_a_jour (signalement_id, texte, date_creation) VALUES ($1, $2, $3) RETURNING *',
-    [id, texte.trim(), new Date().toISOString()]
-  )
-
-  res.status(201).json(mapMiseAJour(rows[0]))
-})
-
-router.delete('/signalements/:id/mises-a-jour/:miseAJourId', requireAuth, async (req, res) => {
-  const { rowCount } = await db.query('DELETE FROM mises_a_jour WHERE id = $1 AND signalement_id = $2', [
-    Number(req.params.miseAJourId),
-    Number(req.params.id)
-  ])
-  if (!rowCount) return res.status(404).json({ erreur: 'Mise à jour introuvable.' })
-  res.status(204).end()
-})
-
-router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCommentaire, async (req, res) => {
-  const id = Number(req.params.id)
-  const { texte = '', parentId = null } = req.body || {}
-  // L'auteur affiché vient toujours du compte connecté, jamais d'un champ du formulaire :
-  // ça empêche de se faire passer pour quelqu'un d'autre. Le pseudo (s'il est défini)
-  // est affiché à la place du vrai nom pour préserver la confidentialité promise à l'inscription.
-  let auteur = `Admin (${req.admin?.identifiant})`
-  let auteurAvatarUrl = null
-  if (req.utilisateur) {
-    const { rows } = await db.query('SELECT nom, pseudo, avatar_url FROM utilisateurs WHERE id = $1', [
-      req.utilisateur.id
-    ])
-    auteur = rows[0]?.pseudo || nomPublic(rows[0]?.nom || req.utilisateur.nom)
-    auteurAvatarUrl = rows[0]?.avatar_url || null
-  }
-
-  if (texte.trim().length < 3) {
-    return res.status(400).json({ erreur: 'Le commentaire doit contenir au moins 3 caractères.' })
-  }
-  if (texte.trim().length > 1000) {
-    return res.status(400).json({ erreur: 'Le commentaire ne doit pas dépasser 1000 caractères.' })
-  }
-
-  const { rows: existant } = await db.query(
-    'SELECT id, categorie, commune, utilisateur_id FROM signalements WHERE id = $1',
-    [id]
-  )
-  if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
-  const signalement = existant[0]
-
-  // Réponse à un commentaire : on vérifie qu'il appartient bien à CE signalement, sinon
-  // on pourrait rattacher une réponse au fil d'un autre signalement.
-  let parent = null
-  if (parentId) {
-    const { rows: parents } = await db.query(
-      `SELECT c.id, c.parent_id, c.utilisateur_id, u.email AS email_auteur, u.email_verifie
-       FROM commentaires c
-       LEFT JOIN utilisateurs u ON u.id = c.utilisateur_id
-       WHERE c.id = $1 AND c.signalement_id = $2`,
-      [Number(parentId), id]
-    )
-    if (!parents.length) return res.status(400).json({ erreur: 'Commentaire introuvable.' })
-    parent = parents[0]
-  }
-
-  // Un seul niveau d'imbrication : répondre à une réponse rattache au commentaire
-  // d'origine, sinon les fils deviennent illisibles sur téléphone.
-  const parentFinal = parent ? parent.parent_id || parent.id : null
-
-  const { rows } = await db.query(
-    'INSERT INTO commentaires (signalement_id, auteur, texte, date_creation, utilisateur_id, parent_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-    [id, auteur, texte.trim(), new Date().toISOString(), req.utilisateur?.id || null, parentFinal]
-  )
-
-  // Personne n'est notifié de son propre message.
-  const commenteSonPropreSignalement = req.utilisateur && signalement.utilisateur_id === req.utilisateur.id
-  if (!commenteSonPropreSignalement) {
-    // Dans le site : fonctionne pour tout le monde, email vérifié ou non.
-    creerNotification(signalement.utilisateur_id, {
-      signalementId: id,
-      texte: `${auteur} a réagi à votre signalement (${signalement.categorie} — ${signalement.commune})`
-    })
-
-    const emailSignalement = await emailSuiviSignalement(id)
-    if (emailSignalement) {
-      envoyerNouveauCommentaire(signalement, emailSignalement, { auteur, texte: texte.trim(), estReponse: false })
-    }
-  }
-
-  // Si c'est une réponse, l'auteur du commentaire visé est prévenu à son tour —
-  // sauf s'il vient déjà d'être prévenu en tant qu'auteur du signalement.
-  const repondASoiMeme = req.utilisateur && parent?.utilisateur_id === req.utilisateur.id
-  const parentDejaPrevenu =
-    parent && parent.utilisateur_id === signalement.utilisateur_id && !commenteSonPropreSignalement
-  if (parent && !repondASoiMeme && !parentDejaPrevenu) {
-    creerNotification(parent.utilisateur_id, {
-      signalementId: id,
-      texte: `${auteur} a répondu à votre commentaire`
-    })
-
-    if (parent.email_verifie && parent.email_auteur) {
-      envoyerNouveauCommentaire(signalement, parent.email_auteur, { auteur, texte: texte.trim(), estReponse: true })
-    }
-  }
-
-  res.status(201).json({ ...mapCommentaire(rows[0]), auteurAvatarUrl })
-})
-
-// Un citoyen doit pouvoir retirer son propre commentaire : sans ça, publier une
-// information personnelle par erreur oblige à écrire à un administrateur.
-router.delete('/signalements/:id/commentaires/:commentaireId', requireAuthUtilisateur, async (req, res) => {
-  const commentaireId = Number(req.params.commentaireId)
-  const signalementId = Number(req.params.id)
-
-  const { rows } = await db.query('SELECT utilisateur_id FROM commentaires WHERE id = $1 AND signalement_id = $2', [
-    commentaireId,
-    signalementId
-  ])
-  if (!rows.length) return res.status(404).json({ erreur: 'Commentaire introuvable.' })
-
-  const estAuteur = req.utilisateur && rows[0].utilisateur_id === req.utilisateur.id
-  if (!req.admin && !estAuteur) {
-    return res.status(403).json({ erreur: 'Vous ne pouvez supprimer que vos propres commentaires.' })
-  }
-
-  await db.query('DELETE FROM commentaires WHERE id = $1', [commentaireId])
-  res.status(204).end()
 })
 
 router.delete('/signalements/:id', async (req, res) => {

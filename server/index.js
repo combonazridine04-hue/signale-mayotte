@@ -12,6 +12,8 @@ const express = (await import('express')).default
 const helmet = (await import('helmet')).default
 const { rateLimit } = await import('express-rate-limit')
 const signalementsRouter = (await import('./routes/signalements.js')).default
+const commentairesRouter = (await import('./routes/commentaires.js')).default
+const misesAJourRouter = (await import('./routes/misesAJour.js')).default
 const authRouter = (await import('./routes/auth.js')).default
 const contactRouter = (await import('./routes/contact.js')).default
 const adminsRouter = (await import('./routes/admins.js')).default
@@ -69,6 +71,8 @@ app.use(express.json())
 app.use('/api/auth/login', limiteurLogin)
 app.use('/api/auth', authRouter)
 app.use('/api', signalementsRouter)
+app.use('/api', commentairesRouter)
+app.use('/api', misesAJourRouter)
 app.use('/api', contactRouter)
 app.use('/api', moderationRouter)
 app.use('/api', notificationsRouter)
