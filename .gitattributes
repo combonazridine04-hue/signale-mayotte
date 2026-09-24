@@ -1,2 +1,13 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+# Fins de ligne LF partout, y compris sous Windows : c'est ce qu'attendent Prettier
+# (endOfLine: lf) et EditorConfig. Sans « eol=lf », le réglage core.autocrlf d'un
+# poste Windows convertirait les fichiers en CRLF au checkout, et `npm run
+# format:check` échouerait alors sur l'ensemble du projet.
+* text=auto eol=lf
+
+# Binaires : jamais de conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
