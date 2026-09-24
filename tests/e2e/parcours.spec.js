@@ -1,10 +1,37 @@
 import { writeFileSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright-chromium'
 
 delete process.env.EMAIL_EXPEDITEUR
 delete process.env.EMAIL_MOT_DE_PASSE_APP
+
+// Le .env doit être lu AVANT la garde ci-dessous, sinon TEST_DATABASE_URL serait
+// toujours vide et le test refuserait de démarrer même correctement configuré.
+try {
+  const racine = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
+  process.loadEnvFile(path.join(racine, '.env'))
+} catch {
+  // Pas de .env : les variables doivent déjà être dans l'environnement.
+}
+
+// Garde-fou critique, identique à celle de server/tests/helpers.js. Ce test appelle
+// reinitialiserDonneesDemo(), qui fait un TRUNCATE de la table des signalements : sans
+// base de test séparée, il efface les données réelles. La protection n'avait été posée
+// que sur les tests d'API — celui-ci pointait encore sur la base de production.
+if (!process.env.TEST_DATABASE_URL) {
+  throw new Error(
+    "TEST_DATABASE_URL manquant. Ce test efface la table des signalements : créez un " +
+      'projet Supabase séparé pour les tests et renseignez TEST_DATABASE_URL dans .env (voir .env.example).'
+  )
+}
+if (process.env.TEST_DATABASE_URL === process.env.DATABASE_URL) {
+  throw new Error(
+    'TEST_DATABASE_URL est identique à DATABASE_URL : ce test effacerait les données de production.'
+  )
+}
+process.env.DATABASE_URL = process.env.TEST_DATABASE_URL
 
 const { app } = await import('../../server/index.js')
 const { reinitialiserDonneesDemo } = await import('../../server/db.js')
