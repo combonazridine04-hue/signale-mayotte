@@ -27,3 +27,7 @@ server/data
 *.njsproj
 *.sln
 *.sw?
+
+# Rendus temporaires pour relecture (regenerables depuis les .docx)
+docs/*.pdf
+docs/*.jpg
