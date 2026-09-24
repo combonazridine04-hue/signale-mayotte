@@ -1,8 +1,12 @@
 {
   "name": "signale-mayotte",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Plateforme citoyenne de signalement des problèmes du quotidien dans les communes de Mayotte.",
   "type": "module",
+  "engines": {
+    "node": ">=20.12.0"
+  },
   "scripts": {
     "dev": "concurrently \"npm:dev:client\" \"npm:server\"",
     "dev:client": "vite",

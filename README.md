@@ -1,103 +1,137 @@
 # Signale Mayotte
 
-Plateforme citoyenne pour signaler les problèmes du quotidien (déchets, voirie, éclairage, eau) dans les communes de Mayotte. Projet fil rouge.
+[![Intégration continue](https://github.com/combonazridine04-hue/signale-mayotte/actions/workflows/ci.yml/badge.svg)](https://github.com/combonazridine04-hue/signale-mayotte/actions/workflows/ci.yml)
+
+Plateforme citoyenne pour signaler les problèmes du quotidien — dépôts sauvages, voirie, éclairage public, eau — dans les communes de Mayotte, et suivre publiquement leur traitement.
+
+**En ligne :** https://signale-mayotte.onrender.com
+
+## Fonctionnalités
+
+- **Signaler** un problème avec une photo, une catégorie et un point précis sur la carte. Le service compétent (mairie, Conseil départemental, SMAE…) est indiqué automatiquement selon la catégorie.
+- **Éviter les doublons** : au moment de la saisie, les signalements similaires à moins de 400 m sont proposés, pour les soutenir plutôt que d'en créer un nouveau.
+- **Suivre** l'avancement (Signalé → En cours → Résolu), avec notifications dans le site et par email.
+- **Participer** : soutenir un signalement, le commenter, répondre à un commentaire.
+- **Marquer une urgence** : un signalement présentant un danger immédiat passe en tête de liste.
+- **Consulter** sans compte : liste filtrable, carte, statistiques publiques de transparence.
+- **Administrer** : modération, changement de statut avec photo de résolution, suivi officiel, export CSV.
+
+L'identité des contributeurs n'est jamais affichée : un pseudo, ou à défaut le prénom suivi de l'initiale du nom.
 
 ## Stack
 
-- **Front** : Vue 3 (`<script setup>`), Vue Router, Pinia, Vite, Bootstrap 5, Three.js (globe 3D, chargé à la demande), Leaflet (carte)
-- **Back** : Node.js + Express, PostgreSQL (hébergé sur Supabase), Supabase Storage (photos), Multer + Sharp (upload et traitement des photos), Nodemailer (notifications email), bcrypt (comptes admin)
+|                 | Technologies                                                                             |
+| --------------- | ---------------------------------------------------------------------------------------- |
+| **Front**       | Vue 3 (`<script setup>`), Vue Router, Pinia, Vite, Bootstrap 5, Leaflet, Three.js        |
+| **Back**        | Node.js, Express 5, `pg`, bcryptjs, helmet, express-rate-limit, multer, sharp            |
+| **Données**     | PostgreSQL (Supabase), Supabase Storage pour les photos                                  |
+| **Services**    | Brevo (emails, par API HTTPS), MapTiler (fonds de carte), nsfwjs (modération des photos) |
+| **Qualité**     | ESLint, Prettier, EditorConfig, GitHub Actions                                           |
+| **Hébergement** | Render                                                                                   |
 
-## Installation
+## Architecture
+
+```
+Navigateur ──HTTP/JSON──▶ Express ──▶ PostgreSQL
+  (Vue 3)                    │
+                             ├──▶ Supabase Storage  (photos)
+                             └──▶ API Brevo         (emails)
+```
+
+En production, un seul service Node.js sert l'API **et** le front compilé : même origine, donc aucune configuration CORS.
+
+```
+server/
+├── index.js            middlewares globaux, montage des routeurs, gestion des erreurs
+├── routes/             un routeur par ressource (signalements, commentaires, auth…)
+├── signalements/       contrôles d'accès, conversion des données, photos
+├── middleware/         authentification, limites de débit
+├── db.js               connexion PostgreSQL et schéma
+└── auth.js, mailer.js, storage.js, moderation.js…
+src/
+├── views/              écrans
+├── components/         composants réutilisables
+├── stores/             état partagé (Pinia)
+└── utils/api.js        point d'entrée unique des appels HTTP
+shared/                 règles utilisées par le client ET le serveur (téléphone, mot de passe…)
+```
+
+Le dossier `shared/` garantit qu'une règle de validation, écrite une seule fois, s'applique à l'identique dans le navigateur (retour immédiat) et sur le serveur (contrôle final).
+
+## Démarrage
+
+**Prérequis :** Node.js 20.12 ou plus récent, un projet [Supabase](https://supabase.com) (base PostgreSQL et stockage).
 
 ```bash
 npm install
-```
-
-## Lancer le site en développement
-
-Une seule commande, qui démarre le front (Vite, port 5173) et l'API (Express, port 3001) en parallèle — **le site ne fonctionne pas sans l'API** (la connexion et les signalements en dépendent) :
-
-```bash
+cp .env.example .env    # puis renseigner les valeurs
 npm run dev
 ```
 
-Le site est accessible sur l'URL affichée par Vite (ex. `http://localhost:5173/`). Le front proxifie automatiquement `/api` vers le serveur Express.
+`npm run dev` lance le front (Vite, port 5173) et l'API (Express, port 3001) ensemble ; Vite redirige `/api` vers Express. Le site est sur `http://localhost:5173`.
 
-Pour lancer le front et le serveur séparément (deux terminaux) :
+Au premier démarrage, le schéma de la base est créé automatiquement, ainsi que le bucket de photos et le premier compte administrateur.
 
-```bash
-npm run dev:client   # front seul (Vite)
-npm run server       # API seule (Express)
-```
+## Configuration
 
-## Lancer une version "production"
+Toutes les variables sont décrites dans [`.env.example`](.env.example). Les principales :
 
-Le serveur Express peut aussi servir le site déjà compilé, sur un seul port :
+| Variable                                    | Rôle                                                              |
+| ------------------------------------------- | ----------------------------------------------------------------- |
+| `DATABASE_URL`                              | Connexion PostgreSQL — **obligatoire**                            |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Stockage des photos — **obligatoires**                            |
+| `ADMIN_IDENTIFIANT`, `ADMIN_MOT_DE_PASSE`   | Premier compte administrateur, créé au tout premier démarrage     |
+| `BREVO_API_KEY`, `BREVO_EXPEDITEUR`         | Envoi des emails. Sans eux, le site fonctionne mais n'envoie rien |
+| `VITE_MAPTILER_KEY`                         | Fonds de carte. Sans elle, repli sur OpenStreetMap France         |
+| `TEST_DATABASE_URL`                         | Base **distincte** pour les tests (voir plus bas)                 |
 
-```bash
-npm run build
-npm start
-```
+> Les emails passent par l'API HTTPS de Brevo et non par SMTP : Render bloque les connexions SMTP sortantes, et un envoi SMTP y échouerait en silence.
 
-Le site complet (front + API + photos) est alors disponible sur `http://localhost:3001` (port configurable via la variable d'environnement `PORT`).
+## Scripts
 
-## Configuration (`.env`)
-
-Le fichier `.env` est **obligatoire** (le serveur refuse de démarrer sans lui). Avant le premier lancement, copier `.env.example` en `.env` (jamais commité) et renseigner :
-
-- `DATABASE_URL` : chaîne de connexion PostgreSQL (Project Settings > Database > Connection string, sur Supabase)
-- `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` : stockage des photos (Project Settings > API sur Supabase). Le bucket `signalement-photos` (public) est créé automatiquement au démarrage s'il n'existe pas.
-- `ADMIN_IDENTIFIANT` / `ADMIN_MOT_DE_PASSE` : identifiants du premier compte admin, créé automatiquement au tout premier démarrage (voir plus bas — d'autres comptes peuvent ensuite être ajoutés depuis l'interface). Choisir un mot de passe long et aléatoire. **Si le mot de passe contient `#`, `"` ou un espace en fin de valeur, l'entourer de guillemets** (ex. `ADMIN_MOT_DE_PASSE="mon#mot de passe"`), sinon le fichier `.env` le tronquera silencieusement à partir du `#`.
-
-## Données
-
-Les signalements sont stockés dans une base PostgreSQL hébergée sur Supabase. La table `signalements` est créée automatiquement au démarrage avec 3 signalements de démo si elle est vide. Les messages du formulaire de contact sont stockés dans la table `messages_contact`. Un signalement peut avoir jusqu'à 5 photos, hébergées sur Supabase Storage (métadonnées EXIF, dont la géolocalisation GPS, systématiquement supprimées avant l'envoi).
-
-## Espace public / espace admin
-
-Le site est composé de deux espaces séparés, visuellement distincts :
-
-- **Site public** (`/`) : consultation des signalements, carte, formulaire de contact accessibles sans compte. Envoyer un signalement, soutenir un signalement existant ou commenter nécessite un compte citoyen (`/inscription`, `/connexion` — distinct du compte admin), pour limiter les abus.
-- **Backoffice admin** (`/admin`, connexion sur `/admin/login`) : gestion des signalements (statut, modification, suppression), des messages de contact reçus, et des comptes admin (plusieurs comptes possibles, chacun avec son propre mot de passe — utile pour tracer qui fait quoi). Le premier compte est créé automatiquement depuis `ADMIN_IDENTIFIANT` / `ADMIN_MOT_DE_PASSE` dans `.env` ; les suivants se créent depuis l'onglet "Comptes" du backoffice. L'accès à `/admin` sans être connecté redirige automatiquement vers `/admin/login`.
-
-## Carte
-
-Chaque signalement peut être localisé (clic sur la mini-carte du formulaire, ou bouton "Utiliser ma position actuelle"). La page `/carte` affiche tous les signalements localisés sur une carte OpenStreetMap, avec une couleur de marqueur selon le statut. La localisation reste facultative.
-
-## Engagement citoyen
-
-- **Soutenir un signalement** : un visiteur peut soutenir un signalement existant ("Moi aussi") plutôt que d'en recréer un doublon. Un signalement ne peut être soutenu qu'une fois par IP.
-- **Suppression par le créateur** : sans avoir de compte, la personne qui a créé un signalement peut le supprimer elle-même (jeton secret retenu par son navigateur, et rappelé dans l'email de confirmation si elle en a laissé un).
-- **Suivi public** : l'admin peut publier des mises à jour visibles par tous sur la fiche d'un signalement (ex. "Travaux prévus le 15/09").
-- **Photo après résolution** : en marquant un signalement "Résolu", l'admin peut ajouter une photo montrant le problème réglé, affichée à côté de la photo initiale.
-- **Notifications de suivi** : si un email a été laissé à la création, le citoyen reçoit un message à chaque changement de statut de son signalement (pas seulement à la création). Cet email n'est jamais affiché publiquement ni visible des autres visiteurs.
-- **Page `/transparence`** : statistiques publiques (total, répartition par statut et par commune, taux et délai moyen de résolution), mises à jour en temps réel.
-- **Export CSV** : depuis l'onglet "Signalements" du backoffice, export de tous les signalements pour un usage externe (réunion municipale, tableur...).
-
-## Notifications email
-
-Un email peut être envoyé automatiquement à chaque nouveau signalement. Pour l'activer :
-
-1. Copier `.env.example` en `.env` (jamais commité)
-2. Renseigner `EMAIL_EXPEDITEUR` (un compte Gmail) et `EMAIL_MOT_DE_PASSE_APP` (un [mot de passe d'application](https://myaccount.google.com/security) généré pour ce compte — pas le mot de passe normal)
-3. Redémarrer le serveur
-
-Sans `EMAIL_EXPEDITEUR` / `EMAIL_MOT_DE_PASSE_APP`, le site fonctionne normalement : les messages de contact et signalements sont bien enregistrés, seules les notifications email sont désactivées (message clair dans les logs du serveur).
-
-## Sécurité
-
-- En-têtes de sécurité HTTP (CSP, anti-clickjacking, HSTS...) via `helmet`.
-- Limite anti-brute-force sur la connexion admin (10 tentatives / 15 min / IP).
-- Limite anti-spam sur la création de signalement (5 / heure / IP) et l'envoi de message de contact (10 / 15 min / IP), plus un champ piège invisible (honeypot) sur les deux formulaires publics.
-- Mots de passe admin hashés (bcrypt), jamais stockés en clair. Sessions en mémoire, expirant après 12h.
-- Upload de photo restreint aux formats jpg/png/webp/gif (SVG explicitement exclu), métadonnées EXIF supprimées automatiquement.
+| Commande               | Rôle                                                |
+| ---------------------- | --------------------------------------------------- |
+| `npm run dev`          | Front et API en développement                       |
+| `npm run build`        | Compile le front dans `dist/`                       |
+| `npm start`            | Lance le serveur de production (sert aussi `dist/`) |
+| `npm run lint`         | Analyse statique (ESLint)                           |
+| `npm run lint:fix`     | Corrige automatiquement ce qui peut l'être          |
+| `npm run format`       | Met le code en forme (Prettier)                     |
+| `npm run format:check` | Vérifie la mise en forme sans rien modifier         |
+| `npm run test:api`     | Tests de l'API (`node:test`)                        |
+| `npm run test:e2e`     | Parcours utilisateur dans un vrai navigateur        |
 
 ## Tests
 
+Les tests remettent la base à zéro (`TRUNCATE`) à chaque exécution. Ils exigent donc une base de données **séparée**, désignée par `TEST_DATABASE_URL`, et **refusent de démarrer** si cette variable est absente ou identique à `DATABASE_URL`.
+
+Créer pour cela un second projet Supabase, gratuit, réservé aux tests.
+
+> **À reprendre :** le test de parcours (`tests/e2e/parcours.spec.js`) décrit un fonctionnement antérieur — dépôt d'un signalement sans compte, modification réservée à l'administrateur. Depuis, un compte est obligatoire pour signaler et l'auteur peut corriger son signalement tant qu'il n'est pas pris en charge. Le test doit être mis à jour avant de servir de non-régression.
+
+## Qualité du code
+
+À chaque `push`, GitHub Actions vérifie le lint, la mise en forme et la compilation ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). Avant de pousser :
+
 ```bash
-npm run test:api   # tests de l'API (node:test)
-npm run test:e2e   # parcours complet dans un vrai navigateur (Playwright)
-npm test           # build + les deux suites de tests
+npm run lint && npm run format:check && npm run build
 ```
 
-⚠️ **Les tests utilisent la vraie base définie dans `DATABASE_URL`**, pas une base isolée : ils vident la table `signalements` (`TRUNCATE`) et la remplissent avec les 3 signalements de démo à chaque lancement. Ne pas les lancer sur une base contenant de vraies données sans faire de sauvegarde avant.
+## Déploiement
+
+Hébergé sur Render, en service web Node.js :
+
+- **Build :** `npm install && npm run build`
+- **Démarrage :** `npm start`
+- **Variables :** à renseigner dans l'interface Render, jamais dans le dépôt
+
+Chaque `push` sur `main` redéploie automatiquement. Un workflow planifié ([`keep-alive.yml`](.github/workflows/keep-alive.yml)) visite le site toutes les dix minutes, pour limiter la mise en veille de l'offre gratuite.
+
+## Sécurité
+
+- Mots de passe hachés avec bcrypt ; comparaison factice quand un compte n'existe pas, pour ne pas révéler son existence par le temps de réponse.
+- Requêtes SQL toujours paramétrées ; tri choisi dans une liste blanche.
+- En-têtes HTTP via helmet, dont une politique de sécurité du contenu n'autorisant aucun script tiers.
+- Limites de débit sur toutes les routes sensibles, et champ piège contre les robots.
+- Photos : liste blanche de formats (SVG exclu), réencodage systématique, suppression des métadonnées dont la position GPS, analyse automatique du contenu avant publication.
+- Données d'identité des contributeurs exposées uniquement aux administrateurs.
