@@ -58,7 +58,7 @@ export const useCitoyenStore = defineStore('citoyen', {
           body: JSON.stringify({ nom, email, telephone, motDePasse, site_web })
         })
       } catch {
-        return { succes: false, erreur: "Impossible de contacter le serveur. Vérifie qu'il est bien lancé." }
+        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
       }
 
       if (!reponse.ok) {
@@ -80,7 +80,7 @@ export const useCitoyenStore = defineStore('citoyen', {
           body: JSON.stringify({ identifiant, motDePasse })
         })
       } catch {
-        return { succes: false, erreur: "Impossible de contacter le serveur. Vérifie qu'il est bien lancé." }
+        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
       }
 
       if (!reponse.ok) {
@@ -127,7 +127,7 @@ export const useCitoyenStore = defineStore('citoyen', {
         })
         return { succes: true }
       } catch {
-        return { succes: false, erreur: "Impossible de contacter le serveur." }
+        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
       }
     },
 
@@ -140,7 +140,7 @@ export const useCitoyenStore = defineStore('citoyen', {
           body: JSON.stringify({ token, motDePasse })
         })
       } catch {
-        return { succes: false, erreur: "Impossible de contacter le serveur." }
+        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
       }
 
       if (!reponse.ok) {
@@ -163,7 +163,7 @@ export const useCitoyenStore = defineStore('citoyen', {
         }
         return { succes: true }
       } catch {
-        return { succes: false, erreur: "Impossible de contacter le serveur." }
+        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
       }
     },
 
@@ -176,7 +176,7 @@ export const useCitoyenStore = defineStore('citoyen', {
           body: JSON.stringify({ code })
         })
       } catch {
-        return { succes: false, erreur: "Impossible de contacter le serveur." }
+        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
       }
 
       if (!reponse.ok) {
@@ -211,7 +211,7 @@ export const useCitoyenStore = defineStore('citoyen', {
         this.stats = profil.stats || { signalements: 0, resolus: 0, soutiens: 0 }
         return { succes: true }
       } catch {
-        return { succes: false, erreur: "Impossible de contacter le serveur." }
+        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
       }
     },
 
@@ -224,7 +224,7 @@ export const useCitoyenStore = defineStore('citoyen', {
           body: JSON.stringify({ pseudo })
         })
       } catch {
-        return { succes: false, erreur: "Impossible de contacter le serveur." }
+        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
       }
 
       if (!reponse.ok) {
@@ -266,6 +266,13 @@ export const useCitoyenStore = defineStore('citoyen', {
       }
     },
 
+    // Une photo de profil dont le fichier n'existe plus affichait une icône d'image
+    // brisée dans la barre de navigation et sur le profil. On retombe sur l'initiale,
+    // qui est déjà l'affichage prévu quand il n'y a pas de photo.
+    avatarIllisible() {
+      this.avatarUrl = ''
+    },
+
     async televerserAvatar(fichier) {
       let reponse
       try {
@@ -277,7 +284,7 @@ export const useCitoyenStore = defineStore('citoyen', {
           body: formData
         })
       } catch {
-        return { succes: false, erreur: "Impossible de contacter le serveur." }
+        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
       }
 
       if (!reponse.ok) {
@@ -303,7 +310,7 @@ export const useCitoyenStore = defineStore('citoyen', {
         this.avatarUrl = ''
         return { succes: true }
       } catch {
-        return { succes: false, erreur: "Impossible de contacter le serveur." }
+        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
       }
     }
   }

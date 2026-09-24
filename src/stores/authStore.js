@@ -39,14 +39,14 @@ export const useAuthStore = defineStore('auth', {
           body: JSON.stringify({ identifiant, motDePasse })
         })
       } catch {
-        return { succes: false, erreur: "Impossible de contacter le serveur. Vérifie qu'il est bien lancé." }
+        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
       }
 
       if (!reponse.ok) {
         if (reponse.status === 401) {
           return { succes: false, erreur: 'Identifiant ou mot de passe incorrect.' }
         }
-        return { succes: false, erreur: "Impossible de contacter le serveur. Vérifie qu'il est bien lancé." }
+        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
       }
 
       const donnees = await reponse.json()

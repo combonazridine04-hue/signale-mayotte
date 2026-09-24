@@ -44,8 +44,23 @@ export async function supprimerPhoto(photoUrl) {
   await supabase.storage.from(BUCKET).remove([nomFichier]).catch(() => {})
 }
 
-export async function viderPhotos() {
+// Vide les photos des signalements. Les photos de profil sont rangées dans le même
+// espace de stockage : sans la liste à préserver, cette fonction les détruisait toutes.
+// C'est déjà arrivé — la remise à zéro des données de démonstration a effacé les photos
+// de profil de tous les comptes, qui pointent depuis vers des fichiers inexistants.
+export async function viderPhotos(urlsAPreserver = []) {
   const { data } = await supabase.storage.from(BUCKET).list()
   if (!data?.length) return
-  await supabase.storage.from(BUCKET).remove(data.map((f) => f.name))
+
+  const aGarder = new Set(
+    urlsAPreserver
+      .filter(Boolean)
+      .map((u) => u.split(`/${BUCKET}/`).pop())
+      .filter(Boolean)
+  )
+
+  const aSupprimer = data.map((f) => f.name).filter((nom) => !aGarder.has(nom))
+  if (aSupprimer.length) {
+    await supabase.storage.from(BUCKET).remove(aSupprimer)
+  }
 }

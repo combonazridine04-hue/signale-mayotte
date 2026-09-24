@@ -570,7 +570,7 @@ const marquerResolu = async () => {
                   <li v-for="fil in filsCommentaires" :key="fil.id" class="detail-suivi-item">
                     <div class="d-flex align-items-center gap-2">
                       <div class="detail-commentaire-avatar">
-                        <img v-if="fil.auteurAvatarUrl" :src="fil.auteurAvatarUrl" alt="" />
+                        <img v-if="fil.auteurAvatarUrl" :src="fil.auteurAvatarUrl" alt="" @error="fil.auteurAvatarUrl = null" />
                         <span v-else>{{ fil.auteur.charAt(0).toUpperCase() }}</span>
                       </div>
                       <p class="mb-0 fw-semibold">{{ fil.auteur }}</p>
@@ -604,7 +604,7 @@ const marquerResolu = async () => {
                       <li v-for="r in fil.reponses" :key="r.id" class="commentaire-reponse">
                         <div class="d-flex align-items-center gap-2">
                           <div class="detail-commentaire-avatar">
-                            <img v-if="r.auteurAvatarUrl" :src="r.auteurAvatarUrl" alt="" />
+                            <img v-if="r.auteurAvatarUrl" :src="r.auteurAvatarUrl" alt="" @error="r.auteurAvatarUrl = null" />
                             <span v-else>{{ r.auteur.charAt(0).toUpperCase() }}</span>
                           </div>
                           <p class="mb-0 fw-semibold">{{ r.auteur }}</p>

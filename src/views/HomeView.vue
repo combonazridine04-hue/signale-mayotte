@@ -118,8 +118,13 @@ onMounted(() => rafraichir(1))
 
         <FilterBar v-model="filtres" class="mb-4" />
 
-        <div v-if="signalementStore.erreur" class="alert alert-danger">
-          {{ signalementStore.erreur }}
+        <!-- Une erreur sans moyen d'action laisse l'habitant devant une page morte :
+             il doit pouvoir relancer sans recharger toute la page. -->
+        <div v-if="signalementStore.erreur" class="alert alert-danger d-flex flex-wrap align-items-center gap-3">
+          <span>{{ signalementStore.erreur }}</span>
+          <button type="button" class="btn btn-sm btn-outline-light" @click="rafraichir(1)">
+            Réessayer
+          </button>
         </div>
 
         <template v-else>

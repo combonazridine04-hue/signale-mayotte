@@ -160,7 +160,7 @@ onBeforeUnmount(() => {
         :aria-label="`Mon profil — connecté en tant que ${nomAffiche}`"
       >
         <span class="nav-avatar">
-          <img v-if="citoyenStore.avatarUrl" :src="citoyenStore.avatarUrl" alt="" />
+          <img v-if="citoyenStore.avatarUrl" :src="citoyenStore.avatarUrl" alt="" @error="citoyenStore.avatarIllisible()" />
           <span v-else>{{ initiale }}</span>
         </span>
         <span class="nav-infobulle">

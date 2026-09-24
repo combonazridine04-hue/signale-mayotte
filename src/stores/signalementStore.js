@@ -48,7 +48,7 @@ export const useSignalementStore = defineStore('signalement', {
         this.totalFiltre = donnees.total
         this.page = donnees.page
       } catch (e) {
-        this.erreur = "Impossible de contacter le serveur. Vérifie qu'il est bien lancé."
+        this.erreur = "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant."
         this.signalements = []
         this.totalFiltre = 0
       } finally {

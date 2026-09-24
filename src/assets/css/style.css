@@ -415,3 +415,21 @@ main {
 .form-text {
   color: var(--app-muted);
 }
+
+/* Bandeau affiché pendant que le serveur endormi redémarre. Discret mais au-dessus
+   de tout : c'est la seule chose qui explique une page qui tarde à s'afficher. */
+.bandeau-reveil {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1050;
+  margin: 0;
+  padding: 9px 16px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #0b1220;
+  background: #fbbf24;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}

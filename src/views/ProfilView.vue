@@ -131,7 +131,7 @@ const deconnecter = () => {
                 :title="citoyenStore.avatarUrl ? 'Changer la photo' : 'Ajouter une photo'"
                 @click="choisirAvatar"
               >
-                <img v-if="citoyenStore.avatarUrl" :src="citoyenStore.avatarUrl" alt="" />
+                <img v-if="citoyenStore.avatarUrl" :src="citoyenStore.avatarUrl" alt="" @error="citoyenStore.avatarIllisible()" />
                 <span v-else class="profil-avatar-initiale">{{ initiale }}</span>
                 <span class="profil-avatar-overlay">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">

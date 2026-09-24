@@ -187,7 +187,12 @@ const donneesDemo = [
 
 export async function reinitialiserDonneesDemo() {
   await db.query('TRUNCATE TABLE signalements RESTART IDENTITY CASCADE')
-  await viderPhotos()
+  // Les photos de profil vivent dans le même espace de stockage que celles des
+  // signalements : on les liste pour que la remise à zéro ne les emporte pas avec elle.
+  const { rows: avatars } = await db.query(
+    'SELECT avatar_url FROM utilisateurs WHERE avatar_url IS NOT NULL'
+  )
+  await viderPhotos(avatars.map((r) => r.avatar_url))
   for (const s of donneesDemo) {
     await db.query(
       `INSERT INTO signalements (categorie, commune, description, photos, statut, date_signalement, latitude, longitude)
