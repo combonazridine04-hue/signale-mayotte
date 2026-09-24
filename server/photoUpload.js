@@ -25,9 +25,20 @@ export async function traiterPhoto(fichier, { largeurMax } = {}) {
   // .rotate() sans argument applique l'orientation EXIF avant de la supprimer,
   // pour éviter les photos de travers ; toBuffer() par défaut retire déjà toutes
   // les métadonnées (dont la géolocalisation GPS embarquée par les smartphones).
-  let image = sharp(fichier.buffer, { animated: format === 'gif' }).rotate()
-  if (largeurMax) image = image.resize({ width: largeurMax, height: largeurMax, fit: 'cover' })
-  const buffer = await image.toFormat(format).toBuffer()
+  let buffer
+  try {
+    let image = sharp(fichier.buffer, { animated: format === 'gif' }).rotate()
+    if (largeurMax) image = image.resize({ width: largeurMax, height: largeurMax, fit: 'cover' })
+    buffer = await image.toFormat(format).toBuffer()
+  } catch {
+    // Type annoncé correct mais contenu illisible (fichier corrompu, renommé…) : c'est
+    // une erreur du fichier envoyé, pas du serveur. Le gestionnaire global en fait une 400
+    // avec ce message, au lieu d'une panne 500.
+    const erreur = new Error("Une image n'a pas pu être lue. Essayez un autre fichier.")
+    erreur.status = 400
+    erreur.messagePublic = erreur.message
+    throw erreur
+  }
 
   const nomFichier = `${Date.now()}-${Math.round(Math.random() * 1e9)}.${format}`
   return uploaderPhoto(buffer, nomFichier, fichier.mimetype)

@@ -46,7 +46,9 @@ function globeAbordable() {
 function evaluerGlobe() {
   if (afficherGlobe.value || !globeAbordable()) return
   // Même sur bonne connexion, la décoration attend que le contenu utile soit affiché.
-  const charger = () => { afficherGlobe.value = true }
+  const charger = () => {
+    afficherGlobe.value = true
+  }
   if (window.requestIdleCallback) window.requestIdleCallback(charger, { timeout: 3000 })
   else setTimeout(charger, 1200)
 }

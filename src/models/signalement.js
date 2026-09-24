@@ -1,10 +1,4 @@
-export const CATEGORIES = [
-  'Dépôt sauvage / déchets',
-  'Voirie',
-  'Éclairage public',
-  'Eau',
-  'Autre'
-]
+export const CATEGORIES = ['Dépôt sauvage / déchets', 'Voirie', 'Éclairage public', 'Eau', 'Autre']
 
 export const COMMUNES = [
   'Acoua',

@@ -19,7 +19,9 @@ if (BREVO_API_KEY && !BREVO_EXPEDITEUR) {
   console.warn("[mailer] BREVO_API_KEY fourni sans BREVO_EXPEDITEUR (l'adresse validée chez Brevo) : Brevo ignoré.")
 }
 if (!fournisseur) {
-  console.warn('[mailer] Aucun fournisseur email configuré (BREVO_API_KEY ou RESEND_API_KEY) : notifications désactivées.')
+  console.warn(
+    '[mailer] Aucun fournisseur email configuré (BREVO_API_KEY ou RESEND_API_KEY) : notifications désactivées.'
+  )
 } else {
   console.log(`[mailer] Fournisseur email : ${fournisseur}`)
 }
@@ -103,7 +105,9 @@ export async function envoyerNotificationSignalement(signalement) {
       `Date : ${dateFormatee}`,
       lienPhoto ? `Photo : ${lienPhoto}` : '',
       `Voir le signalement : ${lienDetail}`
-    ].filter(Boolean).join('\n'),
+    ]
+      .filter(Boolean)
+      .join('\n'),
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
         <div style="background: #16a34a; color: #ffffff; padding: 16px 20px;">
@@ -339,12 +343,7 @@ export async function envoyerMessageContact({ nom, email, sujet, message }) {
     to: destinataire,
     replyTo: email,
     subject: `[Contact] ${sujet} — ${nom}`,
-    text: [
-      `De : ${nom} <${email}>`,
-      `Sujet : ${sujet}`,
-      '',
-      message
-    ].join('\n'),
+    text: [`De : ${nom} <${email}>`, `Sujet : ${sujet}`, '', message].join('\n'),
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
         <div style="background: #2563eb; color: #ffffff; padding: 16px 20px;">

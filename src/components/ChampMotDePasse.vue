@@ -14,12 +14,7 @@ const visible = ref(false)
 
 <template>
   <div class="champ-mdp">
-    <input
-      v-bind="$attrs"
-      v-model="modele"
-      :type="visible ? 'text' : 'password'"
-      :class="classeInput"
-    />
+    <input v-bind="$attrs" v-model="modele" :type="visible ? 'text' : 'password'" :class="classeInput" />
 
     <button
       type="button"
@@ -29,11 +24,27 @@ const visible = ref(false)
       tabindex="-1"
       @click="visible = !visible"
     >
-      <svg v-if="!visible" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        v-if="!visible"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z" />
         <circle cx="12" cy="12" r="3" />
       </svg>
-      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        v-else
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.8"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <path d="M2 12s3.6-7 10-7c1.9 0 3.6.6 5 1.5" />
         <path d="M22 12s-3.6 7-10 7c-1.9 0-3.6-.6-5-1.5" />
         <path d="M4 4l16 16" />

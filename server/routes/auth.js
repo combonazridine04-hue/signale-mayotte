@@ -137,7 +137,9 @@ router.post('/renvoyer-verification', requireAuthUtilisateur, limiteurRenvoiVeri
   }
   const resultat = await regenererTokenVerification(req.utilisateur.id)
   if (!resultat) {
-    return res.status(400).json({ erreur: 'Aucun email à vérifier sur ce compte (déjà vérifié, ou inscrit par téléphone).' })
+    return res
+      .status(400)
+      .json({ erreur: 'Aucun email à vérifier sur ce compte (déjà vérifié, ou inscrit par téléphone).' })
   }
   envoyerVerificationEmail(resultat.nom, resultat.email, resultat.code)
   res.status(204).end()

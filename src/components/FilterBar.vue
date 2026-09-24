@@ -3,12 +3,18 @@ import { computed } from 'vue'
 import { CATEGORIES, COMMUNES, STATUTS } from '../models/signalement.js'
 
 const filtres = defineModel({
+  type: Object,
   default: () => ({ commune: '', categorie: '', statut: '', recherche: '', tri: 'recent', urgent: false })
 })
 
 const filtresActifs = computed(() => {
   return Boolean(
-    filtres.value.commune || filtres.value.categorie || filtres.value.statut || filtres.value.recherche || filtres.value.tri !== 'recent' || filtres.value.urgent
+    filtres.value.commune ||
+    filtres.value.categorie ||
+    filtres.value.statut ||
+    filtres.value.recherche ||
+    filtres.value.tri !== 'recent' ||
+    filtres.value.urgent
   )
 })
 
@@ -71,19 +77,12 @@ const reinitialiser = () => {
     <div class="col-6 col-md-4 d-flex align-items-center">
       <div class="form-check mb-0">
         <input id="filtre-urgent" v-model="filtres.urgent" class="form-check-input" type="checkbox" />
-        <label class="form-check-label" for="filtre-urgent">
-          Urgences seulement
-        </label>
+        <label class="form-check-label" for="filtre-urgent"> Urgences seulement </label>
       </div>
     </div>
 
     <div class="col-12 col-md-4">
-      <button
-        type="button"
-        class="btn btn-outline-secondary w-100"
-        :disabled="!filtresActifs"
-        @click="reinitialiser"
-      >
+      <button type="button" class="btn btn-outline-secondary w-100" :disabled="!filtresActifs" @click="reinitialiser">
         Réinitialiser les filtres
       </button>
     </div>

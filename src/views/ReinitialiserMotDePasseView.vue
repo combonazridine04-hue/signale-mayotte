@@ -20,7 +20,7 @@ const aide = [
   },
   {
     titre: 'Vous vous reconnectez juste après',
-    texte: "Avec votre email ou votre téléphone, et ce nouveau mot de passe."
+    texte: 'Avec votre email ou votre téléphone, et ce nouveau mot de passe.'
   }
 ]
 import { motDePasseInterdit } from '../../shared/motDePasse.js'
@@ -71,16 +71,18 @@ const valider = async () => {
         <div class="col-12 col-lg-5">
           <p class="section-kicker">Espace citoyen</p>
           <h1 class="fw-bold">Nouveau mot de passe</h1>
-          <p class="text-secondary">
-            Choisissez un nouveau mot de passe pour votre compte.
-          </p>
+          <p class="text-secondary">Choisissez un nouveau mot de passe pour votre compte.</p>
           <PanneauAide
             titre="Ce qui va se passer"
             :points="aide"
             note="Un bon mot de passe est surtout un mot de passe long. Trois mots que vous seul reliez valent mieux qu'une suite de symboles impossible à retenir."
           />
 
-          <RouterLink to="/" class="lien-marque d-inline-flex align-items-center gap-2 mt-4" aria-label="Signale Mayotte — retour à l'accueil">
+          <RouterLink
+            to="/"
+            class="lien-marque d-inline-flex align-items-center gap-2 mt-4"
+            aria-label="Signale Mayotte — retour à l'accueil"
+          >
             <img :src="logo" alt="" width="36" height="36" />
             <span class="fw-bold">Signale Mayotte</span>
           </RouterLink>
@@ -97,13 +99,7 @@ const valider = async () => {
 
               <div class="mb-3">
                 <label for="motDePasse" class="form-label">Nouveau mot de passe</label>
-                <ChampMotDePasse
-                  id="motDePasse"
-                  v-model="motDePasse"
-                  autocomplete="new-password"
-                  autofocus
-                  required
-                />
+                <ChampMotDePasse id="motDePasse" v-model="motDePasse" autocomplete="new-password" autofocus required />
                 <JaugeMotDePasse :mot-de-passe="motDePasse" />
               </div>
 

@@ -18,11 +18,12 @@ const aide = [
   },
   {
     titre: 'Compte créé avec un téléphone ?',
-    texte: "Sans email enregistré, aucun lien ne peut être envoyé. Écrivez-nous depuis la page Contact."
+    texte: 'Sans email enregistré, aucun lien ne peut être envoyé. Écrivez-nous depuis la page Contact.'
   },
   {
     titre: 'Patientez une minute',
-    texte: "L'envoi n'est pas toujours instantané. Évitez de redemander plusieurs liens : seul le dernier reste valable."
+    texte:
+      "L'envoi n'est pas toujours instantané. Évitez de redemander plusieurs liens : seul le dernier reste valable."
   }
 ]
 
@@ -56,7 +57,11 @@ const envoyer = async () => {
             note="Le lien reste valable une heure. Passé ce délai, redemandez-en un : l'ancien ne fonctionne plus."
           />
 
-          <RouterLink to="/" class="lien-marque d-inline-flex align-items-center gap-2 mt-4" aria-label="Signale Mayotte — retour à l'accueil">
+          <RouterLink
+            to="/"
+            class="lien-marque d-inline-flex align-items-center gap-2 mt-4"
+            aria-label="Signale Mayotte — retour à l'accueil"
+          >
             <img :src="logo" alt="" width="36" height="36" />
             <span class="fw-bold">Signale Mayotte</span>
           </RouterLink>
@@ -67,8 +72,8 @@ const envoyer = async () => {
             <template v-if="envoye">
               <h2 class="h5 fw-bold mb-2">Email envoyé</h2>
               <p class="text-secondary mb-0">
-                Si un compte existe avec cet email, un lien de réinitialisation vient de lui être envoyé.
-                Vérifiez votre boîte de réception (et les spams).
+                Si un compte existe avec cet email, un lien de réinitialisation vient de lui être envoyé. Vérifiez votre
+                boîte de réception (et les spams).
               </p>
             </template>
             <form v-else novalidate @submit.prevent="envoyer">

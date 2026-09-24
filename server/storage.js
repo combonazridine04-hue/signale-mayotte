@@ -41,7 +41,10 @@ export async function supprimerPhoto(photoUrl) {
   if (!photoUrl) return
   const nomFichier = photoUrl.split(`/${BUCKET}/`).pop()
   if (!nomFichier) return
-  await supabase.storage.from(BUCKET).remove([nomFichier]).catch(() => {})
+  await supabase.storage
+    .from(BUCKET)
+    .remove([nomFichier])
+    .catch(() => {})
 }
 
 // Vide les photos des signalements. Les photos de profil sont rangées dans le même

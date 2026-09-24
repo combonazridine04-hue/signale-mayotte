@@ -79,7 +79,10 @@ export async function apiFetch(url, options = {}) {
         const reponse = await envoyer(url, { ...options, headers }, delai)
 
         if (CODES_SERVEUR_ENDORMI.includes(reponse.status) && !dernier) {
-          if (!aRepris) { aRepris = true; marquerReprise() }
+          if (!aRepris) {
+            aRepris = true
+            marquerReprise()
+          }
           await pause(ATTENTES_MS[essai])
           continue
         }
@@ -96,7 +99,10 @@ export async function apiFetch(url, options = {}) {
       } catch (e) {
         derniereErreur = e
         if (dernier) break
-        if (!aRepris) { aRepris = true; marquerReprise() }
+        if (!aRepris) {
+          aRepris = true
+          marquerReprise()
+        }
         await pause(ATTENTES_MS[essai])
       }
     }

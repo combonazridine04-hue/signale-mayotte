@@ -131,10 +131,22 @@ const deconnecter = () => {
                 :title="citoyenStore.avatarUrl ? 'Changer la photo' : 'Ajouter une photo'"
                 @click="choisirAvatar"
               >
-                <img v-if="citoyenStore.avatarUrl" :src="citoyenStore.avatarUrl" alt="" @error="citoyenStore.avatarIllisible()" />
+                <img
+                  v-if="citoyenStore.avatarUrl"
+                  :src="citoyenStore.avatarUrl"
+                  alt=""
+                  @error="citoyenStore.avatarIllisible()"
+                />
                 <span v-else class="profil-avatar-initiale">{{ initiale }}</span>
                 <span class="profil-avatar-overlay">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" />
                     <circle cx="12" cy="13" r="3.5" />
                   </svg>
@@ -176,7 +188,11 @@ const deconnecter = () => {
             <section class="profil-stats mb-4">
               <div class="card-glass rounded profil-stat">
                 <p class="profil-stat-valeur">{{ citoyenStore.stats.signalements }}</p>
-                <p class="profil-stat-label">Signalement{{ citoyenStore.stats.signalements > 1 ? 's' : '' }} envoyé{{ citoyenStore.stats.signalements > 1 ? 's' : '' }}</p>
+                <p class="profil-stat-label">
+                  Signalement{{ citoyenStore.stats.signalements > 1 ? 's' : '' }} envoyé{{
+                    citoyenStore.stats.signalements > 1 ? 's' : ''
+                  }}
+                </p>
               </div>
               <div class="card-glass rounded profil-stat">
                 <p class="profil-stat-valeur profil-stat-valeur--resolu">{{ citoyenStore.stats.resolus }}</p>
@@ -184,7 +200,11 @@ const deconnecter = () => {
               </div>
               <div class="card-glass rounded profil-stat">
                 <p class="profil-stat-valeur profil-stat-valeur--soutien">{{ citoyenStore.stats.soutiens }}</p>
-                <p class="profil-stat-label">Soutien{{ citoyenStore.stats.soutiens > 1 ? 's' : '' }} reçu{{ citoyenStore.stats.soutiens > 1 ? 's' : '' }}</p>
+                <p class="profil-stat-label">
+                  Soutien{{ citoyenStore.stats.soutiens > 1 ? 's' : '' }} reçu{{
+                    citoyenStore.stats.soutiens > 1 ? 's' : ''
+                  }}
+                </p>
               </div>
             </section>
 
@@ -242,8 +262,15 @@ const deconnecter = () => {
                     <p class="text-secondary small mb-1">
                       Confirmez votre email pour pouvoir envoyer des signalements.
                     </p>
-                    <RouterLink to="/verifier-email" class="btn btn-outline-primary btn-sm me-2">Saisir mon code</RouterLink>
-                    <button type="button" class="btn btn-link btn-sm p-0" :disabled="renvoiEnCours" @click="renvoyerVerification">
+                    <RouterLink to="/verifier-email" class="btn btn-outline-primary btn-sm me-2"
+                      >Saisir mon code</RouterLink
+                    >
+                    <button
+                      type="button"
+                      class="btn btn-link btn-sm p-0"
+                      :disabled="renvoiEnCours"
+                      @click="renvoyerVerification"
+                    >
                       Renvoyer le code
                     </button>
                     <div v-if="renvoiMessage" class="small text-secondary mt-1">{{ renvoiMessage }}</div>
@@ -281,9 +308,7 @@ const deconnecter = () => {
 
             <div class="card-glass rounded p-3 d-flex justify-content-between align-items-center gap-2 flex-wrap">
               <RouterLink to="/signaler" class="btn btn-primary btn-sm">Signaler un problème</RouterLink>
-              <button type="button" class="btn btn-outline-danger btn-sm" @click="deconnecter">
-                Se déconnecter
-              </button>
+              <button type="button" class="btn btn-outline-danger btn-sm" @click="deconnecter">Se déconnecter</button>
             </div>
           </template>
         </div>

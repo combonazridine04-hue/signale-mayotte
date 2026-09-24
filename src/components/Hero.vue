@@ -22,14 +22,12 @@ onMounted(() => {
         <p class="section-kicker">Signale Mayotte</p>
         <h1 class="hero-title">Signalez les problèmes de votre commune</h1>
         <p class="hero-text">
-          Dépôts sauvages, routes abîmées, éclairage en panne, coupures d'eau...
-          Aidez votre commune à intervenir plus vite en signalant ce que vous voyez.
+          Dépôts sauvages, routes abîmées, éclairage en panne, coupures d'eau... Aidez votre commune à intervenir plus
+          vite en signalant ce que vous voyez.
         </p>
 
         <div class="d-flex flex-wrap align-items-center gap-3 mt-2">
-          <RouterLink to="/signaler" class="btn btn-success btn-lg">
-            Faire un signalement
-          </RouterLink>
+          <RouterLink to="/signaler" class="btn btn-success btn-lg"> Faire un signalement </RouterLink>
 
           <!-- L'accueil reste public (il explique la plateforme aux nouveaux venus) ;
                une personne connectée y trouve simplement l'entrée de son espace. -->

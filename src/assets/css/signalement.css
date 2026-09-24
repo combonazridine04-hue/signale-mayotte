@@ -11,7 +11,9 @@
 .signalement-card {
   overflow: hidden;
   border-radius: 8px;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .signalement-card:hover {
@@ -53,7 +55,12 @@
 }
 
 .skeleton-block {
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.06) 25%, rgba(255, 255, 255, 0.14) 37%, rgba(255, 255, 255, 0.06) 63%);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.06) 25%,
+    rgba(255, 255, 255, 0.14) 37%,
+    rgba(255, 255, 255, 0.06) 63%
+  );
   background-size: 400% 100%;
   animation: skeleton-shimmer 1.4s ease infinite;
   border-radius: 4px;
@@ -173,7 +180,9 @@
   border: 1px solid rgba(239, 68, 68, 0.35);
   border-radius: 12px;
   background: rgba(239, 68, 68, 0.07);
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
 }
 
 .bloc-urgence.actif {
@@ -237,8 +246,13 @@
 }
 
 @keyframes pulsation-urgence {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.25; }
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
 }
 
 /* Une animation qui clignote en continu peut gêner, voire déclencher un malaise. */

@@ -17,7 +17,9 @@ defineProps({
       Urgence : <a :href="`tel:${organisme.urgence.replace(/\s/g, '')}`">{{ organisme.urgence }}</a>
     </p>
     <p v-if="organisme.site" class="mb-1">
-      <a :href="organisme.site" target="_blank" rel="noopener noreferrer">{{ organisme.site.replace('https://', '') }}</a>
+      <a :href="organisme.site" target="_blank" rel="noopener noreferrer">{{
+        organisme.site.replace('https://', '')
+      }}</a>
     </p>
     <p v-if="organisme.note" class="organisme-competent-note mb-0">{{ organisme.note }}</p>
   </div>

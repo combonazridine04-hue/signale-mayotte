@@ -29,7 +29,13 @@ router.post('/moderation/signaler', requireAuthUtilisateur, limiteurSignalementA
   try {
     await db.query(
       'INSERT INTO signalements_abus (type, cible_id, motif, utilisateur_id, date_creation) VALUES ($1, $2, $3, $4, $5)',
-      [type, id, typeof motif === 'string' ? motif.trim().slice(0, 500) : null, req.utilisateur?.id || null, new Date().toISOString()]
+      [
+        type,
+        id,
+        typeof motif === 'string' ? motif.trim().slice(0, 500) : null,
+        req.utilisateur?.id || null,
+        new Date().toISOString()
+      ]
     )
     // 204 et pas 201 : la réponse n'a pas de corps, et le client tentait d'y lire du JSON.
     res.status(204).end()
@@ -52,14 +58,12 @@ router.get('/moderation/signalements-abus', requireAuth, async (req, res) => {
 
   const resultats = []
   for (const row of rows) {
-    let apercu = null
-    if (row.type === 'signalement') {
-      const { rows: sig } = await db.query('SELECT id, categorie, commune, description FROM signalements WHERE id = $1', [row.cible_id])
-      apercu = sig[0] || null
-    } else {
-      const { rows: com } = await db.query('SELECT id, auteur, texte, signalement_id FROM commentaires WHERE id = $1', [row.cible_id])
-      apercu = com[0] || null
-    }
+    const sql =
+      row.type === 'signalement'
+        ? 'SELECT id, categorie, commune, description FROM signalements WHERE id = $1'
+        : 'SELECT id, auteur, texte, signalement_id FROM commentaires WHERE id = $1'
+    const { rows: cible } = await db.query(sql, [row.cible_id])
+    const apercu = cible[0] || null
     resultats.push({
       type: row.type,
       cibleId: row.cible_id,

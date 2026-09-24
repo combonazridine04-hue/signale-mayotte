@@ -58,7 +58,10 @@ export const useCitoyenStore = defineStore('citoyen', {
           body: JSON.stringify({ nom, email, telephone, motDePasse, site_web })
         })
       } catch {
-        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
+        return {
+          succes: false,
+          erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'
+        }
       }
 
       if (!reponse.ok) {
@@ -80,7 +83,10 @@ export const useCitoyenStore = defineStore('citoyen', {
           body: JSON.stringify({ identifiant, motDePasse })
         })
       } catch {
-        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
+        return {
+          succes: false,
+          erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'
+        }
       }
 
       if (!reponse.ok) {
@@ -127,7 +133,10 @@ export const useCitoyenStore = defineStore('citoyen', {
         })
         return { succes: true }
       } catch {
-        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
+        return {
+          succes: false,
+          erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'
+        }
       }
     },
 
@@ -140,7 +149,10 @@ export const useCitoyenStore = defineStore('citoyen', {
           body: JSON.stringify({ token, motDePasse })
         })
       } catch {
-        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
+        return {
+          succes: false,
+          erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'
+        }
       }
 
       if (!reponse.ok) {
@@ -163,7 +175,10 @@ export const useCitoyenStore = defineStore('citoyen', {
         }
         return { succes: true }
       } catch {
-        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
+        return {
+          succes: false,
+          erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'
+        }
       }
     },
 
@@ -176,7 +191,10 @@ export const useCitoyenStore = defineStore('citoyen', {
           body: JSON.stringify({ code })
         })
       } catch {
-        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
+        return {
+          succes: false,
+          erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'
+        }
       }
 
       if (!reponse.ok) {
@@ -211,7 +229,10 @@ export const useCitoyenStore = defineStore('citoyen', {
         this.stats = profil.stats || { signalements: 0, resolus: 0, soutiens: 0 }
         return { succes: true }
       } catch {
-        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
+        return {
+          succes: false,
+          erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'
+        }
       }
     },
 
@@ -224,7 +245,10 @@ export const useCitoyenStore = defineStore('citoyen', {
           body: JSON.stringify({ pseudo })
         })
       } catch {
-        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
+        return {
+          succes: false,
+          erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'
+        }
       }
 
       if (!reponse.ok) {
@@ -284,7 +308,10 @@ export const useCitoyenStore = defineStore('citoyen', {
           body: formData
         })
       } catch {
-        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
+        return {
+          succes: false,
+          erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'
+        }
       }
 
       if (!reponse.ok) {
@@ -310,7 +337,10 @@ export const useCitoyenStore = defineStore('citoyen', {
         this.avatarUrl = ''
         return { succes: true }
       } catch {
-        return { succes: false, erreur: "Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant." }
+        return {
+          succes: false,
+          erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'
+        }
       }
     }
   }

@@ -81,9 +81,34 @@ if (existsSync(distDir)) {
   app.get('/*splat', (req, res) => res.sendFile(path.join(distDir, 'index.html')))
 }
 
-app.use((err, req, res, next) => {
+// Gestionnaire d'erreurs global. Express le reconnaît au nombre de ses paramètres :
+// il en faut exactement quatre, d'où `_next`, inutilisé mais indispensable. Sans lui,
+// Express traiterait cette fonction comme un middleware ordinaire et afficherait ses
+// propres pages d'erreur, avec la trace d'exécution.
+app.use((err, req, res, _next) => {
+  // Fichier trop lourd ou trop nombreux : la faute est côté client, et elle est explicable.
+  if (err.name === 'MulterError') {
+    const message =
+      err.code === 'LIMIT_FILE_SIZE'
+        ? 'Fichier trop volumineux.'
+        : err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE'
+          ? 'Trop de fichiers envoyés.'
+          : 'Fichier refusé.'
+    return res.status(400).json({ erreur: message })
+  }
+
+  // JSON mal formé, corps trop gros, image illisible… : l'origine renseigne un statut 4xx.
+  // Seul un message explicitement prévu pour l'utilisateur (messagePublic) est renvoyé ;
+  // un message interne pourrait trahir le fonctionnement du serveur.
+  const statut = err.status || err.statusCode
+  if (statut >= 400 && statut < 500) {
+    return res.status(statut).json({ erreur: err.messagePublic || 'Requête invalide.' })
+  }
+
+  // Tout le reste est une panne du serveur, pas une erreur du client : 500, et non 400
+  // comme auparavant. Le détail part dans les journaux, jamais dans la réponse.
   console.error(err)
-  res.status(400).json({ erreur: 'Requête invalide.' })
+  res.status(500).json({ erreur: 'Erreur interne du serveur. Réessayez dans un instant.' })
 })
 
 export { app }

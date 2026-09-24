@@ -123,7 +123,12 @@ onBeforeUnmount(() => {
       <p v-if="carteInactive" class="location-picker-hint">Touchez la carte pour la déplacer</p>
     </div>
     <div class="d-flex flex-wrap align-items-center gap-2 mt-2">
-      <button type="button" class="btn btn-outline-secondary btn-sm" :disabled="localisationEnCours" @click="utiliserPositionActuelle">
+      <button
+        type="button"
+        class="btn btn-outline-secondary btn-sm"
+        :disabled="localisationEnCours"
+        @click="utiliserPositionActuelle"
+      >
         {{ localisationEnCours ? 'Localisation...' : 'Utiliser ma position actuelle' }}
       </button>
       <span v-if="latitude && longitude" class="text-secondary small">

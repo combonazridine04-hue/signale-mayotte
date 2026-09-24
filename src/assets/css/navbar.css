@@ -41,7 +41,10 @@
   background: transparent;
   color: var(--app-muted);
   cursor: pointer;
-  transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+  transition:
+    color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
 }
 
 /* Libellé au survol : la barre n'affiche que des icônes, sans texte on devine mal. */
@@ -62,7 +65,9 @@
   text-align: center;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 
 .icon-pill-link:hover .nav-infobulle,

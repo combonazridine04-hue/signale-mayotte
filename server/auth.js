@@ -21,10 +21,11 @@ if (rows[0].count === 0) {
   }
 
   const hash = await bcrypt.hash(motDePasse, 12)
-  await db.query(
-    'INSERT INTO admins (identifiant, mot_de_passe_hash, cree_le) VALUES ($1, $2, $3)',
-    [identifiant, hash, new Date().toISOString()]
-  )
+  await db.query('INSERT INTO admins (identifiant, mot_de_passe_hash, cree_le) VALUES ($1, $2, $3)', [
+    identifiant,
+    hash,
+    new Date().toISOString()
+  ])
 }
 
 export async function verifierIdentifiants(identifiant, motDePasse) {
@@ -173,10 +174,11 @@ export async function regenererTokenVerification(utilisateurId) {
 
   const code = genererCodeVerification()
   const expiration = new Date(Date.now() + DUREE_CODE_VERIFICATION_MS).toISOString()
-  await db.query(
-    'UPDATE utilisateurs SET token_verification = $1, token_verification_expire = $2 WHERE id = $3',
-    [code, expiration, utilisateurId]
-  )
+  await db.query('UPDATE utilisateurs SET token_verification = $1, token_verification_expire = $2 WHERE id = $3', [
+    code,
+    expiration,
+    utilisateurId
+  ])
   return { code, email: utilisateur.email, nom: utilisateur.nom }
 }
 
@@ -231,10 +233,10 @@ export async function verifierIdentifiantsUtilisateur(identifiant, motDePasse) {
   const numeroCanonique = normaliserTelephone(identifiant)
   if (numeroCanonique && !numeros.includes(numeroCanonique)) numeros.push(numeroCanonique)
 
-  const { rows } = await db.query(
-    'SELECT * FROM utilisateurs WHERE LOWER(email) = $1 OR telephone = ANY($2::text[])',
-    [valeur, numeros]
-  )
+  const { rows } = await db.query('SELECT * FROM utilisateurs WHERE LOWER(email) = $1 OR telephone = ANY($2::text[])', [
+    valeur,
+    numeros
+  ])
   const utilisateur = rows[0]
   if (!utilisateur) {
     await bcrypt.compare(motDePasse, '$2a$12$CwTycUXWue0Thq9StjUM0uJ8Q7kJnMfCbXWDh7jHfnfjqI3sT4XVe')

@@ -159,9 +159,8 @@ const envoyer = async () => {
           <p class="section-kicker">Nouveau signalement</p>
           <h1 class="fw-bold">Signaler un problème</h1>
           <p class="text-secondary">
-            Décrivez le problème que vous constatez : dépôt sauvage, route abîmée,
-            éclairage en panne, fuite d'eau... Votre identité reste privée : elle
-            n'est jamais affichée publiquement.
+            Décrivez le problème que vous constatez : dépôt sauvage, route abîmée, éclairage en panne, fuite d'eau...
+            Votre identité reste privée : elle n'est jamais affichée publiquement.
           </p>
 
           <PanneauAide
@@ -239,25 +238,19 @@ const envoyer = async () => {
             -->
             <div class="bloc-urgence mb-3" :class="{ actif: formulaire.urgent }">
               <div class="form-check mb-0">
-                <input
-                  id="urgent"
-                  v-model="formulaire.urgent"
-                  class="form-check-input"
-                  type="checkbox"
-                />
+                <input id="urgent" v-model="formulaire.urgent" class="form-check-input" type="checkbox" />
                 <label class="form-check-label fw-semibold" for="urgent">
                   <span class="bloc-urgence-pastille" aria-hidden="true">SOS</span>
                   Danger immédiat pour les habitants
                 </label>
               </div>
               <p class="bloc-urgence-aide mb-0">
-                À cocher uniquement en cas de risque réel : câble électrique à terre, route
-                effondrée, fuite d'eau importante, ravine bouchée avant la pluie. Le
-                signalement apparaîtra en tête de liste.
+                À cocher uniquement en cas de risque réel : câble électrique à terre, route effondrée, fuite d'eau
+                importante, ravine bouchée avant la pluie. Le signalement apparaîtra en tête de liste.
               </p>
               <p v-if="formulaire.urgent" class="bloc-urgence-secours mb-0">
-                En cas d'urgence vitale, n'attendez pas ce site : appelez le 15 (SAMU),
-                le 18 (pompiers) ou le 17 (police).
+                En cas d'urgence vitale, n'attendez pas ce site : appelez le 15 (SAMU), le 18 (pompiers) ou le 17
+                (police).
               </p>
             </div>
 
@@ -269,8 +262,8 @@ const envoyer = async () => {
             <div class="mb-3">
               <label class="form-label">Localisation</label>
               <p class="text-secondary small mb-2">
-                Indispensable pour que les services sachent où intervenir. Utilisez votre position
-                actuelle, ou placez le point sur la carte.
+                Indispensable pour que les services sachent où intervenir. Utilisez votre position actuelle, ou placez
+                le point sur la carte.
               </p>
               <LocationPicker v-model:latitude="formulaire.latitude" v-model:longitude="formulaire.longitude" />
               <p v-if="soumis && erreurs.localisation" class="text-danger small mt-2 mb-0">
@@ -285,8 +278,8 @@ const envoyer = async () => {
                 déjà été signalé ici
               </p>
               <p class="doublons-intro">
-                Soutenez-le plutôt que d'en créer un nouveau : un signalement soutenu par
-                plusieurs habitants est traité en priorité.
+                Soutenez-le plutôt que d'en créer un nouveau : un signalement soutenu par plusieurs habitants est traité
+                en priorité.
               </p>
 
               <ul class="doublons-liste">
@@ -295,7 +288,9 @@ const envoyer = async () => {
                     <strong>{{ s.categorie }} — {{ s.commune }}</strong>
                     <span class="doublons-item-description">{{ s.description }}</span>
                     <span class="doublons-item-meta">
-                      {{ dateRelative(s.dateSignalement) }} · {{ s.nbSoutiens }} soutien{{ s.nbSoutiens > 1 ? 's' : '' }}
+                      {{ dateRelative(s.dateSignalement) }} · {{ s.nbSoutiens }} soutien{{
+                        s.nbSoutiens > 1 ? 's' : ''
+                      }}
                     </span>
                   </div>
                   <div class="doublons-item-actions">

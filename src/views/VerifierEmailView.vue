@@ -50,8 +50,8 @@ const renvoyer = async () => {
             <template v-else>
               <h1 class="h4 fw-bold mb-2">Confirmez votre email</h1>
               <p class="text-secondary mb-3">
-                On vient de vous envoyer un code à 6 chiffres par email (pensez à vérifier vos
-                spams). Saisissez-le ci-dessous (il expire dans 30 minutes).
+                On vient de vous envoyer un code à 6 chiffres par email (pensez à vérifier vos spams). Saisissez-le
+                ci-dessous (il expire dans 30 minutes).
               </p>
 
               <form class="text-start" novalidate @submit.prevent="confirmer">
@@ -67,12 +67,16 @@ const renvoyer = async () => {
                   autofocus
                   required
                   class="form-control form-control-lg text-center"
-                  style="letter-spacing: 0.5em; font-size: 1.5rem;"
+                  style="letter-spacing: 0.5em; font-size: 1.5rem"
                 />
 
                 <div v-if="messageErreur" class="alert alert-danger py-2 mt-3 mb-0">{{ messageErreur }}</div>
 
-                <button type="submit" class="btn btn-primary btn-lg w-100 mt-4" :disabled="envoiEnCours || code.trim().length !== 6">
+                <button
+                  type="submit"
+                  class="btn btn-primary btn-lg w-100 mt-4"
+                  :disabled="envoiEnCours || code.trim().length !== 6"
+                >
                   {{ envoiEnCours ? 'Vérification...' : 'Confirmer' }}
                 </button>
               </form>

@@ -11,7 +11,7 @@ onMounted(async () => {
     if (!reponse.ok) throw new Error()
     stats.value = await reponse.json()
   } catch {
-    erreur.value = "Impossible de charger les statistiques."
+    erreur.value = 'Impossible de charger les statistiques.'
   } finally {
     chargement.value = false
   }
@@ -95,7 +95,10 @@ const tauxResolution = computed(() => {
                     <span class="text-secondary">{{ c.count }}</span>
                   </div>
                   <div class="transparence-barre-piste">
-                    <div class="transparence-barre-remplissage" :style="{ width: `${(c.count / maxCommune) * 100}%` }"></div>
+                    <div
+                      class="transparence-barre-remplissage"
+                      :style="{ width: `${(c.count / maxCommune) * 100}%` }"
+                    ></div>
                   </div>
                 </div>
               </div>
@@ -113,7 +116,10 @@ const tauxResolution = computed(() => {
                     <span class="text-secondary">{{ c.count }}</span>
                   </div>
                   <div class="transparence-barre-piste">
-                    <div class="transparence-barre-remplissage" :style="{ width: `${(c.count / maxCategorie) * 100}%` }"></div>
+                    <div
+                      class="transparence-barre-remplissage"
+                      :style="{ width: `${(c.count / maxCategorie) * 100}%` }"
+                    ></div>
                   </div>
                 </div>
               </div>

@@ -50,9 +50,10 @@ async function chargerModeration() {
 const supprimerContenuSignale = async (item) => {
   if (!(await uiStore.confirmer('Supprimer définitivement ce contenu ?'))) return
   try {
-    const url = item.type === 'signalement'
-      ? `/api/signalements/${item.cibleId}`
-      : `/api/signalements/${item.apercu.signalement_id}/commentaires/${item.cibleId}`
+    const url =
+      item.type === 'signalement'
+        ? `/api/signalements/${item.cibleId}`
+        : `/api/signalements/${item.apercu.signalement_id}/commentaires/${item.cibleId}`
     await apiFetch(url, { method: 'DELETE' })
     await chargerModeration()
     signalementStore.charger()
@@ -145,7 +146,12 @@ function rafraichirSignalements(page = 1) {
 }
 
 watch(
-  () => [filtresSignalements.value.commune, filtresSignalements.value.categorie, filtresSignalements.value.statut, filtresSignalements.value.tri],
+  () => [
+    filtresSignalements.value.commune,
+    filtresSignalements.value.categorie,
+    filtresSignalements.value.statut,
+    filtresSignalements.value.tri
+  ],
   () => rafraichirSignalements(1)
 )
 
@@ -240,7 +246,14 @@ const changerStatut = async (id, statut) => {
       <div class="admin-sidebar-header">
         <div class="admin-brand">
           <div class="admin-brand-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <path d="M12 3l7 3v5c0 4.8-3 8.5-7 10-4-1.5-7-5.2-7-10V6l7-3Z" />
             </svg>
           </div>
@@ -257,18 +270,46 @@ const changerStatut = async (id, statut) => {
           aria-label="Ouvrir le menu"
           @click="menuMobileOuvert = !menuMobileOuvert"
         >
-          <svg v-if="!menuMobileOuvert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            v-if="!menuMobileOuvert"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M4 7h16M4 12h16M4 17h16" />
           </svg>
-          <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            v-else
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M6 6l12 12M18 6 6 18" />
           </svg>
         </button>
       </div>
 
       <nav class="admin-nav">
-        <button type="button" class="admin-nav-item" :class="{ active: section === 'apercu' }" @click="choisirSection('apercu')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <button
+          type="button"
+          class="admin-nav-item"
+          :class="{ active: section === 'apercu' }"
+          @click="choisirSection('apercu')"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <rect x="3" y="3" width="7" height="7" rx="1.5" />
             <rect x="14" y="3" width="7" height="7" rx="1.5" />
             <rect x="3" y="14" width="7" height="7" rx="1.5" />
@@ -282,30 +323,77 @@ const changerStatut = async (id, statut) => {
           :class="{ active: section === 'signalements' }"
           @click="choisirSection('signalements')"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.3 2.25h17.76a1.5 1.5 0 0 0 1.3-2.25L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z" />
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M10.29 3.86 1.82 18a1.5 1.5 0 0 0 1.3 2.25h17.76a1.5 1.5 0 0 0 1.3-2.25L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z"
+            />
             <path d="M12 9v4" />
             <path d="M12 16.5h.01" />
           </svg>
           Signalements
           <span v-if="compteurs.signale" class="admin-nav-badge">{{ compteurs.signale }}</span>
         </button>
-        <button type="button" class="admin-nav-item" :class="{ active: section === 'messages' }" @click="choisirSection('messages')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.4 8.5 8.5 0 0 1-4-1L3 20l1.1-4a8.4 8.4 0 0 1-1-4A8.38 8.38 0 0 1 11.5 3a8.5 8.5 0 0 1 8.5 8.5Z" />
+        <button
+          type="button"
+          class="admin-nav-item"
+          :class="{ active: section === 'messages' }"
+          @click="choisirSection('messages')"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path
+              d="M21 11.5a8.38 8.38 0 0 1-8.5 8.4 8.5 8.5 0 0 1-4-1L3 20l1.1-4a8.4 8.4 0 0 1-1-4A8.38 8.38 0 0 1 11.5 3a8.5 8.5 0 0 1 8.5 8.5Z"
+            />
           </svg>
           Messages
           <span v-if="messagesNonLus" class="admin-nav-badge">{{ messagesNonLus }}</span>
         </button>
-        <button type="button" class="admin-nav-item" :class="{ active: section === 'comptes' }" @click="choisirSection('comptes')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <button
+          type="button"
+          class="admin-nav-item"
+          :class="{ active: section === 'comptes' }"
+          @click="choisirSection('comptes')"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <circle cx="12" cy="8" r="3.5" />
             <path d="M4.5 20c1.2-3.5 4-5.5 7.5-5.5s6.3 2 7.5 5.5" />
           </svg>
           Comptes
         </button>
-        <button type="button" class="admin-nav-item" :class="{ active: section === 'moderation' }" @click="choisirSection('moderation')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <button
+          type="button"
+          class="admin-nav-item"
+          :class="{ active: section === 'moderation' }"
+          @click="choisirSection('moderation')"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M4 21V4a1 1 0 0 1 1-1h9l6 6v2H9" />
             <path d="M4 21l5-5" />
           </svg>
@@ -324,9 +412,7 @@ const changerStatut = async (id, statut) => {
     <div class="admin-main">
       <header class="admin-header d-flex align-items-center justify-content-between flex-wrap gap-2">
         <h1>
-          {{
-            { apercu: 'Aperçu', signalements: 'Signalements', messages: 'Messages', comptes: 'Comptes' }[section]
-          }}
+          {{ { apercu: 'Aperçu', signalements: 'Signalements', messages: 'Messages', comptes: 'Comptes' }[section] }}
         </h1>
         <button
           v-if="section === 'signalements'"
@@ -383,7 +469,13 @@ const changerStatut = async (id, statut) => {
                 <tr v-for="s in signalementStore.signalements.slice(0, 5)" :key="s.id">
                   <td data-label="Catégorie">{{ s.categorie }}</td>
                   <td data-label="Commune">{{ s.commune }}</td>
-                  <td data-label="Statut"><span class="admin-badge" :class="`admin-badge--${s.statut === 'Signalé' ? 'signale' : s.statut === 'En cours' ? 'en-cours' : 'resolu'}`">{{ s.statut }}</span></td>
+                  <td data-label="Statut">
+                    <span
+                      class="admin-badge"
+                      :class="`admin-badge--${s.statut === 'Signalé' ? 'signale' : s.statut === 'En cours' ? 'en-cours' : 'resolu'}`"
+                      >{{ s.statut }}</span
+                    >
+                  </td>
                   <td data-label="Date">{{ new Date(s.dateSignalement).toLocaleDateString('fr-FR') }}</td>
                 </tr>
               </tbody>
@@ -416,11 +508,7 @@ const changerStatut = async (id, statut) => {
                   <span v-else class="admin-muted">Anonyme (historique)</span>
                 </td>
                 <td data-label="Statut">
-                  <select
-                    class="admin-select"
-                    :value="s.statut"
-                    @change="changerStatut(s.id, $event.target.value)"
-                  >
+                  <select class="admin-select" :value="s.statut" @change="changerStatut(s.id, $event.target.value)">
                     <option v-for="statut in STATUTS" :key="statut" :value="statut">{{ statut }}</option>
                   </select>
                 </td>
@@ -442,11 +530,21 @@ const changerStatut = async (id, statut) => {
             </tbody>
           </table>
           <div v-if="nbPages > 1" class="d-flex justify-content-center align-items-center gap-3 mt-3">
-            <button type="button" class="admin-btn admin-btn--ghost" :disabled="signalementStore.page <= 1" @click="pagePrecedente">
+            <button
+              type="button"
+              class="admin-btn admin-btn--ghost"
+              :disabled="signalementStore.page <= 1"
+              @click="pagePrecedente"
+            >
               ← Précédent
             </button>
             <span class="admin-muted small">Page {{ signalementStore.page }} / {{ nbPages }}</span>
-            <button type="button" class="admin-btn admin-btn--ghost" :disabled="signalementStore.page >= nbPages" @click="pageSuivante">
+            <button
+              type="button"
+              class="admin-btn admin-btn--ghost"
+              :disabled="signalementStore.page >= nbPages"
+              @click="pageSuivante"
+            >
               Suivant →
             </button>
           </div>
@@ -456,7 +554,12 @@ const changerStatut = async (id, statut) => {
           <p v-if="contactStore.chargement" class="admin-muted">Chargement...</p>
           <p v-else-if="!contactStore.messages.length" class="admin-muted">Aucun message reçu.</p>
           <div v-else class="admin-messages">
-            <div v-for="m in contactStore.messages" :key="m.id" class="admin-message" :class="{ 'admin-message--lu': m.lu }">
+            <div
+              v-for="m in contactStore.messages"
+              :key="m.id"
+              class="admin-message"
+              :class="{ 'admin-message--lu': m.lu }"
+            >
               <div class="admin-message-header">
                 <div>
                   <strong>{{ m.nom }}</strong> <span class="admin-muted">— {{ m.email }}</span>
@@ -489,8 +592,12 @@ const changerStatut = async (id, statut) => {
               <div class="admin-message-header">
                 <div>
                   <strong>{{ item.type === 'signalement' ? 'Signalement' : 'Commentaire' }} #{{ item.cibleId }}</strong>
-                  <span class="admin-muted"> — {{ item.nbSignalements }} signalement{{ item.nbSignalements > 1 ? 's' : '' }}</span>
-                  <p class="admin-message-meta">Dernier signalement le {{ new Date(item.dernierSignalement).toLocaleString('fr-FR') }}</p>
+                  <span class="admin-muted">
+                    — {{ item.nbSignalements }} signalement{{ item.nbSignalements > 1 ? 's' : '' }}</span
+                  >
+                  <p class="admin-message-meta">
+                    Dernier signalement le {{ new Date(item.dernierSignalement).toLocaleString('fr-FR') }}
+                  </p>
                 </div>
                 <div class="admin-actions">
                   <RouterLink
@@ -513,9 +620,7 @@ const changerStatut = async (id, statut) => {
                   </button>
                 </div>
               </div>
-              <p v-if="!item.existeEncore" class="admin-message-body admin-muted">
-                Ce contenu a déjà été supprimé.
-              </p>
+              <p v-if="!item.existeEncore" class="admin-message-body admin-muted">Ce contenu a déjà été supprimé.</p>
               <p v-else-if="item.type === 'signalement'" class="admin-message-body">
                 {{ item.apercu.categorie }} — {{ item.apercu.commune }} : {{ item.apercu.description }}
               </p>
@@ -533,15 +638,35 @@ const changerStatut = async (id, statut) => {
             <form class="admin-form" @submit.prevent="changerMotDePasse">
               <div class="admin-form-field">
                 <label for="mdp-actuel">Mot de passe actuel</label>
-                <ChampMotDePasse id="mdp-actuel" v-model="motDePasseForm.actuel" required autocomplete="current-password" classe-input="" />
+                <ChampMotDePasse
+                  id="mdp-actuel"
+                  v-model="motDePasseForm.actuel"
+                  required
+                  autocomplete="current-password"
+                  classe-input=""
+                />
               </div>
               <div class="admin-form-field">
                 <label for="mdp-nouveau">Nouveau mot de passe</label>
-                <ChampMotDePasse id="mdp-nouveau" v-model="motDePasseForm.nouveau" required minlength="8" autocomplete="new-password" classe-input="" />
+                <ChampMotDePasse
+                  id="mdp-nouveau"
+                  v-model="motDePasseForm.nouveau"
+                  required
+                  minlength="8"
+                  autocomplete="new-password"
+                  classe-input=""
+                />
               </div>
               <div class="admin-form-field">
                 <label for="mdp-confirmation">Confirmer le nouveau mot de passe</label>
-                <ChampMotDePasse id="mdp-confirmation" v-model="motDePasseForm.confirmation" required minlength="8" autocomplete="new-password" classe-input="" />
+                <ChampMotDePasse
+                  id="mdp-confirmation"
+                  v-model="motDePasseForm.confirmation"
+                  required
+                  minlength="8"
+                  autocomplete="new-password"
+                  classe-input=""
+                />
               </div>
               <div v-if="erreurMotDePasse" class="admin-form-erreur">{{ erreurMotDePasse }}</div>
               <div v-if="succesMotDePasse" class="admin-form-succes">Mot de passe modifié avec succès.</div>
@@ -564,7 +689,10 @@ const changerStatut = async (id, statut) => {
               </thead>
               <tbody>
                 <tr v-for="c in adminStore.comptes" :key="c.id">
-                  <td data-label="Identifiant">{{ c.identifiant }} <span v-if="c.identifiant === authStore.identifiant" class="admin-muted">(vous)</span></td>
+                  <td data-label="Identifiant">
+                    {{ c.identifiant }}
+                    <span v-if="c.identifiant === authStore.identifiant" class="admin-muted">(vous)</span>
+                  </td>
                   <td data-label="Créé le">{{ new Date(c.creeLe).toLocaleDateString('fr-FR') }}</td>
                   <td data-label="Actions">
                     <button
@@ -588,7 +716,14 @@ const changerStatut = async (id, statut) => {
               </div>
               <div class="admin-form-field">
                 <label for="nouveau-mdp">Mot de passe</label>
-                <ChampMotDePasse id="nouveau-mdp" v-model="nouveauCompte.motDePasse" required minlength="8" autocomplete="new-password" classe-input="" />
+                <ChampMotDePasse
+                  id="nouveau-mdp"
+                  v-model="nouveauCompte.motDePasse"
+                  required
+                  minlength="8"
+                  autocomplete="new-password"
+                  classe-input=""
+                />
               </div>
               <div v-if="erreurNouveauCompte" class="admin-form-erreur">{{ erreurNouveauCompte }}</div>
               <button type="submit" class="admin-btn admin-btn--primary" :disabled="creationEnCours">

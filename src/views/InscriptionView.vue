@@ -51,9 +51,7 @@ const saisirTelephone = (evenement) => {
 }
 
 const messageTelephone = computed(() => erreurTelephone(formulaire.telephone))
-const messageMotDePasse = computed(() =>
-  formulaire.motDePasse ? motDePasseInterdit(formulaire.motDePasse) : ''
-)
+const messageMotDePasse = computed(() => (formulaire.motDePasse ? motDePasseInterdit(formulaire.motDePasse) : ''))
 
 const erreurs = computed(() => ({
   nom: formulaire.nom.trim().length < 2,
@@ -96,14 +94,17 @@ const inscrire = async () => {
           <p class="section-kicker">Espace citoyen</p>
           <h1 class="fw-bold">Créer mon compte</h1>
           <p class="text-secondary">
-            Un compte gratuit est nécessaire pour signaler un problème, soutenir un
-            signalement existant ou laisser un commentaire. Ça nous permet de savoir
-            qui contribue et de limiter les abus — votre identité reste privée, jamais
-            affichée publiquement.
+            Un compte gratuit est nécessaire pour signaler un problème, soutenir un signalement existant ou laisser un
+            commentaire. Ça nous permet de savoir qui contribue et de limiter les abus — votre identité reste privée,
+            jamais affichée publiquement.
           </p>
           <PanneauAide titre="Avec un compte, vous pouvez" :points="avantages" />
 
-          <RouterLink to="/" class="lien-marque d-inline-flex align-items-center gap-2 mt-4" aria-label="Signale Mayotte — retour à l'accueil">
+          <RouterLink
+            to="/"
+            class="lien-marque d-inline-flex align-items-center gap-2 mt-4"
+            aria-label="Signale Mayotte — retour à l'accueil"
+          >
             <img :src="logo" alt="" width="36" height="36" />
             <span class="fw-bold">Signale Mayotte</span>
           </RouterLink>

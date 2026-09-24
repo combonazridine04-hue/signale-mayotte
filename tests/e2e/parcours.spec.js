@@ -22,14 +22,12 @@ try {
 // que sur les tests d'API — celui-ci pointait encore sur la base de production.
 if (!process.env.TEST_DATABASE_URL) {
   throw new Error(
-    "TEST_DATABASE_URL manquant. Ce test efface la table des signalements : créez un " +
+    'TEST_DATABASE_URL manquant. Ce test efface la table des signalements : créez un ' +
       'projet Supabase séparé pour les tests et renseignez TEST_DATABASE_URL dans .env (voir .env.example).'
   )
 }
 if (process.env.TEST_DATABASE_URL === process.env.DATABASE_URL) {
-  throw new Error(
-    'TEST_DATABASE_URL est identique à DATABASE_URL : ce test effacerait les données de production.'
-  )
+  throw new Error('TEST_DATABASE_URL est identique à DATABASE_URL : ce test effacerait les données de production.')
 }
 process.env.DATABASE_URL = process.env.TEST_DATABASE_URL
 
@@ -74,17 +72,22 @@ try {
     .first()
     .waitFor({ state: 'visible', timeout: 10000 })
     .catch(() => {})
-  verifier((await page.locator('.signalement-card').count()) === 3, "3 signalements de démo visibles à l'accueil sans connexion")
+  verifier(
+    (await page.locator('.signalement-card').count()) === 3,
+    "3 signalements de démo visibles à l'accueil sans connexion"
+  )
 
   await page.goto(BASE + 'signaler', { waitUntil: 'networkidle' })
   await page.selectOption('#categorie', 'Eau')
   await page.selectOption('#commune', 'Dzaoudzi')
-  await page.fill('#description', 'Fuite d\'eau testée par la suite end-to-end.')
+  await page.fill('#description', "Fuite d'eau testée par la suite end-to-end.")
   await page.setInputFiles('.photo-dropzone input[type=file]', cheminPhoto)
   await page.click('button:has-text("Utiliser ma position actuelle")')
   await page.waitForTimeout(500)
   const [reponseCreation] = await Promise.all([
-    page.waitForResponse((r) => r.url().includes('/api/signalements') && r.request().method() === 'POST', { timeout: 20000 }),
+    page.waitForResponse((r) => r.url().includes('/api/signalements') && r.request().method() === 'POST', {
+      timeout: 20000
+    }),
     page.click('button[type=submit]')
   ])
   verifier(reponseCreation.ok(), `création du signalement acceptée par le serveur (statut ${reponseCreation.status()})`)
@@ -107,7 +110,9 @@ try {
   await page.selectOption('#commune', 'Sada')
   await page.fill('#description', 'Signalement que je vais supprimer moi-même, sans être admin.')
   const [reponseCreationJetable] = await Promise.all([
-    page.waitForResponse((r) => r.url().includes('/api/signalements') && r.request().method() === 'POST', { timeout: 20000 }),
+    page.waitForResponse((r) => r.url().includes('/api/signalements') && r.request().method() === 'POST', {
+      timeout: 20000
+    }),
     page.click('button[type=submit]')
   ])
   const creeJetable = await reponseCreationJetable.json()
@@ -120,15 +125,23 @@ try {
     .catch(() => false)
 
   verifier(boutonSupprimerCreateur, 'le créateur (non-admin) voit le bouton Supprimer sur son propre signalement')
-  verifier(!(await page.locator('button:has-text("Modifier")').isVisible()), "le créateur (non-admin) ne voit PAS le bouton Modifier (réservé à l'admin)")
+  verifier(
+    !(await page.locator('button:has-text("Modifier")').isVisible()),
+    "le créateur (non-admin) ne voit PAS le bouton Modifier (réservé à l'admin)"
+  )
 
   await page.click('button:has-text("Supprimer")')
   await page.waitForTimeout(200)
   const [reponseSuppressionCreateur] = await Promise.all([
-    page.waitForResponse((r) => /\/api\/signalements\/\d+(\?|$)/.test(r.url()) && r.request().method() === 'DELETE', { timeout: 20000 }),
+    page.waitForResponse((r) => /\/api\/signalements\/\d+(\?|$)/.test(r.url()) && r.request().method() === 'DELETE', {
+      timeout: 20000
+    }),
     page.click('.dialogue-btn--danger:has-text("Confirmer")')
   ])
-  verifier(reponseSuppressionCreateur.ok(), `un non-admin peut supprimer son propre signalement via son jeton (statut ${reponseSuppressionCreateur.status()})`)
+  verifier(
+    reponseSuppressionCreateur.ok(),
+    `un non-admin peut supprimer son propre signalement via son jeton (statut ${reponseSuppressionCreateur.status()})`
+  )
   await page.waitForURL(BASE, { timeout: 10000 })
 
   await page.goto(BASE + 'admin', { waitUntil: 'networkidle' })
@@ -138,7 +151,9 @@ try {
   await page.fill('#identifiant', process.env.ADMIN_IDENTIFIANT)
   await page.fill('#motDePasse', process.env.ADMIN_MOT_DE_PASSE)
   const [reponseLogin] = await Promise.all([
-    page.waitForResponse((r) => r.url().includes('/api/auth/login') && r.request().method() === 'POST', { timeout: 20000 }),
+    page.waitForResponse((r) => r.url().includes('/api/auth/login') && r.request().method() === 'POST', {
+      timeout: 20000
+    }),
     page.click('button[type=submit]')
   ])
   verifier(reponseLogin.ok(), `connexion admin acceptée par le serveur (statut ${reponseLogin.status()})`)
@@ -169,22 +184,35 @@ try {
   const nbLignesAvant = await page.locator('.admin-table tbody tr').count()
   await ligneJetable.locator('button:has-text("Supprimer")').click()
   await page.waitForTimeout(200)
-  verifier(await page.locator('.dialogue-card').isVisible(), 'fenêtre de confirmation personnalisée affichée (tableau admin)')
+  verifier(
+    await page.locator('.dialogue-card').isVisible(),
+    'fenêtre de confirmation personnalisée affichée (tableau admin)'
+  )
   const [reponseSuppressionAdmin] = await Promise.all([
-    page.waitForResponse((r) => /\/api\/signalements\/\d+$/.test(r.url()) && r.request().method() === 'DELETE', { timeout: 20000 }),
+    page.waitForResponse((r) => /\/api\/signalements\/\d+$/.test(r.url()) && r.request().method() === 'DELETE', {
+      timeout: 20000
+    }),
     page.click('.dialogue-btn--danger:has-text("Confirmer")')
   ])
-  verifier(reponseSuppressionAdmin.ok(), `suppression depuis le tableau admin acceptée (statut ${reponseSuppressionAdmin.status()})`)
+  verifier(
+    reponseSuppressionAdmin.ok(),
+    `suppression depuis le tableau admin acceptée (statut ${reponseSuppressionAdmin.status()})`
+  )
   await page.waitForTimeout(500)
   const nbLignesApres = await page.locator('.admin-table tbody tr').count()
-  verifier(nbLignesApres === nbLignesAvant - 1, `la ligne supprimée disparaît immédiatement du tableau admin (avant: ${nbLignesAvant}, après: ${nbLignesApres})`)
+  verifier(
+    nbLignesApres === nbLignesAvant - 1,
+    `la ligne supprimée disparaît immédiatement du tableau admin (avant: ${nbLignesAvant}, après: ${nbLignesApres})`
+  )
 
   await page.goto(urlDetail, { waitUntil: 'networkidle' })
   await page.click('button:has-text("Modifier")')
   await page.waitForTimeout(300)
   await page.fill('#edit-description', 'Description mise à jour par la suite end-to-end.')
   const [reponseModification] = await Promise.all([
-    page.waitForResponse((r) => /\/api\/signalements\/\d+$/.test(r.url()) && r.request().method() === 'PUT', { timeout: 20000 }),
+    page.waitForResponse((r) => /\/api\/signalements\/\d+$/.test(r.url()) && r.request().method() === 'PUT', {
+      timeout: 20000
+    }),
     page.click('button:has-text("Enregistrer")')
   ])
   verifier(reponseModification.ok(), `modification acceptée par le serveur (statut ${reponseModification.status()})`)
@@ -198,7 +226,9 @@ try {
   await page.waitForTimeout(200)
   verifier(await page.locator('.dialogue-card').isVisible(), 'fenêtre de confirmation personnalisée affichée')
   const [reponseSuppression] = await Promise.all([
-    page.waitForResponse((r) => /\/api\/signalements\/\d+$/.test(r.url()) && r.request().method() === 'DELETE', { timeout: 20000 }),
+    page.waitForResponse((r) => /\/api\/signalements\/\d+$/.test(r.url()) && r.request().method() === 'DELETE', {
+      timeout: 20000
+    }),
     page.click('.dialogue-btn--danger:has-text("Confirmer")')
   ])
   verifier(reponseSuppression.ok(), `suppression acceptée par le serveur (statut ${reponseSuppression.status()})`)
@@ -209,7 +239,10 @@ try {
     .waitFor({ state: 'visible', timeout: 10000 })
     .catch(() => {})
   const nbCartesApresSuppression = await page.locator('.signalement-card').count()
-  verifier(nbCartesApresSuppression === 3, `retour à 3 signalements après suppression (trouvé ${nbCartesApresSuppression})`)
+  verifier(
+    nbCartesApresSuppression === 3,
+    `retour à 3 signalements après suppression (trouvé ${nbCartesApresSuppression})`
+  )
 
   console.log('')
   console.log('--- déconnexion admin ---')
@@ -217,7 +250,7 @@ try {
   verifier(await page.locator('.admin-sidebar').isVisible(), 'toujours connecté, tableau de bord accessible')
   await page.click('button:has-text("Déconnexion")')
   await page.waitForURL(/\/admin\/login$/, { timeout: 10000 })
-  verifier(/\/admin\/login$/.test(page.url()), 'la déconnexion redirige bien vers l\'écran de connexion')
+  verifier(/\/admin\/login$/.test(page.url()), "la déconnexion redirige bien vers l'écran de connexion")
   await page.goto(BASE + 'admin', { waitUntil: 'networkidle' })
   verifier(/\/admin\/login$/.test(page.url()), 'après déconnexion, /admin redemande bien une connexion')
 

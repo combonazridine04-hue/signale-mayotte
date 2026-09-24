@@ -191,7 +191,9 @@ router.get('/signalements/stats', requireAuth, async (req, res) => {
 })
 
 router.get('/signalements/stats-publiques', async (req, res) => {
-  const { rows: parStatutRows } = await db.query('SELECT statut, COUNT(*)::int AS count FROM signalements GROUP BY statut')
+  const { rows: parStatutRows } = await db.query(
+    'SELECT statut, COUNT(*)::int AS count FROM signalements GROUP BY statut'
+  )
   const parStatut = { total: 0, signale: 0, enCours: 0, resolu: 0 }
   for (const row of parStatutRows) {
     parStatut.total += row.count
@@ -231,11 +233,41 @@ router.get('/signalements/export.csv', requireAuth, async (req, res) => {
   )
 
   const echapperCsv = (valeur) => `"${String(valeur ?? '').replace(/"/g, '""')}"`
-  const entetes = ['id', 'categorie', 'commune', 'description', 'statut', 'urgent', 'date_signalement', 'date_resolution', 'latitude', 'longitude', 'nb_soutiens', 'auteur_nom', 'auteur_email', 'auteur_telephone']
+  const entetes = [
+    'id',
+    'categorie',
+    'commune',
+    'description',
+    'statut',
+    'urgent',
+    'date_signalement',
+    'date_resolution',
+    'latitude',
+    'longitude',
+    'nb_soutiens',
+    'auteur_nom',
+    'auteur_email',
+    'auteur_telephone'
+  ]
   const lignes = [entetes.join(',')]
   for (const row of rows) {
     lignes.push(
-      [row.id, row.categorie, row.commune, row.description, row.statut, row.urgent ? 'oui' : 'non', row.date_signalement, row.date_resolution, row.latitude, row.longitude, row.nb_soutiens, row.auteur_nom, row.auteur_email, row.auteur_telephone]
+      [
+        row.id,
+        row.categorie,
+        row.commune,
+        row.description,
+        row.statut,
+        row.urgent ? 'oui' : 'non',
+        row.date_signalement,
+        row.date_resolution,
+        row.latitude,
+        row.longitude,
+        row.nb_soutiens,
+        row.auteur_nom,
+        row.auteur_email,
+        row.auteur_telephone
+      ]
         .map(echapperCsv)
         .join(',')
     )
@@ -324,20 +356,15 @@ router.get('/signalements/:id', async (req, res) => {
     [id]
   )
 
-  let dejaSoutenu = false
-  if (session?.type === 'utilisateur') {
-    const { rows: soutienExistant } = await db.query(
-      'SELECT 1 FROM soutiens WHERE signalement_id = $1 AND utilisateur_id = $2',
-      [id, session.utilisateurId]
-    )
-    dejaSoutenu = soutienExistant.length > 0
-  } else {
-    const { rows: soutienExistant } = await db.query(
-      'SELECT 1 FROM soutiens WHERE signalement_id = $1 AND ip_hash = $2',
-      [id, hasherIp(req)]
-    )
-    dejaSoutenu = soutienExistant.length > 0
-  }
+  // Un compte est reconnu par son identifiant, un visiteur par l'empreinte de son adresse IP.
+  const { rows: soutienExistant } =
+    session?.type === 'utilisateur'
+      ? await db.query('SELECT 1 FROM soutiens WHERE signalement_id = $1 AND utilisateur_id = $2', [
+          id,
+          session.utilisateurId
+        ])
+      : await db.query('SELECT 1 FROM soutiens WHERE signalement_id = $1 AND ip_hash = $2', [id, hasherIp(req)])
+  const dejaSoutenu = soutienExistant.length > 0
 
   res.json({
     ...mapRow(rows[0], estAdmin, session?.utilisateurId || null),
@@ -369,7 +396,9 @@ router.get('/signalements', async (req, res) => {
   }
   if (recherche.trim()) {
     params.push(`%${recherche.trim()}%`)
-    conditions.push(`(description ILIKE $${params.length} OR commune ILIKE $${params.length} OR categorie ILIKE $${params.length})`)
+    conditions.push(
+      `(description ILIKE $${params.length} OR commune ILIKE $${params.length} OR categorie ILIKE $${params.length})`
+    )
   }
   if (urgent === '1' || urgent === 'true') {
     conditions.push(`urgent = true`)
@@ -417,12 +446,10 @@ router.post('/signalements/:id/soutenir', requireAuthUtilisateur, limiteurSoutie
   if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
   try {
-    await db.query('INSERT INTO soutiens (signalement_id, ip_hash, utilisateur_id, date_soutien) VALUES ($1, $2, $3, $4)', [
-      id,
-      ipHash,
-      req.utilisateur?.id || null,
-      new Date().toISOString()
-    ])
+    await db.query(
+      'INSERT INTO soutiens (signalement_id, ip_hash, utilisateur_id, date_soutien) VALUES ($1, $2, $3, $4)',
+      [id, ipHash, req.utilisateur?.id || null, new Date().toISOString()]
+    )
   } catch {
     return res.status(409).json({ erreur: 'Vous avez déjà soutenu ce signalement.' })
   }
@@ -434,66 +461,86 @@ router.post('/signalements/:id/soutenir', requireAuthUtilisateur, limiteurSoutie
   res.json({ nbSoutiens: rows[0].nb_soutiens })
 })
 
-router.post('/signalements', requireAuthUtilisateur, limiteurCreation, upload.array('photos', MAX_PHOTOS), async (req, res) => {
-  if (estUnRobot(req)) {
-    return res.status(201).json({ id: 0, statut: 'Signalé' })
-  }
-
-  if (req.utilisateur) {
-    const { rows } = await db.query('SELECT email, email_verifie FROM utilisateurs WHERE id = $1', [req.utilisateur.id])
-    const compte = rows[0]
-    if (compte?.email && !compte.email_verifie) {
-      return res.status(403).json({
-        erreur: "Confirmez votre email avant d'envoyer un signalement (lien envoyé à l'inscription).",
-        emailNonVerifie: true
-      })
+router.post(
+  '/signalements',
+  requireAuthUtilisateur,
+  limiteurCreation,
+  upload.array('photos', MAX_PHOTOS),
+  async (req, res) => {
+    if (estUnRobot(req)) {
+      return res.status(201).json({ id: 0, statut: 'Signalé' })
     }
-  }
 
-  const { categorie, commune, description, latitude, longitude, email, urgent } = req.body
+    if (req.utilisateur) {
+      const { rows } = await db.query('SELECT email, email_verifie FROM utilisateurs WHERE id = $1', [
+        req.utilisateur.id
+      ])
+      const compte = rows[0]
+      if (compte?.email && !compte.email_verifie) {
+        return res.status(403).json({
+          erreur: "Confirmez votre email avant d'envoyer un signalement (lien envoyé à l'inscription).",
+          emailNonVerifie: true
+        })
+      }
+    }
 
-  if (!CATEGORIES.includes(categorie)) {
-    return res.status(400).json({ erreur: 'Catégorie invalide.' })
-  }
-  if (!COMMUNES.includes(commune)) {
-    return res.status(400).json({ erreur: 'Commune invalide.' })
-  }
-  if (!description || description.trim().length < 10) {
-    return res.status(400).json({ erreur: 'La description doit contenir au moins 10 caractères.' })
-  }
-  if (description.trim().length > 2000) {
-    return res.status(400).json({ erreur: 'La description ne doit pas dépasser 2000 caractères.' })
-  }
+    const { categorie, commune, description, latitude, longitude, email, urgent } = req.body
 
-  if (req.files?.length && (await contientUnePhotoInterdite(req.files))) {
-    return res.status(400).json({ erreur: 'Une des photos envoyées a été refusée (contenu inapproprié détecté).' })
-  }
+    if (!CATEGORIES.includes(categorie)) {
+      return res.status(400).json({ erreur: 'Catégorie invalide.' })
+    }
+    if (!COMMUNES.includes(commune)) {
+      return res.status(400).json({ erreur: 'Commune invalide.' })
+    }
+    if (!description || description.trim().length < 10) {
+      return res.status(400).json({ erreur: 'La description doit contenir au moins 10 caractères.' })
+    }
+    if (description.trim().length > 2000) {
+      return res.status(400).json({ erreur: 'La description ne doit pas dépasser 2000 caractères.' })
+    }
 
-  const emailValide = email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null
-  const photos = req.files?.length ? await traiterPhotos(req.files) : []
-  const dateSignalement = new Date().toISOString()
-  const lat = latitude ? Number(latitude) : null
-  const lon = longitude ? Number(longitude) : null
-  const tokenSuppression = crypto.randomBytes(24).toString('hex')
-  // FormData n'envoie que des chaînes : « false » est une chaîne non vide et serait vrai.
-  const estUrgent = urgent === 'true' || urgent === '1' || urgent === true
+    if (req.files?.length && (await contientUnePhotoInterdite(req.files))) {
+      return res.status(400).json({ erreur: 'Une des photos envoyées a été refusée (contenu inapproprié détecté).' })
+    }
 
-  const { rows } = await db.query(
-    `INSERT INTO signalements (categorie, commune, description, photos, statut, date_signalement, latitude, longitude, email_contact, token_suppression, utilisateur_id, urgent)
+    const emailValide = email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null
+    const photos = req.files?.length ? await traiterPhotos(req.files) : []
+    const dateSignalement = new Date().toISOString()
+    const lat = latitude ? Number(latitude) : null
+    const lon = longitude ? Number(longitude) : null
+    const tokenSuppression = crypto.randomBytes(24).toString('hex')
+    // FormData n'envoie que des chaînes : « false » est une chaîne non vide et serait vrai.
+    const estUrgent = urgent === 'true' || urgent === '1' || urgent === true
+
+    const { rows } = await db.query(
+      `INSERT INTO signalements (categorie, commune, description, photos, statut, date_signalement, latitude, longitude, email_contact, token_suppression, utilisateur_id, urgent)
      VALUES ($1, $2, $3, $4, 'Signalé', $5, $6, $7, $8, $9, $10, $11)
      RETURNING *`,
-    [categorie, commune, description.trim(), photos, dateSignalement, lat, lon, emailValide, tokenSuppression, req.utilisateur?.id || null, estUrgent]
-  )
+      [
+        categorie,
+        commune,
+        description.trim(),
+        photos,
+        dateSignalement,
+        lat,
+        lon,
+        emailValide,
+        tokenSuppression,
+        req.utilisateur?.id || null,
+        estUrgent
+      ]
+    )
 
-  const signalementCree = mapRow(rows[0], false, req.utilisateur?.id || null)
-  envoyerNotificationSignalement(signalementCree)
-  if (emailValide) {
-    envoyerConfirmationSignalement(signalementCree, emailValide, tokenSuppression)
+    const signalementCree = mapRow(rows[0], false, req.utilisateur?.id || null)
+    envoyerNotificationSignalement(signalementCree)
+    if (emailValide) {
+      envoyerConfirmationSignalement(signalementCree, emailValide, tokenSuppression)
+    }
+    // Le token n'est renvoyé qu'ici, une seule fois : c'est la seule façon pour le créateur
+    // (sans compte) de prouver plus tard que le signalement lui appartient.
+    res.status(201).json({ ...signalementCree, tokenSuppression })
   }
-  // Le token n'est renvoyé qu'ici, une seule fois : c'est la seule façon pour le créateur
-  // (sans compte) de prouver plus tard que le signalement lui appartient.
-  res.status(201).json({ ...signalementCree, tokenSuppression })
-})
+)
 
 router.patch('/signalements/:id', requireAuth, upload.single('photoResolution'), async (req, res) => {
   const id = Number(req.params.id)
@@ -547,9 +594,10 @@ router.put('/signalements/:id', upload.array('photos', MAX_PHOTOS), async (req, 
 
   if (!estAutoriseAModifier(req, existant)) {
     return res.status(403).json({
-      erreur: existant.statut === 'Signalé'
-        ? 'Vous ne pouvez modifier que vos propres signalements.'
-        : 'Ce signalement est déjà pris en charge : il n\'est plus modifiable.'
+      erreur:
+        existant.statut === 'Signalé'
+          ? 'Vous ne pouvez modifier que vos propres signalements.'
+          : "Ce signalement est déjà pris en charge : il n'est plus modifiable."
     })
   }
 
@@ -585,7 +633,9 @@ router.put('/signalements/:id', upload.array('photos', MAX_PHOTOS), async (req, 
   const photosSupprimees = existant.photos.filter((url) => !photosConservees.includes(url))
   await Promise.all(photosSupprimees.map(supprimerPhoto))
 
-  const nouvellesPhotos = req.files?.length ? await traiterPhotos(req.files.slice(0, MAX_PHOTOS - photosConservees.length)) : []
+  const nouvellesPhotos = req.files?.length
+    ? await traiterPhotos(req.files.slice(0, MAX_PHOTOS - photosConservees.length))
+    : []
   const photos = [...photosConservees, ...nouvellesPhotos]
 
   const lat = latitude ? Number(latitude) : existant.latitude
@@ -666,7 +716,9 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
   let auteur = `Admin (${req.admin?.identifiant})`
   let auteurAvatarUrl = null
   if (req.utilisateur) {
-    const { rows } = await db.query('SELECT nom, pseudo, avatar_url FROM utilisateurs WHERE id = $1', [req.utilisateur.id])
+    const { rows } = await db.query('SELECT nom, pseudo, avatar_url FROM utilisateurs WHERE id = $1', [
+      req.utilisateur.id
+    ])
     auteur = rows[0]?.pseudo || nomPublic(rows[0]?.nom || req.utilisateur.nom)
     auteurAvatarUrl = rows[0]?.avatar_url || null
   }
@@ -727,7 +779,8 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
   // Si c'est une réponse, l'auteur du commentaire visé est prévenu à son tour —
   // sauf s'il vient déjà d'être prévenu en tant qu'auteur du signalement.
   const repondASoiMeme = req.utilisateur && parent?.utilisateur_id === req.utilisateur.id
-  const parentDejaPrevenu = parent && parent.utilisateur_id === signalement.utilisateur_id && !commenteSonPropreSignalement
+  const parentDejaPrevenu =
+    parent && parent.utilisateur_id === signalement.utilisateur_id && !commenteSonPropreSignalement
   if (parent && !repondASoiMeme && !parentDejaPrevenu) {
     creerNotification(parent.utilisateur_id, {
       signalementId: id,
@@ -748,10 +801,10 @@ router.delete('/signalements/:id/commentaires/:commentaireId', requireAuthUtilis
   const commentaireId = Number(req.params.commentaireId)
   const signalementId = Number(req.params.id)
 
-  const { rows } = await db.query(
-    'SELECT utilisateur_id FROM commentaires WHERE id = $1 AND signalement_id = $2',
-    [commentaireId, signalementId]
-  )
+  const { rows } = await db.query('SELECT utilisateur_id FROM commentaires WHERE id = $1 AND signalement_id = $2', [
+    commentaireId,
+    signalementId
+  ])
   if (!rows.length) return res.status(404).json({ erreur: 'Commentaire introuvable.' })
 
   const estAuteur = req.utilisateur && rows[0].utilisateur_id === req.utilisateur.id

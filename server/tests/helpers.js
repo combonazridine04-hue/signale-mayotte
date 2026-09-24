@@ -12,14 +12,14 @@ export async function demarrerServeurTest() {
   // séparée, ils effaceraient les données réelles de la base de production.
   if (!process.env.TEST_DATABASE_URL) {
     throw new Error(
-      "TEST_DATABASE_URL manquant. Les tests ne doivent jamais tourner sur la base de production : " +
-      "créez un projet Supabase séparé pour les tests et renseignez TEST_DATABASE_URL dans .env (voir .env.example)."
+      'TEST_DATABASE_URL manquant. Les tests ne doivent jamais tourner sur la base de production : ' +
+        'créez un projet Supabase séparé pour les tests et renseignez TEST_DATABASE_URL dans .env (voir .env.example).'
     )
   }
   if (process.env.TEST_DATABASE_URL === process.env.DATABASE_URL) {
     throw new Error(
-      "TEST_DATABASE_URL est identique à DATABASE_URL : les tests effaceraient les données de production. " +
-      "Utilisez un projet Supabase distinct pour TEST_DATABASE_URL."
+      'TEST_DATABASE_URL est identique à DATABASE_URL : les tests effaceraient les données de production. ' +
+        'Utilisez un projet Supabase distinct pour TEST_DATABASE_URL.'
     )
   }
   process.env.DATABASE_URL = process.env.TEST_DATABASE_URL

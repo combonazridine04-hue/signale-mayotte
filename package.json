@@ -10,6 +10,10 @@
     "start": "node server/index.js",
     "build": "vite build",
     "preview": "vite preview",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test:api": "node --test --test-concurrency=1 server/tests/*.test.js",
     "test:e2e": "node tests/e2e/parcours.spec.js",
     "test": "npm run build && npm run test:api && npm run test:e2e"
@@ -36,9 +40,15 @@
     "world-atlas": "^2.0.2"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@vitejs/plugin-vue": "^6.0.6",
     "concurrently": "^10.0.4",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.11.1",
+    "globals": "^17.12.0",
     "playwright-chromium": "^1.61.0",
+    "prettier": "^3.9.9",
     "vite": "^8.0.12"
   }
 }

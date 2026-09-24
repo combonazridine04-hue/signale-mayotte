@@ -76,9 +76,8 @@ const envoyer = async () => {
           <p class="section-kicker">Contact</p>
           <h1 class="fw-bold">Nous écrire</h1>
           <p class="text-secondary">
-            Ce message arrive à l'équipe qui gère la plateforme. Pour signaler un
-            problème sur le terrain, passez plutôt par le formulaire de signalement :
-            il est suivi, public, et transmis au bon service.
+            Ce message arrive à l'équipe qui gère la plateforme. Pour signaler un problème sur le terrain, passez plutôt
+            par le formulaire de signalement : il est suivi, public, et transmis au bon service.
           </p>
 
           <PanneauAide titre="Écrivez-nous plutôt pour" :points="motifs" />
@@ -88,7 +87,9 @@ const envoyer = async () => {
           <div class="contact-panel mt-4">
             <!-- Sur une seule ligne : Vue supprime les blancs entre deux balises, et
                  l'espace après « Email : » disparaissait. -->
-            <p class="mb-1"><strong>Email :</strong> <a href="mailto:contact@signale-mayotte.yt">contact@signale-mayotte.yt</a></p>
+            <p class="mb-1">
+              <strong>Email :</strong> <a href="mailto:contact@signale-mayotte.yt">contact@signale-mayotte.yt</a>
+            </p>
             <p class="mb-0 text-secondary small">
               Le formulaire ci-contre fait la même chose, sans avoir à ouvrir sa messagerie.
             </p>
@@ -97,8 +98,8 @@ const envoyer = async () => {
           <div class="contact-panel mt-4">
             <p class="mb-2 fw-semibold">Un problème à signaler&nbsp;?</p>
             <p class="mb-3 text-secondary small">
-              Un dépôt sauvage, un nid-de-poule, un lampadaire éteint, une fuite d'eau
-              ne se traitent pas par email : ils se signalent, pour être suivis.
+              Un dépôt sauvage, un nid-de-poule, un lampadaire éteint, une fuite d'eau ne se traitent pas par email :
+              ils se signalent, pour être suivis.
             </p>
             <RouterLink to="/signaler" class="btn btn-success btn-sm">Signaler un problème</RouterLink>
           </div>
@@ -108,19 +109,37 @@ const envoyer = async () => {
           <form class="card-glass rounded p-4 shadow-sm" novalidate @submit.prevent="envoyer">
             <div class="mb-3">
               <label for="nom" class="form-label">Nom complet</label>
-              <input id="nom" v-model="formulaire.nom" type="text" maxlength="100" class="form-control" :class="{ 'is-invalid': envoye && erreurs.nom }">
+              <input
+                id="nom"
+                v-model="formulaire.nom"
+                type="text"
+                maxlength="100"
+                class="form-control"
+                :class="{ 'is-invalid': envoye && erreurs.nom }"
+              />
               <div class="invalid-feedback">Le nom doit contenir au moins 2 caractères.</div>
             </div>
 
             <div class="mb-3">
               <label for="email" class="form-label">Email</label>
-              <input id="email" v-model="formulaire.email" type="email" class="form-control" :class="{ 'is-invalid': envoye && erreurs.email }">
+              <input
+                id="email"
+                v-model="formulaire.email"
+                type="email"
+                class="form-control"
+                :class="{ 'is-invalid': envoye && erreurs.email }"
+              />
               <div class="invalid-feedback">Veuillez saisir une adresse email valide.</div>
             </div>
 
             <div class="mb-3">
               <label for="sujet" class="form-label">Sujet</label>
-              <select id="sujet" v-model="formulaire.sujet" class="form-select" :class="{ 'is-invalid': envoye && erreurs.sujet }">
+              <select
+                id="sujet"
+                v-model="formulaire.sujet"
+                class="form-select"
+                :class="{ 'is-invalid': envoye && erreurs.sujet }"
+              >
                 <option value="">Choisir un sujet</option>
                 <option>Question sur un signalement</option>
                 <option>Problème technique</option>
@@ -132,7 +151,14 @@ const envoyer = async () => {
 
             <div class="mb-3">
               <label for="message" class="form-label">Message</label>
-              <textarea id="message" v-model="formulaire.message" rows="5" maxlength="3000" class="form-control" :class="{ 'is-invalid': envoye && erreurs.message }"></textarea>
+              <textarea
+                id="message"
+                v-model="formulaire.message"
+                rows="5"
+                maxlength="3000"
+                class="form-control"
+                :class="{ 'is-invalid': envoye && erreurs.message }"
+              ></textarea>
               <div class="invalid-feedback">Le message doit contenir au moins 10 caractères.</div>
             </div>
 
@@ -141,9 +167,7 @@ const envoyer = async () => {
               <input id="contact-site-web" v-model="formulaire.site_web" type="text" tabindex="-1" autocomplete="off" />
             </div>
 
-            <div v-if="succes" class="alert alert-success">
-              Votre message a bien été envoyé.
-            </div>
+            <div v-if="succes" class="alert alert-success">Votre message a bien été envoyé.</div>
             <div v-if="erreurEnvoi" class="alert alert-danger py-2">{{ erreurEnvoi }}</div>
 
             <button type="submit" class="btn btn-primary btn-lg" :disabled="envoiEnCours">

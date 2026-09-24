@@ -32,7 +32,14 @@ const imageEnErreur = ref(false)
 const indexImageActive = ref(0)
 
 const modeEdition = ref(false)
-const formulaire = reactive({ categorie: '', commune: '', description: '', latitude: null, longitude: null, urgent: false })
+const formulaire = reactive({
+  categorie: '',
+  commune: '',
+  description: '',
+  latitude: null,
+  longitude: null,
+  urgent: false
+})
 const fichiersPhotos = ref([])
 const photosConservees = ref([])
 const envoiEnCours = ref(false)
@@ -62,7 +69,7 @@ const charger = () => {
   if (route.query.token) {
     enregistrerTokenSuppression(props.id, route.query.token)
     // On retire le token de l'URL affichée (historique, partage de lien...) une fois enregistré.
-    const { token, ...resteQuery } = route.query
+    const { token: _token, ...resteQuery } = route.query
     router.replace({ path: route.path, query: resteQuery })
   }
   monToken.value = lireTokenSuppression(props.id)
@@ -153,7 +160,10 @@ const enregistrer = async () => {
 const supprimer = async () => {
   if (!(await uiStore.confirmer('Supprimer définitivement ce signalement ?'))) return
   try {
-    await signalementStore.supprimer(signalementStore.signalementCourant.id, authStore.estConnecte ? null : monToken.value)
+    await signalementStore.supprimer(
+      signalementStore.signalementCourant.id,
+      authStore.estConnecte ? null : monToken.value
+    )
     router.push('/')
   } catch (e) {
     uiStore.alerter(e.message)
@@ -197,7 +207,9 @@ const partager = async () => {
   } catch {
     messagePartage.value = 'Copie impossible'
   }
-  setTimeout(() => { messagePartage.value = '' }, 2500)
+  setTimeout(() => {
+    messagePartage.value = ''
+  }, 2500)
 }
 
 const soutenir = async () => {
@@ -332,11 +344,7 @@ const resolutionEnCours = ref(false)
 const marquerResolu = async () => {
   resolutionEnCours.value = true
   try {
-    await signalementStore.changerStatut(
-      signalementStore.signalementCourant.id,
-      'Résolu',
-      fichierPhotoResolution.value
-    )
+    await signalementStore.changerStatut(signalementStore.signalementCourant.id, 'Résolu', fichierPhotoResolution.value)
     fichierPhotoResolution.value = null
   } catch (e) {
     uiStore.alerter(e.message)
@@ -350,8 +358,8 @@ const marquerResolu = async () => {
   <main class="py-5">
     <div class="container">
       <div v-if="route.query.nouveau" class="alert alert-success mb-4">
-        Votre signalement a bien été enregistré. Merci pour votre contribution !
-        Vous pourrez le supprimer vous-même depuis ce navigateur, ou depuis le lien reçu par email si vous en avez laissé un.
+        Votre signalement a bien été enregistré. Merci pour votre contribution ! Vous pourrez le supprimer vous-même
+        depuis ce navigateur, ou depuis le lien reçu par email si vous en avez laissé un.
       </div>
 
       <p v-if="signalementStore.chargement" class="text-secondary">Chargement...</p>
@@ -418,7 +426,8 @@ const marquerResolu = async () => {
                 <time
                   :datetime="signalementStore.signalementCourant.dateSignalement"
                   :title="dateComplete(signalementStore.signalementCourant.dateSignalement)"
-                >{{ dateRelative(signalementStore.signalementCourant.dateSignalement) }}</time>
+                  >{{ dateRelative(signalementStore.signalementCourant.dateSignalement) }}</time
+                >
                 <span
                   v-if="signalementStore.signalementCourant.dateModification"
                   :title="dateComplete(signalementStore.signalementCourant.dateModification)"
@@ -438,14 +447,25 @@ const marquerResolu = async () => {
 
               <p v-if="authStore.estConnecte" class="text-secondary small mb-3">
                 Envoyé par :
-                <strong>{{ signalementStore.signalementCourant.auteurNom || 'Compte supprimé / signalement anonyme historique' }}</strong>
-                <template v-if="signalementStore.signalementCourant.auteurEmail"> — {{ signalementStore.signalementCourant.auteurEmail }}</template>
-                <template v-if="signalementStore.signalementCourant.auteurTelephone"> — {{ signalementStore.signalementCourant.auteurTelephone }}</template>
+                <strong>{{
+                  signalementStore.signalementCourant.auteurNom || 'Compte supprimé / signalement anonyme historique'
+                }}</strong>
+                <template v-if="signalementStore.signalementCourant.auteurEmail">
+                  — {{ signalementStore.signalementCourant.auteurEmail }}</template
+                >
+                <template v-if="signalementStore.signalementCourant.auteurTelephone">
+                  — {{ signalementStore.signalementCourant.auteurTelephone }}</template
+                >
                 <span class="d-block">(visible par l'admin uniquement)</span>
               </p>
 
               <div v-if="peutModifier || peutSupprimer || peutAgir" class="d-flex flex-wrap gap-2 mt-3">
-                <button v-if="peutModifier" type="button" class="btn btn-outline-secondary btn-sm" @click="ouvrirEdition">
+                <button
+                  v-if="peutModifier"
+                  type="button"
+                  class="btn btn-outline-secondary btn-sm"
+                  @click="ouvrirEdition"
+                >
                   Modifier
                 </button>
                 <button v-if="peutSupprimer" type="button" class="btn btn-outline-danger btn-sm" @click="supprimer">
@@ -495,7 +515,9 @@ const marquerResolu = async () => {
                   👍 Moi aussi
                 </RouterLink>
                 <span class="text-secondary small">
-                  {{ signalementStore.signalementCourant.nbSoutiens }} soutien{{ signalementStore.signalementCourant.nbSoutiens > 1 ? 's' : '' }}
+                  {{ signalementStore.signalementCourant.nbSoutiens }} soutien{{
+                    signalementStore.signalementCourant.nbSoutiens > 1 ? 's' : ''
+                  }}
                 </span>
 
                 <button type="button" class="btn btn-outline-secondary btn-sm ms-auto" @click="partager">
@@ -504,7 +526,10 @@ const marquerResolu = async () => {
               </div>
               <p v-if="erreurSoutien" class="text-danger small mt-1 mb-0">{{ erreurSoutien }}</p>
 
-              <div v-if="authStore.estConnecte && signalementStore.signalementCourant.statut !== 'Résolu'" class="info-box mt-4">
+              <div
+                v-if="authStore.estConnecte && signalementStore.signalementCourant.statut !== 'Résolu'"
+                class="info-box mt-4"
+              >
                 <span>Marquer comme résolu</span>
                 <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
                   <input
@@ -514,7 +539,12 @@ const marquerResolu = async () => {
                     style="max-width: 220px"
                     @change="fichierPhotoResolution = $event.target.files[0] || null"
                   />
-                  <button type="button" class="btn btn-success btn-sm" :disabled="resolutionEnCours" @click="marquerResolu">
+                  <button
+                    type="button"
+                    class="btn btn-success btn-sm"
+                    :disabled="resolutionEnCours"
+                    @click="marquerResolu"
+                  >
                     {{ resolutionEnCours ? 'Enregistrement...' : 'Marquer résolu' }}
                   </button>
                 </div>
@@ -542,14 +572,19 @@ const marquerResolu = async () => {
                   </button>
                 </div>
 
-                <p v-if="!signalementStore.signalementCourant.misesAJour?.length" class="text-secondary small mt-2 mb-0">
+                <p
+                  v-if="!signalementStore.signalementCourant.misesAJour?.length"
+                  class="text-secondary small mt-2 mb-0"
+                >
                   Aucune mise à jour pour le moment.
                 </p>
                 <ul v-else class="detail-suivi mt-2 mb-0">
                   <li v-for="m in signalementStore.signalementCourant.misesAJour" :key="m.id" class="detail-suivi-item">
                     <p class="mb-0">{{ m.texte }}</p>
                     <div class="d-flex align-items-center gap-2">
-                      <span class="text-secondary small" :title="dateComplete(m.dateCreation)">{{ dateRelative(m.dateCreation) }}</span>
+                      <span class="text-secondary small" :title="dateComplete(m.dateCreation)">{{
+                        dateRelative(m.dateCreation)
+                      }}</span>
                       <button
                         v-if="authStore.estConnecte"
                         type="button"
@@ -570,14 +605,21 @@ const marquerResolu = async () => {
                   <li v-for="fil in filsCommentaires" :key="fil.id" class="detail-suivi-item">
                     <div class="d-flex align-items-center gap-2">
                       <div class="detail-commentaire-avatar">
-                        <img v-if="fil.auteurAvatarUrl" :src="fil.auteurAvatarUrl" alt="" @error="fil.auteurAvatarUrl = null" />
+                        <img
+                          v-if="fil.auteurAvatarUrl"
+                          :src="fil.auteurAvatarUrl"
+                          alt=""
+                          @error="fil.auteurAvatarUrl = null"
+                        />
                         <span v-else>{{ fil.auteur.charAt(0).toUpperCase() }}</span>
                       </div>
                       <p class="mb-0 fw-semibold">{{ fil.auteur }}</p>
                     </div>
                     <p class="mb-0">{{ fil.texte }}</p>
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                      <span class="text-secondary small" :title="dateComplete(fil.dateCreation)">{{ dateRelative(fil.dateCreation) }}</span>
+                      <span class="text-secondary small" :title="dateComplete(fil.dateCreation)">{{
+                        dateRelative(fil.dateCreation)
+                      }}</span>
                       <button v-if="peutAgir" type="button" class="btn btn-link btn-sm p-0" @click="ouvrirReponse(fil)">
                         {{ reponseA === fil.id ? 'Annuler' : 'Répondre' }}
                       </button>
@@ -604,15 +646,27 @@ const marquerResolu = async () => {
                       <li v-for="r in fil.reponses" :key="r.id" class="commentaire-reponse">
                         <div class="d-flex align-items-center gap-2">
                           <div class="detail-commentaire-avatar">
-                            <img v-if="r.auteurAvatarUrl" :src="r.auteurAvatarUrl" alt="" @error="r.auteurAvatarUrl = null" />
+                            <img
+                              v-if="r.auteurAvatarUrl"
+                              :src="r.auteurAvatarUrl"
+                              alt=""
+                              @error="r.auteurAvatarUrl = null"
+                            />
                             <span v-else>{{ r.auteur.charAt(0).toUpperCase() }}</span>
                           </div>
                           <p class="mb-0 fw-semibold">{{ r.auteur }}</p>
                         </div>
                         <p class="mb-0">{{ r.texte }}</p>
                         <div class="d-flex align-items-center gap-2 flex-wrap">
-                          <span class="text-secondary small" :title="dateComplete(r.dateCreation)">{{ dateRelative(r.dateCreation) }}</span>
-                          <button v-if="peutAgir" type="button" class="btn btn-link btn-sm p-0" @click="ouvrirReponse(fil)">
+                          <span class="text-secondary small" :title="dateComplete(r.dateCreation)">{{
+                            dateRelative(r.dateCreation)
+                          }}</span>
+                          <button
+                            v-if="peutAgir"
+                            type="button"
+                            class="btn btn-link btn-sm p-0"
+                            @click="ouvrirReponse(fil)"
+                          >
                             Répondre
                           </button>
                           <button
@@ -658,7 +712,9 @@ const marquerResolu = async () => {
                     </form>
                   </li>
                 </ul>
-                <p v-else class="text-secondary small mt-2 mb-3">Aucun commentaire pour le moment. Soyez le premier à réagir.</p>
+                <p v-else class="text-secondary small mt-2 mb-3">
+                  Aucun commentaire pour le moment. Soyez le premier à réagir.
+                </p>
 
                 <form v-if="peutAgir" novalidate @submit.prevent="ajouterCommentaire">
                   <div class="d-flex gap-2">
@@ -753,8 +809,7 @@ const marquerResolu = async () => {
                   </label>
                 </div>
                 <p class="bloc-urgence-aide mb-0">
-                  À cocher uniquement en cas de risque réel. Le signalement apparaîtra en
-                  tête de liste.
+                  À cocher uniquement en cas de risque réel. Le signalement apparaîtra en tête de liste.
                 </p>
               </div>
 

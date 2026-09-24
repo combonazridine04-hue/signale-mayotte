@@ -16,7 +16,14 @@ defineProps({
     <ul class="panneau-aide-liste">
       <li v-for="point in points" :key="point.titre">
         <span class="panneau-aide-puce" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M4 12.5 9.5 18 20 6.5" />
           </svg>
         </span>

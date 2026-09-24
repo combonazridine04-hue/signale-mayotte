@@ -56,7 +56,12 @@ onUnmounted(() => document.removeEventListener('keydown', surEchap))
       <div class="dialogue-card" role="alertdialog" aria-modal="true">
         <p class="dialogue-message">{{ uiStore.alertMessage }}</p>
         <div class="dialogue-actions">
-          <button ref="boutonOk" type="button" class="dialogue-btn dialogue-btn--primary" @click="uiStore.fermerAlerte()">
+          <button
+            ref="boutonOk"
+            type="button"
+            class="dialogue-btn dialogue-btn--primary"
+            @click="uiStore.fermerAlerte()"
+          >
             OK
           </button>
         </div>

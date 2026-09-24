@@ -7,7 +7,7 @@ const connectionString = process.env.DATABASE_URL
 
 if (!connectionString) {
   throw new Error(
-    "DATABASE_URL manquant : copiez .env.example vers .env et renseignez la chaîne de connexion Postgres de votre projet Supabase."
+    'DATABASE_URL manquant : copiez .env.example vers .env et renseignez la chaîne de connexion Postgres de votre projet Supabase.'
   )
 }
 
@@ -84,7 +84,9 @@ await db.query(`
   )
 `)
 
-await db.query(`ALTER TABLE signalements ADD COLUMN IF NOT EXISTS utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL`)
+await db.query(
+  `ALTER TABLE signalements ADD COLUMN IF NOT EXISTS utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL`
+)
 await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS email_verifie BOOLEAN NOT NULL DEFAULT false`)
 await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS token_verification TEXT`)
 await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS token_verification_expire TIMESTAMPTZ`)
@@ -120,8 +122,12 @@ await db.query(`
     UNIQUE (signalement_id, ip_hash)
   )
 `)
-await db.query(`ALTER TABLE soutiens ADD COLUMN IF NOT EXISTS utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL`)
-await db.query(`CREATE UNIQUE INDEX IF NOT EXISTS soutiens_signalement_utilisateur_uniq ON soutiens (signalement_id, utilisateur_id) WHERE utilisateur_id IS NOT NULL`)
+await db.query(
+  `ALTER TABLE soutiens ADD COLUMN IF NOT EXISTS utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL`
+)
+await db.query(
+  `CREATE UNIQUE INDEX IF NOT EXISTS soutiens_signalement_utilisateur_uniq ON soutiens (signalement_id, utilisateur_id) WHERE utilisateur_id IS NOT NULL`
+)
 
 await db.query(`
   CREATE TABLE IF NOT EXISTS mises_a_jour (
@@ -142,10 +148,14 @@ await db.query(`
     utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL
   )
 `)
-await db.query(`ALTER TABLE commentaires ADD COLUMN IF NOT EXISTS utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL`)
+await db.query(
+  `ALTER TABLE commentaires ADD COLUMN IF NOT EXISTS utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL`
+)
 // Réponses aux commentaires. CASCADE : supprimer un commentaire emporte ses réponses,
 // qui n'auraient plus de sens isolées.
-await db.query(`ALTER TABLE commentaires ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES commentaires(id) ON DELETE CASCADE`)
+await db.query(
+  `ALTER TABLE commentaires ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES commentaires(id) ON DELETE CASCADE`
+)
 
 // Notifications affichées dans le site. L'email ne suffit pas : la plupart des comptes
 // n'ont pas d'adresse vérifiée et ne recevraient donc jamais rien.
@@ -189,9 +199,7 @@ export async function reinitialiserDonneesDemo() {
   await db.query('TRUNCATE TABLE signalements RESTART IDENTITY CASCADE')
   // Les photos de profil vivent dans le même espace de stockage que celles des
   // signalements : on les liste pour que la remise à zéro ne les emporte pas avec elle.
-  const { rows: avatars } = await db.query(
-    'SELECT avatar_url FROM utilisateurs WHERE avatar_url IS NOT NULL'
-  )
+  const { rows: avatars } = await db.query('SELECT avatar_url FROM utilisateurs WHERE avatar_url IS NOT NULL')
   await viderPhotos(avatars.map((r) => r.avatar_url))
   for (const s of donneesDemo) {
     await db.query(

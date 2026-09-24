@@ -11,10 +11,26 @@ export const LONGUEUR_MINIMALE = 8
 // Les mots de passe les plus testés en premier lors d'une attaque, plus les variantes
 // locales évidentes.
 const TROP_COURANTS = new Set([
-  '12345678', '123456789', '1234567890', 'azertyui', 'azerty123', 'qwertyui',
-  'motdepasse', 'password', 'password1', 'passw0rd', 'iloveyou', 'sunshine',
-  'mayotte', 'mayotte976', 'mamoudzou', 'signalement', 'abcd1234', '00000000',
-  '11111111', 'aaaaaaaa'
+  '12345678',
+  '123456789',
+  '1234567890',
+  'azertyui',
+  'azerty123',
+  'qwertyui',
+  'motdepasse',
+  'password',
+  'password1',
+  'passw0rd',
+  'iloveyou',
+  'sunshine',
+  'mayotte',
+  'mayotte976',
+  'mamoudzou',
+  'signalement',
+  'abcd1234',
+  '00000000',
+  '11111111',
+  'aaaaaaaa'
 ])
 
 export function motDePasseInterdit(motDePasse) {

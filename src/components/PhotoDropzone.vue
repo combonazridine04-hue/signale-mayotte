@@ -26,7 +26,10 @@ function ajouterFichiers(liste) {
   for (const fichier of fichiersImages) {
     apercus.value.push({ url: URL.createObjectURL(fichier), fichier })
   }
-  emit('update:modelValue', apercus.value.map((a) => a.fichier))
+  emit(
+    'update:modelValue',
+    apercus.value.map((a) => a.fichier)
+  )
 }
 
 const declencherSelection = () => {
@@ -49,11 +52,17 @@ const deposerPhotos = (event) => {
 
 function retirerNouvelle(index) {
   apercus.value.splice(index, 1)
-  emit('update:modelValue', apercus.value.map((a) => a.fichier))
+  emit(
+    'update:modelValue',
+    apercus.value.map((a) => a.fichier)
+  )
 }
 
 function retirerExistante(url) {
-  emit('update:existantes', props.existantes.filter((u) => u !== url))
+  emit(
+    'update:existantes',
+    props.existantes.filter((u) => u !== url)
+  )
 }
 </script>
 
@@ -73,23 +82,47 @@ function retirerExistante(url) {
     >
       <input ref="inputPhoto" type="file" accept="image/*" multiple class="d-none" @change="choisirPhotos" />
 
-      <svg class="photo-dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        class="photo-dropzone-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <rect x="3" y="5" width="18" height="14" rx="2" />
         <circle cx="8.5" cy="10.5" r="1.5" />
         <path d="M21 15l-5-5-4 4-3-3-6 6" />
       </svg>
       <p class="mb-0">{{ complet ? `Maximum ${MAX_PHOTOS} photos atteint` : 'Cliquez ou glissez des photos ici' }}</p>
-      <p class="text-secondary small mb-0">JPG, PNG... 5 Mo par photo, {{ MAX_PHOTOS }} photos max ({{ nbTotal }}/{{ MAX_PHOTOS }})</p>
+      <p class="text-secondary small mb-0">
+        JPG, PNG... 5 Mo par photo, {{ MAX_PHOTOS }} photos max ({{ nbTotal }}/{{ MAX_PHOTOS }})
+      </p>
     </div>
 
-    <input ref="inputAppareil" type="file" accept="image/*" capture="environment" class="d-none" @change="choisirPhotos" />
+    <input
+      ref="inputAppareil"
+      type="file"
+      accept="image/*"
+      capture="environment"
+      class="d-none"
+      @change="choisirPhotos"
+    />
     <button
       type="button"
       class="btn btn-outline-secondary btn-sm photo-dropzone-appareil"
       :disabled="complet"
       @click="declencherAppareil"
     >
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
         <path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z" />
         <circle cx="12" cy="13.5" r="3.2" />
       </svg>
@@ -99,16 +132,40 @@ function retirerExistante(url) {
     <div v-if="nbTotal" class="photo-dropzone-grille">
       <div v-for="url in existantes" :key="url" class="photo-dropzone-vignette">
         <img :src="url" alt="Photo existante" />
-        <button type="button" class="photo-dropzone-retirer" aria-label="Retirer la photo" @click="retirerExistante(url)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button
+          type="button"
+          class="photo-dropzone-retirer"
+          aria-label="Retirer la photo"
+          @click="retirerExistante(url)"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M18 6 6 18M6 6l12 12" />
           </svg>
         </button>
       </div>
       <div v-for="(apercu, index) in apercus" :key="apercu.url" class="photo-dropzone-vignette">
         <img :src="apercu.url" alt="Nouvelle photo" />
-        <button type="button" class="photo-dropzone-retirer" aria-label="Retirer la photo" @click="retirerNouvelle(index)">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <button
+          type="button"
+          class="photo-dropzone-retirer"
+          aria-label="Retirer la photo"
+          @click="retirerNouvelle(index)"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
             <path d="M18 6 6 18M6 6l12 12" />
           </svg>
         </button>

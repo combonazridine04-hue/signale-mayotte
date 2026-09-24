@@ -17,8 +17,7 @@ const annee = new Date().getFullYear()
             <span class="footer-brand-nom">Signale Mayotte</span>
           </RouterLink>
           <p class="footer-brand-texte">
-            La plateforme citoyenne pour signaler les problèmes du quotidien
-            dans toutes les communes de Mayotte.
+            La plateforme citoyenne pour signaler les problèmes du quotidien dans toutes les communes de Mayotte.
           </p>
         </div>
 
@@ -34,11 +33,7 @@ const annee = new Date().getFullYear()
           <h2>Par catégorie</h2>
           <!-- Cliquables : la liste de l'accueil s'ouvre filtrée sur la catégorie.
                Avant, c'était du texte mort qui n'amenait nulle part. -->
-          <RouterLink
-            v-for="categorie in CATEGORIES"
-            :key="categorie"
-            :to="{ path: '/', query: { categorie } }"
-          >
+          <RouterLink v-for="categorie in CATEGORIES" :key="categorie" :to="{ path: '/', query: { categorie } }">
             {{ categorie }}
           </RouterLink>
         </nav>

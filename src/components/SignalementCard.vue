@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { dateRelative, dateComplete } from '../utils/dates.js'
 
-const props = defineProps({
+defineProps({
   signalement: {
     type: Object,
     required: true
@@ -11,9 +11,9 @@ const props = defineProps({
 })
 
 const badgeClasses = {
-  'Signalé': 'text-bg-danger',
+  Signalé: 'text-bg-danger',
   'En cours': 'text-bg-warning',
-  'Résolu': 'text-bg-success'
+  Résolu: 'text-bg-success'
 }
 
 const imageEnErreur = ref(false)

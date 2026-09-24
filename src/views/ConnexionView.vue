@@ -46,8 +46,7 @@ const connecter = async () => {
           <p class="section-kicker">Espace citoyen</p>
           <h1 class="fw-bold">Connexion</h1>
           <p class="text-secondary">
-            Connectez-vous pour signaler un problème, soutenir un signalement existant
-            ou laisser un commentaire.
+            Connectez-vous pour signaler un problème, soutenir un signalement existant ou laisser un commentaire.
           </p>
           <PanneauAide
             titre="Dans votre espace"
@@ -55,7 +54,11 @@ const connecter = async () => {
             note="Vous vous connectez avec votre email ou votre numéro de téléphone, au choix."
           />
 
-          <RouterLink to="/" class="lien-marque d-inline-flex align-items-center gap-2 mt-4" aria-label="Signale Mayotte — retour à l'accueil">
+          <RouterLink
+            to="/"
+            class="lien-marque d-inline-flex align-items-center gap-2 mt-4"
+            aria-label="Signale Mayotte — retour à l'accueil"
+          >
             <img :src="logo" alt="" width="36" height="36" />
             <span class="fw-bold">Signale Mayotte</span>
           </RouterLink>
@@ -80,12 +83,7 @@ const connecter = async () => {
 
             <div class="mb-3">
               <label for="motDePasse" class="form-label">Mot de passe</label>
-              <ChampMotDePasse
-                id="motDePasse"
-                v-model="motDePasse"
-                autocomplete="current-password"
-                required
-              />
+              <ChampMotDePasse id="motDePasse" v-model="motDePasse" autocomplete="current-password" required />
               <div class="text-end mt-1">
                 <RouterLink to="/mot-de-passe-oublie" class="small">Mot de passe oublié ?</RouterLink>
               </div>

@@ -29,9 +29,7 @@ function reinitialiserFiltres() {
   filtres.value = { commune: '', categorie: '', statut: '' }
 }
 
-const signalementsLocalises = computed(() =>
-  signalementStore.signalements.filter((s) => s.latitude && s.longitude)
-)
+const signalementsLocalises = computed(() => signalementStore.signalements.filter((s) => s.latitude && s.longitude))
 
 function icone(statut) {
   const classe = CLASSES_STATUT[statut] || 'carte-marker-accent'
@@ -61,7 +59,9 @@ function dessinerMarqueurs() {
     })
     contenu.appendChild(lien)
 
-    L.marker([s.latitude, s.longitude], { icon: icone(s.statut) }).bindPopup(contenu).addTo(couche)
+    L.marker([s.latitude, s.longitude], { icon: icone(s.statut) })
+      .bindPopup(contenu)
+      .addTo(couche)
   })
 }
 
@@ -106,7 +106,10 @@ onBeforeUnmount(() => {
     <div class="carte-panneau card-glass">
       <p class="section-kicker mb-1">Carte des signalements</p>
       <p class="mb-2">
-        <strong>{{ signalementsLocalises.length }}</strong> signalement{{ signalementsLocalises.length > 1 ? 's' : '' }} localisé{{ signalementsLocalises.length > 1 ? 's' : '' }}
+        <strong>{{ signalementsLocalises.length }}</strong> signalement{{
+          signalementsLocalises.length > 1 ? 's' : ''
+        }}
+        localisé{{ signalementsLocalises.length > 1 ? 's' : '' }}
         <span v-if="signalementStore.totalFiltre > 50" class="text-secondary small d-block">
           (sur {{ signalementStore.totalFiltre }} correspondants au total, seuls les 50 premiers sont pris en compte)
         </span>
@@ -125,12 +128,7 @@ onBeforeUnmount(() => {
           <option value="">Tous les statuts</option>
           <option v-for="statut in STATUTS" :key="statut" :value="statut">{{ statut }}</option>
         </select>
-        <button
-          v-if="filtresActifs"
-          type="button"
-          class="btn btn-link btn-sm p-0 mt-1"
-          @click="reinitialiserFiltres"
-        >
+        <button v-if="filtresActifs" type="button" class="btn btn-link btn-sm p-0 mt-1" @click="reinitialiserFiltres">
           Réinitialiser les filtres
         </button>
       </div>

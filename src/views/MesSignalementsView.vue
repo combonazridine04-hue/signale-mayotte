@@ -22,9 +22,7 @@ const salutation = computed(() => {
 
 // Compté ici plutôt que sur le serveur : la liste des signalements de l'utilisateur est
 // déjà chargée, une requête de plus n'apporterait rien.
-const enCours = computed(() =>
-  signalementStore.signalements.filter((s) => s.statut !== 'Résolu').length
-)
+const enCours = computed(() => signalementStore.signalements.filter((s) => s.statut !== 'Résolu').length)
 
 const notificationsRecentes = computed(() => citoyenStore.notifications.slice(0, 3))
 </script>
@@ -38,16 +36,18 @@ const notificationsRecentes = computed(() => citoyenStore.notifications.slice(0,
           <h1 class="fw-bold mb-0">{{ salutation }}</h1>
         </div>
         <!-- Retour vers la page publique : le tableau de bord ne doit pas être un cul-de-sac. -->
-        <RouterLink to="/" class="btn btn-outline-secondary btn-sm">
-          ← Retour au site
-        </RouterLink>
+        <RouterLink to="/" class="btn btn-outline-secondary btn-sm"> ← Retour au site </RouterLink>
       </div>
 
       <div class="row g-3 mb-4">
         <div class="col-6 col-lg-3">
           <div class="tuile-tdb">
             <span class="tuile-tdb-chiffre">{{ citoyenStore.stats.signalements }}</span>
-            <span class="tuile-tdb-libelle">Signalement{{ citoyenStore.stats.signalements > 1 ? 's' : '' }} envoyé{{ citoyenStore.stats.signalements > 1 ? 's' : '' }}</span>
+            <span class="tuile-tdb-libelle"
+              >Signalement{{ citoyenStore.stats.signalements > 1 ? 's' : '' }} envoyé{{
+                citoyenStore.stats.signalements > 1 ? 's' : ''
+              }}</span
+            >
           </div>
         </div>
         <div class="col-6 col-lg-3">
@@ -65,7 +65,11 @@ const notificationsRecentes = computed(() => citoyenStore.notifications.slice(0,
         <div class="col-6 col-lg-3">
           <div class="tuile-tdb">
             <span class="tuile-tdb-chiffre">{{ citoyenStore.stats.soutiens }}</span>
-            <span class="tuile-tdb-libelle">Soutien{{ citoyenStore.stats.soutiens > 1 ? 's' : '' }} reçu{{ citoyenStore.stats.soutiens > 1 ? 's' : '' }}</span>
+            <span class="tuile-tdb-libelle"
+              >Soutien{{ citoyenStore.stats.soutiens > 1 ? 's' : '' }} reçu{{
+                citoyenStore.stats.soutiens > 1 ? 's' : ''
+              }}</span
+            >
           </div>
         </div>
       </div>

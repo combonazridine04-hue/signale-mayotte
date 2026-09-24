@@ -32,9 +32,8 @@ const etapes = [
       <p class="section-kicker">Comment ça marche</p>
       <h2 class="fonctionnement-titre">Signaler un problème ne doit pas être compliqué</h2>
       <p class="fonctionnement-intro">
-        Un dépôt sauvage au bord de la route, un lampadaire éteint depuis des semaines, une
-        coupure d'eau : ces problèmes du quotidien mettent du temps à remonter. Signale Mayotte
-        les rend visibles, publics et suivis.
+        Un dépôt sauvage au bord de la route, un lampadaire éteint depuis des semaines, une coupure d'eau : ces
+        problèmes du quotidien mettent du temps à remonter. Signale Mayotte les rend visibles, publics et suivis.
       </p>
 
       <ol class="fonctionnement-etapes">
@@ -55,9 +54,7 @@ const etapes = [
 
         <div class="fonctionnement-action">
           <RouterLink to="/signaler" class="btn btn-success">Signaler un problème</RouterLink>
-          <p class="fonctionnement-note">
-            Gratuit. Votre nom et vos coordonnées ne sont jamais affichés publiquement.
-          </p>
+          <p class="fonctionnement-note">Gratuit. Votre nom et vos coordonnées ne sont jamais affichés publiquement.</p>
         </div>
       </div>
     </div>
