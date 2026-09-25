@@ -7,7 +7,7 @@ on:
 
 jobs:
   verifications:
-    name: Lint, formatage et build
+    name: Lint, formatage, tests unitaires et build
     runs-on: ubuntu-latest
 
     steps:
@@ -26,6 +26,11 @@ jobs:
 
       - name: Formatage
         run: npm run format:check
+
+      # Sans base de données : les tests d'API et de parcours, qui en exigent une,
+      # restent lancés à la main (voir README).
+      - name: Tests unitaires
+        run: npm run test:unit
 
       - name: Build du front
         run: npm run build
