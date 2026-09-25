@@ -27,6 +27,19 @@ let prefersReducedMotion = false
 let contextePerdu = false
 let delaiReprise = null
 
+// --- Version de secours en 2D ---
+// Si le navigateur ne sait pas afficher la 3D (WebGL absent, désactivé ou planté à
+// répétition), le même globe est redessiné avec le canvas 2D : mêmes lignes, même
+// inclinaison, même rotation. Le globe ne doit jamais disparaître.
+let mode2D = false
+let contexte2D = null
+let tracesGraticule = []
+let tracesPays = []
+let rotationY2D = 0
+let echecsWebGL = 0
+const ECHECS_AVANT_2D = 3
+const INTERVALLE_2D_MS = 33 // ~30 images/s : largement assez pour une rotation lente
+
 function latLonToVector3(lat, lon, radius) {
   const phi = (90 - lat) * (Math.PI / 180)
   const theta = (lon + 180) * (Math.PI / 180)
@@ -126,6 +139,135 @@ function initScene() {
   updateComposition()
 }
 
+// Points du globe en coordonnées 3D, calculés une seule fois (mêmes formules que la 3D).
+function preparerTraces2D() {
+  const point = (lat, lon) => {
+    const v = latLonToVector3(lat, lon, RADIUS)
+    return [v.x, v.y, v.z]
+  }
+  const steps = 64
+  tracesGraticule = []
+  for (let lat = -75; lat <= 75; lat += 15) {
+    const ligne = []
+    for (let i = 0; i <= steps; i++) ligne.push(point(lat, (i / steps) * 360 - 180))
+    tracesGraticule.push(ligne)
+  }
+  for (let lon = -180; lon < 180; lon += 15) {
+    const ligne = []
+    for (let i = 0; i <= steps; i++) ligne.push(point((i / steps) * 180 - 90, lon))
+    tracesGraticule.push(ligne)
+  }
+
+  tracesPays = []
+  const geo = feature(worldAtlas, worldAtlas.objects.countries)
+  const ajouterAnneau = (anneau) => tracesPays.push(anneau.map(([lon, lat]) => point(lat, lon)))
+  geo.features.forEach(({ geometry }) => {
+    if (geometry.type === 'Polygon') geometry.coordinates.forEach(ajouterAnneau)
+    else if (geometry.type === 'MultiPolygon') geometry.coordinates.forEach((p) => p.forEach(ajouterAnneau))
+  })
+}
+
+// Reproduit la caméra 3D (champ de 45°, recul de 5,4) pour placer et dimensionner le
+// globe au même endroit que la version 3D.
+function composition2D(largeur, hauteur) {
+  const isMobile = window.innerWidth < 768
+  const aspect = window.innerWidth / window.innerHeight
+  const echelle = Math.min(1, Math.max(0.55, aspect / 0.9))
+  const pixelsParUnite = hauteur / (2 * 5.4 * Math.tan((45 / 2) * (Math.PI / 180)))
+  // Rayon apparent d'une sphère de rayon 2 vue à 5,4 unités.
+  const rayonApparent = 5.4 * Math.tan(Math.asin(RADIUS / 5.4))
+  return {
+    cx: largeur / 2 + (isMobile ? 0.5 : 1.7) * pixelsParUnite,
+    cy: hauteur / 2 - (isMobile ? 0.6 : 0) * pixelsParUnite,
+    k: ((rayonApparent * echelle) / RADIUS) * pixelsParUnite
+  }
+}
+
+function dimensionner2D() {
+  const canvas = canvasEl.value
+  if (!canvas) return
+  const ratio = Math.min(window.devicePixelRatio || 1, 2)
+  canvas.width = Math.round(window.innerWidth * ratio)
+  canvas.height = Math.round(window.innerHeight * ratio)
+}
+
+function dessiner2D() {
+  const canvas = canvasEl.value
+  if (!canvas || !contexte2D) return
+  const { width, height } = canvas
+  const { cx, cy, k } = composition2D(width, height)
+
+  // Même ordre de rotations que Three.js (Euler XYZ) : Z, puis Y (rotation animée), puis X.
+  const [sz, cz] = [Math.sin(0.35), Math.cos(0.35)]
+  const [sy, cy2] = [Math.sin(rotationY2D), Math.cos(rotationY2D)]
+  const [sx, cx2] = [Math.sin(0.28), Math.cos(0.28)]
+  const projeter = ([x, y, z]) => {
+    const x1 = x * cz - y * sz
+    const y1 = x * sz + y * cz
+    const x2 = x1 * cy2 + z * sy
+    const z2 = -x1 * sy + z * cy2
+    const y3 = y1 * cx2 - z2 * sx
+    return [cx + x2 * k, cy - y3 * k]
+  }
+
+  contexte2D.clearRect(0, 0, width, height)
+  contexte2D.lineWidth = Math.max(1, (window.devicePixelRatio || 1) * 0.8)
+  const tracer = (traces, opacite) => {
+    contexte2D.strokeStyle = `rgba(255, 255, 255, ${opacite})`
+    contexte2D.beginPath()
+    for (const trace of traces) {
+      const [x0, y0] = projeter(trace[0])
+      contexte2D.moveTo(x0, y0)
+      for (let i = 1; i < trace.length; i++) {
+        const [x, y] = projeter(trace[i])
+        contexte2D.lineTo(x, y)
+      }
+    }
+    contexte2D.stroke()
+  }
+  tracer(tracesGraticule, 0.2)
+  tracer(tracesPays, 0.9)
+}
+
+function animer2D(time) {
+  if (!mode2D) return
+  const dt = lastFrameTime ? Math.min(time - lastFrameTime, 100) : 16
+  if (dt >= INTERVALLE_2D_MS || !lastFrameTime) {
+    lastFrameTime = time
+    rotationY2D += velocity * dt
+    const targetSpeed = prefersReducedMotion ? 0 : BASE_SPEED
+    velocity += (targetSpeed - velocity) * DAMPING
+    dessiner2D()
+  }
+  animationId = requestAnimationFrame(animer2D)
+}
+
+async function demarrer2D() {
+  if (mode2D) return
+  libererScene()
+  detacherCanvas()
+  mode2D = true
+  // Un canvas qui a servi (ou échoué) en WebGL ne peut pas passer en 2D : on en prend un neuf.
+  cleCanvas.value += 1
+  await nextTick()
+  if (!canvasEl.value) return
+  contexte2D = canvasEl.value.getContext('2d')
+  if (!contexte2D) return
+  if (!tracesPays.length) preparerTraces2D()
+  dimensionner2D()
+  lastFrameTime = 0
+  animationId = requestAnimationFrame(animer2D)
+}
+
+function webglDisponible() {
+  try {
+    const essai = document.createElement('canvas')
+    return Boolean(essai.getContext('webgl2') || essai.getContext('webgl'))
+  } catch {
+    return false
+  }
+}
+
 function onScroll() {
   const currentY = window.scrollY
   const delta = currentY - lastScrollY
@@ -134,6 +276,11 @@ function onScroll() {
 }
 
 function onResize() {
+  if (mode2D) {
+    dimensionner2D()
+    dessiner2D()
+    return
+  }
   if (!renderer || !camera) return
   camera.aspect = window.innerWidth / window.innerHeight
   camera.updateProjectionMatrix()
@@ -195,7 +342,13 @@ function onContextRestored() {
 // navigateur ne restaure pas de lui-même, est de remplacer l'élément canvas — d'où
 // la clé, qui force Vue à en créer un neuf.
 async function reprendre() {
-  if (document.hidden) return
+  if (document.hidden || mode2D) return
+  // Contexte 3D perdu trop souvent : la carte graphique ne suit pas, on passe en 2D.
+  echecsWebGL += 1
+  if (echecsWebGL >= ECHECS_AVANT_2D) {
+    demarrer2D()
+    return
+  }
 
   libererScene()
   detacherCanvas()
@@ -217,6 +370,10 @@ async function reprendre() {
 
 function onVisibilite() {
   if (document.hidden) return
+  if (mode2D) {
+    lastFrameTime = 0
+    return
+  }
   if (contextePerdu) {
     reprendre()
     return
@@ -254,15 +411,23 @@ onMounted(() => {
     velocity = prefersReducedMotion ? 0 : BASE_SPEED
     lastScrollY = window.scrollY
 
-    attacherCanvas()
     window.addEventListener('scroll', onScroll, { passive: true })
     window.addEventListener('resize', onResize)
     document.addEventListener('visibilitychange', onVisibilite)
 
+    // « ?globe=2d » force la version de secours, pour pouvoir la vérifier.
+    const forcer2D = new URLSearchParams(window.location.search).get('globe') === '2d'
+    if (forcer2D || !webglDisponible()) {
+      demarrer2D()
+      return
+    }
+
+    attacherCanvas()
     initScene()
     animationId = requestAnimationFrame(animate)
   } catch {
-    // WebGL indisponible : le fond sombre uni du site reste affiché.
+    // WebGL présent mais inutilisable : version 2D.
+    demarrer2D()
   }
 })
 
@@ -273,6 +438,7 @@ onUnmounted(() => {
   window.removeEventListener('resize', onResize)
   document.removeEventListener('visibilitychange', onVisibilite)
 
+  mode2D = false
   libererScene()
 })
 </script>
