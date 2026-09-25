@@ -2,7 +2,9 @@ import { createClient } from '@supabase/supabase-js'
 
 const url = process.env.SUPABASE_URL
 const cle = process.env.SUPABASE_SERVICE_ROLE_KEY
-const BUCKET = 'signalement-photos'
+// Configurable pour que les tests travaillent dans leur propre espace, jamais dans celui
+// de la production (voir server/tests/environnementTest.js).
+const BUCKET = process.env.SUPABASE_BUCKET || 'signalement-photos'
 
 if (!url || !cle) {
   throw new Error(
@@ -28,7 +30,11 @@ if (!buckets?.some((b) => b.name === BUCKET)) {
 export async function uploaderPhoto(buffer, nomFichier, contentType) {
   const { error } = await supabase.storage.from(BUCKET).upload(nomFichier, buffer, {
     contentType,
-    cacheControl: '31536000',
+    // Un jour, et non un an : une photo supprimée (visage, plaque d'immatriculation publiés
+    // par erreur) restait servie par le cache du CDN jusqu'à un an après sa suppression.
+    // Les noms de fichiers étant uniques à chaque envoi, un cache court ne fait jamais
+    // afficher une ancienne version ; il coûte seulement un nouveau téléchargement par jour.
+    cacheControl: '86400',
     upsert: false
   })
   if (error) throw error
