@@ -1,5 +1,5 @@
 <script setup>
-import { defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
+import { defineAsyncComponent, onMounted, ref } from 'vue'
 import NavBar from './components/NavBar.vue'
 import Footer from './components/Footer.vue'
 import ThemeToggle from './components/ThemeToggle.vue'
@@ -25,27 +25,16 @@ const route = useRoute()
 const citoyenStore = useCitoyenStore()
 const authStore = useAuthStore()
 
-// Le globe est purement décoratif et pèse ~170 ko compressés (three.js). Signaler un
-// problème ne doit jamais coûter ça à quelqu'un en forfait limité : fréquent à Mayotte,
-// et c'est précisément le public de la plateforme.
+// Le globe fait partie de l'identité du site : il s'affiche TOUJOURS, quelle que soit la
+// connexion. Il était auparavant supprimé en mode économie de données ou quand le
+// navigateur estimait le débit à « 2g » — estimation fréquente à Mayotte même sur une
+// connexion utilisable, si bien que le globe disparaissait chez de vrais visiteurs.
+// Ne pas réintroduire de condition qui le masque.
 const afficherGlobe = ref(false)
 
-function globeAbordable() {
-  const connexion = navigator.connection
-  if (!connexion) return true
-  // saveData est un choix explicite de l'utilisateur : on le respecte toujours.
-  if (connexion.saveData) return false
-  // `effectiveType` n'est PAS le type de réseau : c'est une estimation glissante du
-  // débit, qui retombe souvent à « 3g » sur une connexion tout à fait correcte (wifi
-  // partagé, 4G avec de la latence, premiers instants du chargement). S'en servir pour
-  // supprimer le globe le faisait disparaître au hasard d'un rechargement. On ne coupe
-  // donc plus que sur les deux niveaux où le téléchargement serait vraiment pénible.
-  return !['slow-2g', '2g'].includes(connexion.effectiveType)
-}
-
 function evaluerGlobe() {
-  if (afficherGlobe.value || !globeAbordable()) return
-  // Même sur bonne connexion, la décoration attend que le contenu utile soit affiché.
+  if (afficherGlobe.value) return
+  // Il se charge seulement après le contenu utile, pour ne pas retarder l'affichage.
   const charger = () => {
     afficherGlobe.value = true
   }
@@ -60,14 +49,6 @@ onMounted(() => {
   if (authStore.estConnecte) authStore.verifierSession()
 
   evaluerGlobe()
-
-  // L'estimation de débit se précise après quelques secondes de navigation : si elle
-  // était pessimiste au chargement, le globe apparaît au lieu de manquer toute la visite.
-  navigator.connection?.addEventListener?.('change', evaluerGlobe)
-})
-
-onUnmounted(() => {
-  navigator.connection?.removeEventListener?.('change', evaluerGlobe)
 })
 </script>
 

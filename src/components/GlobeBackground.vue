@@ -249,13 +249,7 @@ function animate(time) {
 
 onMounted(() => {
   try {
-    // Sur connexion lente ou en mode économie de données (courant à Mayotte en
-    // mobile), on n'ajoute pas ce rendu 3D coûteux par-dessus le fond déjà présent.
-    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection
-    if (connection && (connection.saveData || ['slow-2g', '2g'].includes(connection.effectiveType))) {
-      return
-    }
-
+    // Aucune condition de connexion ici : le globe doit toujours s'afficher (voir App.vue).
     prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     velocity = prefersReducedMotion ? 0 : BASE_SPEED
     lastScrollY = window.scrollY
