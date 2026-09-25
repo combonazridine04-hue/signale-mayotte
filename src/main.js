@@ -4,6 +4,15 @@ import { createPinia } from 'pinia'
 // de moins vers un tiers au premier affichage, et rien à autoriser dans la politique de
 // sécurité. Il vient AVANT nos feuilles, pour que les styles du site puissent le surcharger.
 import 'bootstrap/dist/css/bootstrap.min.css'
+// Police Inter servie par le site lui-même, et non par Google Fonts : chaque visite
+// transmettait sinon l'adresse IP du visiteur à Google, sans information ni accord
+// (transfert jugé contraire au RGPD, tribunal de Munich, 20 janvier 2022).
+import '@fontsource/inter/400.css'
+import '@fontsource/inter/500.css'
+import '@fontsource/inter/600.css'
+import '@fontsource/inter/700.css'
+import '@fontsource/inter/800.css'
+import '@fontsource/inter/900.css'
 import './assets/css/style.css'
 import './assets/css/navbar.css'
 import './assets/css/hero.css'

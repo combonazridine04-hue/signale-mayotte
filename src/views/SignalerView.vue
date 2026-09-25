@@ -331,6 +331,12 @@ const envoyer = async () => {
             <button type="submit" class="btn btn-success btn-lg" :disabled="envoiEnCours">
               {{ envoiEnCours ? 'Envoi en cours...' : 'Envoyer le signalement' }}
             </button>
+
+            <p class="mention-rgpd">
+              Votre signalement (description, photos, position) sera public, mais jamais votre nom. Évitez de
+              photographier des visages ou des plaques d'immatriculation. Les données de localisation cachées dans les
+              photos sont effacées automatiquement. <RouterLink to="/confidentialite">Confidentialité</RouterLink>
+            </p>
           </form>
         </div>
       </div>

@@ -24,6 +24,7 @@
     "test": "npm run test:unit && npm run build && npm run test:api && npm run test:e2e"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
     "@supabase/supabase-js": "^2.112.3",
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",

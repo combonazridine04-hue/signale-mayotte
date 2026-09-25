@@ -8,13 +8,7 @@ import { limiteurCreation, limiteurSoutien } from '../middleware/limiteurs.js'
 import { supprimerPhoto } from '../storage.js'
 import { contientContenuExplicite } from '../moderation.js'
 import { creerNotification } from '../notifications.js'
-import {
-  estUnRobot,
-  hasherIp,
-  sessionDeLaRequete,
-  estAutoriseASupprimer,
-  estAutoriseAModifier
-} from '../signalements/acces.js'
+import { estUnRobot, sessionDeLaRequete, estAutoriseASupprimer, estAutoriseAModifier } from '../signalements/acces.js'
 import { mapRow, mapMiseAJour, mapCommentaire } from '../signalements/representation.js'
 import { MAX_PHOTOS, upload, traiterPhoto, traiterPhotos, contientUnePhotoInterdite } from '../signalements/photos.js'
 import { emailSuiviSignalement } from '../signalements/suivi.js'
@@ -309,7 +303,6 @@ router.get('/signalements', async (req, res) => {
 
 router.post('/signalements/:id/soutenir', requireAuthUtilisateur, limiteurSoutien, async (req, res) => {
   const id = Number(req.params.id)
-  const ipHash = hasherIp(req)
 
   const { rows: existant } = await db.query('SELECT id FROM signalements WHERE id = $1', [id])
   if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
@@ -323,7 +316,9 @@ router.post('/signalements/:id/soutenir', requireAuthUtilisateur, limiteurSoutie
   try {
     await db.query(
       'INSERT INTO soutiens (signalement_id, ip_hash, utilisateur_id, date_soutien) VALUES ($1, $2, $3, $4)',
-      [id, ipHash, req.utilisateur.id, new Date().toISOString()]
+      // ip_hash vide : soutenir exige un compte, l'empreinte d'IP ne servait plus à rien
+      // et n'est donc plus collectée (minimisation des données, RGPD art. 5).
+      [id, '', req.utilisateur.id, new Date().toISOString()]
     )
   } catch (e) {
     // Seul le conflit d'unicité signifie « déjà soutenu » ; toute autre erreur est une

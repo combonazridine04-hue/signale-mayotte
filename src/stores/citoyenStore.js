@@ -324,6 +324,78 @@ export const useCitoyenStore = defineStore('citoyen', {
       return { succes: true }
     },
 
+    // Rectification du nom (RGPD art. 16).
+    async mettreAJourNom(nom) {
+      try {
+        const reponse = await fetch('/api/auth/profil', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+          body: JSON.stringify({ nom })
+        })
+        const corps = await reponse.json().catch(() => ({}))
+        if (!reponse.ok) return { succes: false, erreur: corps.erreur || 'Modification impossible.' }
+        this.nom = corps.nom
+        sessionStorage.setItem(STORAGE_KEY_NOM, corps.nom)
+        return { succes: true }
+      } catch {
+        return {
+          succes: false,
+          erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'
+        }
+      }
+    },
+
+    // Droit d'accès et à la portabilité (RGPD art. 15 et 20) : télécharge un fichier JSON.
+    async telechargerMesDonnees() {
+      try {
+        const reponse = await fetch('/api/auth/mes-donnees', {
+          headers: { Authorization: `Bearer ${this.token}` }
+        })
+        if (!reponse.ok) {
+          const corps = await reponse.json().catch(() => ({}))
+          return { succes: false, erreur: corps.erreur || 'Téléchargement impossible.' }
+        }
+        const url = URL.createObjectURL(await reponse.blob())
+        const lien = document.createElement('a')
+        lien.href = url
+        lien.download = 'mes-donnees-signale-mayotte.json'
+        document.body.appendChild(lien)
+        lien.click()
+        lien.remove()
+        URL.revokeObjectURL(url)
+        return { succes: true }
+      } catch {
+        return {
+          succes: false,
+          erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'
+        }
+      }
+    },
+
+    // Droit à l'effacement (RGPD art. 17).
+    async supprimerCompte(motDePasse, avecContenus) {
+      try {
+        const reponse = await fetch('/api/auth/compte', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+          body: JSON.stringify({ motDePasse, avecContenus })
+        })
+        if (!reponse.ok) {
+          const corps = await reponse.json().catch(() => ({}))
+          return { succes: false, erreur: corps.erreur || 'Suppression impossible.' }
+        }
+        // Le serveur a déjà fermé la session : on vide seulement l'état local.
+        this.token = ''
+        await this.deconnecter()
+        return { succes: true }
+      } catch {
+        return {
+          succes: false,
+          erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'
+        }
+      }
+    },
+
     async supprimerAvatar() {
       try {
         const reponse = await fetch('/api/auth/avatar', {

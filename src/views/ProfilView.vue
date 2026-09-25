@@ -4,10 +4,12 @@ import { RouterLink, useRouter } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
 import { useSignalementStore } from '../stores/signalementStore.js'
 import SignalementCard from '../components/SignalementCard.vue'
+import { useUiStore } from '../stores/uiStore.js'
 
 const router = useRouter()
 const citoyenStore = useCitoyenStore()
 const signalementStore = useSignalementStore()
+const uiStore = useUiStore()
 
 const chargement = ref(true)
 const pseudo = ref('')
@@ -93,6 +95,69 @@ const renvoyerVerification = async () => {
   const resultat = await citoyenStore.renvoyerVerificationEmail()
   renvoiMessage.value = resultat.succes ? 'Code renvoyé, vérifiez votre boîte mail.' : resultat.erreur
   renvoiEnCours.value = false
+}
+
+// --- Rectification du nom (RGPD art. 16) ---
+const editionNom = ref(false)
+const nouveauNom = ref('')
+const nomEnCours = ref(false)
+const erreurNom = ref('')
+
+const commencerEditionNom = () => {
+  nouveauNom.value = citoyenStore.nom
+  erreurNom.value = ''
+  editionNom.value = true
+}
+
+const enregistrerNom = async () => {
+  nomEnCours.value = true
+  erreurNom.value = ''
+  const resultat = await citoyenStore.mettreAJourNom(nouveauNom.value.trim())
+  nomEnCours.value = false
+  if (resultat.succes) editionNom.value = false
+  else erreurNom.value = resultat.erreur
+}
+
+// --- Accès et effacement (RGPD art. 15, 17 et 20) ---
+const exportEnCours = ref(false)
+const erreurExport = ref('')
+
+const telechargerDonnees = async () => {
+  exportEnCours.value = true
+  erreurExport.value = ''
+  const resultat = await citoyenStore.telechargerMesDonnees()
+  exportEnCours.value = false
+  if (!resultat.succes) erreurExport.value = resultat.erreur
+}
+
+const suppressionOuverte = ref(false)
+const motDePasseSuppression = ref('')
+const avecContenus = ref(false)
+const suppressionEnCours = ref(false)
+const erreurSuppression = ref('')
+
+const annulerSuppression = () => {
+  suppressionOuverte.value = false
+  motDePasseSuppression.value = ''
+  avecContenus.value = false
+  erreurSuppression.value = ''
+}
+
+const supprimerCompte = async () => {
+  if (!motDePasseSuppression.value) {
+    erreurSuppression.value = 'Saisissez votre mot de passe pour confirmer.'
+    return
+  }
+  suppressionEnCours.value = true
+  erreurSuppression.value = ''
+  const resultat = await citoyenStore.supprimerCompte(motDePasseSuppression.value, avecContenus.value)
+  suppressionEnCours.value = false
+  if (!resultat.succes) {
+    erreurSuppression.value = resultat.erreur
+    return
+  }
+  router.push({ name: 'accueil' })
+  uiStore.alerter('Votre compte a été supprimé, ainsi que vos données personnelles.')
 }
 
 const deconnecter = () => {
@@ -245,7 +310,26 @@ const deconnecter = () => {
 
                   <dl class="profil-infos mb-0">
                     <dt>Nom</dt>
-                    <dd>{{ citoyenStore.nom }}</dd>
+                    <dd v-if="!editionNom">
+                      {{ citoyenStore.nom }}
+                      <button type="button" class="btn btn-link btn-sm p-0 ms-2" @click="commencerEditionNom">
+                        Modifier
+                      </button>
+                    </dd>
+                    <dd v-else>
+                      <form class="d-flex gap-2 flex-wrap" novalidate @submit.prevent="enregistrerNom">
+                        <input
+                          v-model="nouveauNom"
+                          type="text"
+                          maxlength="100"
+                          class="form-control form-control-sm profil-champ-nom"
+                          aria-label="Nouveau nom"
+                        />
+                        <button type="submit" class="btn btn-primary btn-sm" :disabled="nomEnCours">Enregistrer</button>
+                        <button type="button" class="btn btn-link btn-sm" @click="editionNom = false">Annuler</button>
+                      </form>
+                      <div v-if="erreurNom" class="small text-danger mt-1">{{ erreurNom }}</div>
+                    </dd>
 
                     <template v-if="citoyenStore.email">
                       <dt>Email</dt>
@@ -304,6 +388,78 @@ const deconnecter = () => {
                   <SignalementCard :signalement="s" />
                 </div>
               </div>
+            </section>
+
+            <!-- Données personnelles : accès (art. 15 et 20) et effacement (art. 17) -->
+            <section class="card-glass rounded p-4 mb-4">
+              <h2 class="h6 fw-bold mb-2">Mes données personnelles</h2>
+              <p class="text-secondary small mb-3">
+                Vous pouvez à tout moment récupérer une copie de toutes vos données, ou supprimer votre compte.
+                <RouterLink to="/confidentialite">En savoir plus sur vos droits</RouterLink>.
+              </p>
+
+              <div class="d-flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  class="btn btn-outline-light btn-sm"
+                  :disabled="exportEnCours"
+                  @click="telechargerDonnees"
+                >
+                  {{ exportEnCours ? 'Préparation...' : 'Télécharger mes données' }}
+                </button>
+                <button
+                  v-if="!suppressionOuverte"
+                  type="button"
+                  class="btn btn-outline-danger btn-sm"
+                  @click="suppressionOuverte = true"
+                >
+                  Supprimer mon compte
+                </button>
+              </div>
+              <div v-if="erreurExport" class="alert alert-danger py-2 mt-3 mb-0">{{ erreurExport }}</div>
+
+              <form
+                v-if="suppressionOuverte"
+                class="profil-suppression mt-4"
+                novalidate
+                @submit.prevent="supprimerCompte"
+              >
+                <h3 class="h6 fw-bold text-danger mb-2">Supprimer définitivement mon compte</h3>
+                <ul class="small mb-3">
+                  <li>Votre nom, email, téléphone, mot de passe, photo de profil et notifications seront effacés.</li>
+                  <li>Vous serez déconnecté et ne pourrez plus vous reconnecter avec ce compte.</li>
+                  <li>
+                    Sauf si vous cochez la case ci-dessous, vos signalements restent en ligne
+                    <strong>sans votre nom</strong> (ils décrivent un problème public, utile à la commune) et vos
+                    commentaires s'affichent « Compte supprimé ».
+                  </li>
+                </ul>
+
+                <div class="form-check mb-3">
+                  <input id="avecContenus" v-model="avecContenus" type="checkbox" class="form-check-input" />
+                  <label for="avecContenus" class="form-check-label small">
+                    Supprimer aussi tous mes signalements et commentaires
+                  </label>
+                </div>
+
+                <label for="motDePasseSuppression" class="form-label small">Mot de passe, pour confirmer</label>
+                <input
+                  id="motDePasseSuppression"
+                  v-model="motDePasseSuppression"
+                  type="password"
+                  autocomplete="current-password"
+                  class="form-control mb-3 profil-champ-mdp"
+                />
+
+                <div v-if="erreurSuppression" class="alert alert-danger py-2 mb-3">{{ erreurSuppression }}</div>
+
+                <div class="d-flex gap-2 flex-wrap">
+                  <button type="submit" class="btn btn-danger btn-sm" :disabled="suppressionEnCours">
+                    {{ suppressionEnCours ? 'Suppression...' : 'Supprimer définitivement' }}
+                  </button>
+                  <button type="button" class="btn btn-link btn-sm" @click="annulerSuppression">Annuler</button>
+                </div>
+              </form>
             </section>
 
             <div class="card-glass rounded p-3 d-flex justify-content-between align-items-center gap-2 flex-wrap">

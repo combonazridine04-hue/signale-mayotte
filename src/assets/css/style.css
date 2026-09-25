@@ -442,3 +442,23 @@ main {
   background: #fbbf24;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
+
+/* Mention d'information sous les formulaires qui collectent des données (RGPD art. 13). */
+.mention-rgpd {
+  margin: 12px 0 0;
+  color: var(--app-muted);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+/* Tableau de la page Confidentialité : lisible sur le fond sombre du site. */
+.confidentialite-table {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--app-muted);
+  border-color: var(--glass-border);
+  font-size: 0.9rem;
+}
+
+.confidentialite-table th {
+  color: var(--text-main);
+}

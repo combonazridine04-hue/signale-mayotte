@@ -95,6 +95,8 @@ await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS token_reinitia
 await db.query(`ALTER TABLE signalements ADD COLUMN IF NOT EXISTS date_modification TEXT`)
 await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS pseudo TEXT`)
 await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS avatar_url TEXT`)
+// Sert à effacer les comptes inactifs depuis trop longtemps (voir retention.js).
+await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS derniere_connexion TEXT`)
 // Signalement urgent : un simple drapeau sur le signalement plutôt qu'un circuit séparé,
 // pour que le danger immédiat (fil électrique à terre, fuite, route coupée) remonte en tête
 // de liste sans dupliquer tout le système.
@@ -143,6 +145,9 @@ await db.query(`
 await db.query(
   `CREATE UNIQUE INDEX IF NOT EXISTS soutiens_signalement_utilisateur_uniq ON soutiens (signalement_id, utilisateur_id) WHERE utilisateur_id IS NOT NULL`
 )
+
+// Les anciennes empreintes d'IP des soutiens anonymes ne servent plus : effacées.
+await db.query(`UPDATE soutiens SET ip_hash = '' WHERE ip_hash <> ''`)
 
 await db.query(`
   CREATE TABLE IF NOT EXISTS mises_a_jour (

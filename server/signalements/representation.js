@@ -37,11 +37,17 @@ export function mapMiseAJour(row) {
   return { id: row.id, texte: row.texte, dateCreation: row.date_creation }
 }
 
+// Signature des commentaires d'un compte supprimé : ni nom, ni pseudo, ni initiale.
+export const AUTEUR_SUPPRIME = 'Compte supprimé'
+
 export function mapCommentaire(row, utilisateurId = null) {
   // Si l'auteur a un compte encore actif, on affiche son pseudo/nom/avatar ACTUELS (pas
   // celui au moment du commentaire) : changer son profil doit s'appliquer à tout l'historique.
   // Le pseudo est affiché tel quel ; un vrai nom est toujours abrégé en « Prénom N. ».
-  const auteur = row.auteur_pseudo_actuel || nomPublic(row.auteur_nom_actuel || row.auteur)
+  const auteur =
+    row.auteur === AUTEUR_SUPPRIME
+      ? AUTEUR_SUPPRIME
+      : row.auteur_pseudo_actuel || nomPublic(row.auteur_nom_actuel || row.auteur)
   return {
     id: row.id,
     parentId: row.parent_id || null,

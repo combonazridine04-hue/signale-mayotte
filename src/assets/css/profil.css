@@ -201,3 +201,20 @@
   margin: 0;
   word-break: break-word;
 }
+
+/* Zone de suppression du compte : encadrée en rouge pour qu'on ne la confonde pas
+   avec un réglage ordinaire. */
+.profil-suppression {
+  padding: 16px;
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  border-radius: 12px;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.profil-champ-nom {
+  max-width: 16rem;
+}
+
+.profil-champ-mdp {
+  max-width: 20rem;
+}

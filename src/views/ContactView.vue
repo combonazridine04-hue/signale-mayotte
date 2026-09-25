@@ -171,6 +171,11 @@ const envoyer = async () => {
             <button type="submit" class="btn btn-primary btn-lg" :disabled="envoiEnCours">
               {{ envoiEnCours ? 'Envoi en cours...' : 'Envoyer' }}
             </button>
+
+            <p class="mention-rgpd">
+              Vos nom et email servent uniquement à vous répondre. Votre message est conservé 12 mois au plus, puis
+              effacé. <RouterLink to="/confidentialite">Confidentialité</RouterLink>
+            </p>
           </form>
         </div>
       </div>

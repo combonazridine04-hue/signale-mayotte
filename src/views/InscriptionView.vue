@@ -208,6 +208,13 @@ const inscrire = async () => {
               {{ envoiEnCours ? 'Création en cours...' : 'Créer mon compte' }}
             </button>
 
+            <p class="mention-rgpd">
+              Vos nom, email et téléphone servent uniquement à gérer votre compte et à vous tenir informé de vos
+              signalements. Ils ne sont jamais affichés publiquement ni transmis à des tiers. Vous pouvez les consulter,
+              les modifier ou supprimer votre compte à tout moment depuis votre profil.
+              <RouterLink to="/confidentialite">Confidentialité</RouterLink>
+            </p>
+
             <p class="text-secondary text-center mt-3 mb-0">
               Déjà inscrit ? <RouterLink to="/connexion">Se connecter</RouterLink>
             </p>

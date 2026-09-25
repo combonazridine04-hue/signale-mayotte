@@ -1,4 +1,3 @@
-import crypto from 'node:crypto'
 import { sessionValide } from '../auth.js'
 
 // Qui a le droit de faire quoi sur un signalement.
@@ -7,11 +6,6 @@ import { sessionValide } from '../auth.js'
 // remplit tous les champs automatiquement si.
 export function estUnRobot(req) {
   return Boolean(req.body?.site_web)
-}
-
-// Identifie un visiteur sans conserver son adresse IP en clair.
-export function hasherIp(req) {
-  return crypto.createHash('sha256').update(`signale-mayotte-soutien:${req.ip}`).digest('hex')
 }
 
 // Session facultative : certaines routes publiques affichent plus d'informations à

@@ -22,6 +22,8 @@ import { requireAuthUtilisateur } from '../middleware/requireAuth.js'
 import { creerUpload, traiterPhoto } from '../photoUpload.js'
 import { supprimerPhoto } from '../storage.js'
 import { contientContenuExplicite } from '../moderation.js'
+import { db } from '../db.js'
+import { effacerCompte, exporterDonnees, motDePasseCorrect, mettreAJourNom } from '../compte.js'
 
 const router = Router()
 
@@ -88,6 +90,23 @@ const limiteurReinitialisation = rateLimit({
   message: { erreur: 'Trop de tentatives, réessayez plus tard.' }
 })
 
+// Confirmer une suppression de compte exige le mot de passe : on limite les essais.
+const limiteurSuppressionCompte = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { erreur: 'Trop de tentatives, réessayez plus tard.' }
+})
+
+// Sert à effacer les comptes restés inutilisés trop longtemps (voir retention.js).
+function noterConnexion(utilisateurId) {
+  db.query('UPDATE utilisateurs SET derniere_connexion = $1 WHERE id = $2', [
+    new Date().toISOString(),
+    utilisateurId
+  ]).catch((e) => console.error('[auth] derniere_connexion :', e.message))
+}
+
 router.post('/login', async (req, res) => {
   const { identifiant, motDePasse } = req.body || {}
 
@@ -111,6 +130,7 @@ router.post('/inscription', limiteurInscription, async (req, res) => {
     return res.status(400).json({ erreur: resultat.erreur })
   }
 
+  noterConnexion(resultat.utilisateur.id)
   if (resultat.codeVerification) {
     envoyerVerificationEmail(resultat.utilisateur.nom, resultat.utilisateur.email, resultat.codeVerification)
   }
@@ -153,6 +173,7 @@ router.post('/connexion', limiteurConnexionUtilisateur, async (req, res) => {
     return res.status(401).json({ erreur: 'Identifiants incorrects.' })
   }
 
+  noterConnexion(utilisateur.id)
   res.json({ token: creerSessionUtilisateur(utilisateur), nom: utilisateur.nom })
 })
 
@@ -169,7 +190,14 @@ router.patch('/profil', requireAuthUtilisateur, async (req, res) => {
   if (!req.utilisateur) {
     return res.status(400).json({ erreur: 'Non applicable pour un compte admin.' })
   }
-  const resultat = await mettreAJourPseudo(req.utilisateur.id, req.body?.pseudo)
+  // Pseudo et nom se modifient séparément : seul le champ envoyé est touché.
+  const corps = req.body || {}
+  if ('nom' in corps) {
+    const resultat = await mettreAJourNom(req.utilisateur.id, corps.nom)
+    if (resultat.erreur) return res.status(400).json({ erreur: resultat.erreur })
+    return res.json(resultat)
+  }
+  const resultat = await mettreAJourPseudo(req.utilisateur.id, corps.pseudo)
   if (resultat.erreur) return res.status(400).json({ erreur: resultat.erreur })
   res.json(resultat)
 })
@@ -237,6 +265,32 @@ router.post('/reinitialiser-mot-de-passe', limiteurReinitialisation, async (req,
     return res.status(400).json({ erreur: 'Lien de réinitialisation invalide ou expiré.' })
   }
 
+  res.status(204).end()
+})
+
+// Droit d'accès et à la portabilité (RGPD art. 15 et 20) : toutes les données du
+// compte, dans un fichier JSON téléchargeable.
+router.get('/mes-donnees', requireAuthUtilisateur, async (req, res) => {
+  if (!req.utilisateur) {
+    return res.status(400).json({ erreur: 'Non applicable pour un compte admin.' })
+  }
+  const donnees = await exporterDonnees(req.utilisateur.id)
+  if (!donnees) return res.status(404).json({ erreur: 'Compte introuvable.' })
+  res.attachment('mes-donnees-signale-mayotte.json')
+  res.json(donnees)
+})
+
+// Droit à l'effacement (RGPD art. 17).
+router.delete('/compte', requireAuthUtilisateur, limiteurSuppressionCompte, async (req, res) => {
+  if (!req.utilisateur) {
+    return res.status(400).json({ erreur: 'Non applicable pour un compte admin.' })
+  }
+  const { motDePasse, avecContenus } = req.body || {}
+  if (!(await motDePasseCorrect(req.utilisateur.id, motDePasse))) {
+    return res.status(401).json({ erreur: 'Mot de passe incorrect.' })
+  }
+  const efface = await effacerCompte(req.utilisateur.id, { avecContenus: avecContenus === true })
+  if (!efface) return res.status(404).json({ erreur: 'Compte introuvable.' })
   res.status(204).end()
 })
 

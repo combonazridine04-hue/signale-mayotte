@@ -40,8 +40,9 @@ app.use(
         defaultSrc: ["'self'"],
         // Bootstrap est désormais servi par le site : plus aucun script tiers autorisé.
         scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        // Plus aucune police chargée chez Google : tout vient du site.
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        fontSrc: ["'self'"],
         imgSrc: [
           "'self'",
           'data:',
@@ -123,6 +124,10 @@ export { app }
 const estLanceDirectement = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])
 
 if (estLanceDirectement) {
+  // Pas pendant les tests : ils importent l'app sans la lancer.
+  const { planifierPurge } = await import('./retention.js')
+  planifierPurge()
+
   app.listen(PORT, () => {
     console.log(`API Signale Mayotte disponible sur http://localhost:${PORT}`)
   })
