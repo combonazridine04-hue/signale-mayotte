@@ -2,8 +2,11 @@ import { Router } from 'express'
 import { rateLimit } from 'express-rate-limit'
 import { db } from '../db.js'
 import { requireAuth, requireAuthUtilisateur } from '../middleware/requireAuth.js'
+import { idValide, verifierParametreId } from '../validation.js'
 
 const router = Router()
+
+router.param('cibleId', verifierParametreId('Contenu introuvable.'))
 
 const TYPES_AUTORISES = new Set(['signalement', 'commentaire'])
 
@@ -21,8 +24,8 @@ router.post('/moderation/signaler', requireAuthUtilisateur, limiteurSignalementA
   if (!TYPES_AUTORISES.has(type)) {
     return res.status(400).json({ erreur: 'Type invalide.' })
   }
-  const id = Number(cibleId)
-  if (!Number.isInteger(id) || id <= 0) {
+  const id = idValide(cibleId)
+  if (id === null) {
     return res.status(400).json({ erreur: 'Cible invalide.' })
   }
 

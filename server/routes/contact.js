@@ -3,8 +3,12 @@ import { rateLimit } from 'express-rate-limit'
 import { envoyerMessageContact, mailerActif } from '../mailer.js'
 import { db } from '../db.js'
 import { requireAuth } from '../middleware/requireAuth.js'
+import { SUJETS_CONTACT } from '../../shared/sujetsContact.js'
+import { texte, emailValide, verifierParametreId } from '../validation.js'
 
 const router = Router()
+
+router.param('id', verifierParametreId('Message introuvable.'))
 
 const limiteurContact = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -27,7 +31,12 @@ function mapRow(row) {
 }
 
 router.post('/contact', limiteurContact, async (req, res) => {
-  const { nom = '', email = '', sujet = '', message = '', site_web: honeypot = '' } = req.body || {}
+  const corps = req.body || {}
+  const nom = texte(corps.nom)
+  const email = texte(corps.email).trim()
+  const sujet = texte(corps.sujet)
+  const message = texte(corps.message)
+  const honeypot = corps.site_web
 
   if (honeypot) {
     return res.status(202).json({ envoye: true })
@@ -39,10 +48,10 @@ router.post('/contact', limiteurContact, async (req, res) => {
   if (nom.trim().length > 100) {
     return res.status(400).json({ erreur: 'Le nom ne doit pas dépasser 100 caractères.' })
   }
-  if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!emailValide(email)) {
     return res.status(400).json({ erreur: 'Veuillez saisir une adresse email valide.' })
   }
-  if (!sujet) {
+  if (!SUJETS_CONTACT.includes(sujet)) {
     return res.status(400).json({ erreur: 'Veuillez sélectionner un sujet.' })
   }
   if (message.trim().length < 10) {

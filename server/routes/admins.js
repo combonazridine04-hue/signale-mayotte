@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs'
 import { db } from '../db.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { revoquerSessionsDe } from '../auth.js'
+import { motDePasseInterdit } from '../../shared/motDePasse.js'
+import { verifierParametreId } from '../validation.js'
 
 const router = Router()
 
@@ -10,7 +12,11 @@ function mapRow(row) {
   return { id: row.id, identifiant: row.identifiant, creeLe: row.cree_le }
 }
 
-router.use(requireAuth)
+// Limité à /admins : monté sur /api, un router.use() global interceptait toutes les
+// requêtes arrivées jusqu'ici, et une route inconnue répondait 401 au lieu de 404.
+router.use('/admins', requireAuth)
+
+router.param('id', verifierParametreId('Compte introuvable.'))
 
 router.get('/admins', async (req, res) => {
   const { rows } = await db.query('SELECT id, identifiant, cree_le FROM admins ORDER BY cree_le ASC')
@@ -23,9 +29,10 @@ router.post('/admins', async (req, res) => {
   if (typeof identifiant !== 'string' || identifiant.trim().length < 3) {
     return res.status(400).json({ erreur: "L'identifiant doit contenir au moins 3 caractères." })
   }
-  if (typeof motDePasse !== 'string' || motDePasse.length < 8) {
-    return res.status(400).json({ erreur: 'Le mot de passe doit contenir au moins 8 caractères.' })
-  }
+  // Même règle que pour les citoyens : un compte administrateur protégé par « 12345678 »
+  // ouvrirait toute la modération à qui le devine.
+  const refus = motDePasseInterdit(motDePasse)
+  if (refus) return res.status(400).json({ erreur: refus })
 
   const identifiantTrim = identifiant.trim()
   const { rows: existant } = await db.query('SELECT id FROM admins WHERE identifiant = $1', [identifiantTrim])
@@ -64,9 +71,8 @@ router.delete('/admins/:id', async (req, res) => {
 router.patch('/admins/me/mot-de-passe', async (req, res) => {
   const { motDePasseActuel, nouveauMotDePasse } = req.body || {}
 
-  if (typeof nouveauMotDePasse !== 'string' || nouveauMotDePasse.length < 8) {
-    return res.status(400).json({ erreur: 'Le nouveau mot de passe doit contenir au moins 8 caractères.' })
-  }
+  const refus = motDePasseInterdit(nouveauMotDePasse)
+  if (refus) return res.status(400).json({ erreur: refus })
 
   const { rows } = await db.query('SELECT * FROM admins WHERE id = $1', [req.admin.id])
   const admin = rows[0]
@@ -79,6 +85,10 @@ router.patch('/admins/me/mot-de-passe', async (req, res) => {
 
   const hash = await bcrypt.hash(nouveauMotDePasse, 12)
   await db.query('UPDATE admins SET mot_de_passe_hash = $1 WHERE id = $2', [hash, req.admin.id])
+  // Changer son mot de passe sert souvent à couper l'accès à quelqu'un qui le connaissait :
+  // les autres sessions de ce compte sont fermées, seule la session en cours est gardée.
+  const enTete = req.headers.authorization || ''
+  revoquerSessionsDe(req.admin.id, enTete.startsWith('Bearer ') ? enTete.slice(7) : null)
 
   res.status(204).end()
 })

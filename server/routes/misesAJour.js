@@ -5,10 +5,14 @@ import { requireAuth } from '../middleware/requireAuth.js'
 import { creerNotification } from '../notifications.js'
 import { mapMiseAJour } from '../signalements/representation.js'
 import { emailSuiviSignalement } from '../signalements/suivi.js'
+import { verifierParametreId } from '../validation.js'
 
 // Mises à jour publiques d'un signalement : le suivi officiel publié par un administrateur.
 
 const router = Router()
+
+router.param('id', verifierParametreId('Signalement introuvable.'))
+router.param('miseAJourId', verifierParametreId('Mise à jour introuvable.'))
 
 router.post('/signalements/:id/mises-a-jour', requireAuth, async (req, res) => {
   const id = Number(req.params.id)
@@ -27,6 +31,13 @@ router.post('/signalements/:id/mises-a-jour', requireAuth, async (req, res) => {
   )
   if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
+  // Enregistré avant de prévenir : en cas d'échec, personne ne reçoit l'annonce d'un
+  // message qui n'existe pas.
+  const { rows } = await db.query(
+    'INSERT INTO mises_a_jour (signalement_id, texte, date_creation) VALUES ($1, $2, $3) RETURNING *',
+    [id, texte.trim(), new Date().toISOString()]
+  )
+
   // Un suivi publié sans prévenir personne ne sert à rien : le citoyen ne revient pas
   // consulter la page de lui-même.
   creerNotification(existant[0].utilisateur_id, {
@@ -36,11 +47,6 @@ router.post('/signalements/:id/mises-a-jour', requireAuth, async (req, res) => {
 
   const destinataire = await emailSuiviSignalement(id)
   if (destinataire) envoyerMiseAJourSignalement(existant[0], destinataire, texte.trim())
-
-  const { rows } = await db.query(
-    'INSERT INTO mises_a_jour (signalement_id, texte, date_creation) VALUES ($1, $2, $3) RETURNING *',
-    [id, texte.trim(), new Date().toISOString()]
-  )
 
   res.status(201).json(mapMiseAJour(rows[0]))
 })

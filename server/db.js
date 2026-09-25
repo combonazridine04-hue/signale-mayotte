@@ -118,13 +118,28 @@ await db.query(`
     signalement_id INTEGER NOT NULL REFERENCES signalements(id) ON DELETE CASCADE,
     ip_hash TEXT NOT NULL,
     utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL,
-    date_soutien TEXT NOT NULL,
-    UNIQUE (signalement_id, ip_hash)
+    date_soutien TEXT NOT NULL
   )
 `)
 await db.query(
   `ALTER TABLE soutiens ADD COLUMN IF NOT EXISTS utilisateur_id INTEGER REFERENCES utilisateurs(id) ON DELETE SET NULL`
 )
+// Soutenir exige désormais un compte : le doublon se détecte par le compte (index
+// ci-dessous), plus par l'adresse IP. L'ancienne contrainte « une IP = un soutien »
+// empêchait deux habitants d'un même foyer (même box) ou d'un même opérateur mobile
+// (qui partage une adresse IP entre des milliers d'abonnés) de soutenir le même problème.
+await db.query(`
+  DO $$
+  DECLARE nom_contrainte text;
+  BEGIN
+    FOR nom_contrainte IN
+      SELECT conname FROM pg_constraint
+      WHERE conrelid = 'soutiens'::regclass AND contype = 'u' AND pg_get_constraintdef(oid) LIKE '%ip_hash%'
+    LOOP
+      EXECUTE format('ALTER TABLE soutiens DROP CONSTRAINT %I', nom_contrainte);
+    END LOOP;
+  END $$
+`)
 await db.query(
   `CREATE UNIQUE INDEX IF NOT EXISTS soutiens_signalement_utilisateur_uniq ON soutiens (signalement_id, utilisateur_id) WHERE utilisateur_id IS NOT NULL`
 )

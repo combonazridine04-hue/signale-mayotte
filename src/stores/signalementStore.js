@@ -172,12 +172,15 @@ export const useSignalementStore = defineStore('signalement', {
 
       const reponse = await apiFetch(`/api/signalements/${id}`, options)
       const signalement = await traiterReponse(reponse)
+      // Fusion et non remplacement : la réponse ne contient que le signalement lui-même.
+      // Remplacer effaçait de l'écran ses commentaires, ses mises à jour et l'identité de
+      // l'auteur (vue admin) jusqu'au prochain rechargement de la page.
       if (this.signalementCourant?.id === signalement.id) {
-        this.signalementCourant = signalement
+        this.signalementCourant = { ...this.signalementCourant, ...signalement }
       }
       const index = this.signalements.findIndex((s) => s.id === signalement.id)
       if (index !== -1) {
-        this.signalements[index] = signalement
+        this.signalements[index] = { ...this.signalements[index], ...signalement }
       }
       return signalement
     },
@@ -246,8 +249,9 @@ export const useSignalementStore = defineStore('signalement', {
         body: formData
       })
       const signalement = await traiterReponse(reponse)
-      this.signalementCourant = signalement
-      return signalement
+      // Même raison que pour changerStatut : garder commentaires et mises à jour affichés.
+      this.signalementCourant = { ...this.signalementCourant, ...signalement }
+      return this.signalementCourant
     },
 
     async supprimer(id, tokenSuppression = null) {

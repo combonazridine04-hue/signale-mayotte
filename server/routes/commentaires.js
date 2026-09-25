@@ -7,14 +7,19 @@ import { creerNotification } from '../notifications.js'
 import { nomPublic } from '../../shared/nomPublic.js'
 import { mapCommentaire } from '../signalements/representation.js'
 import { emailSuiviSignalement } from '../signalements/suivi.js'
+import { idValide, texte as lireTexte, verifierParametreId } from '../validation.js'
 
 // Commentaires et réponses sur un signalement.
 
 const router = Router()
 
+router.param('id', verifierParametreId('Signalement introuvable.'))
+router.param('commentaireId', verifierParametreId('Commentaire introuvable.'))
+
 router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCommentaire, async (req, res) => {
   const id = Number(req.params.id)
-  const { texte = '', parentId = null } = req.body || {}
+  const texte = lireTexte(req.body?.texte)
+  const parentId = req.body?.parentId ?? null
   // L'auteur affiché vient toujours du compte connecté, jamais d'un champ du formulaire :
   // ça empêche de se faire passer pour quelqu'un d'autre. Le pseudo (s'il est défini)
   // est affiché à la place du vrai nom pour préserver la confidentialité promise à l'inscription.
@@ -45,7 +50,8 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
   // Réponse à un commentaire : on vérifie qu'il appartient bien à CE signalement, sinon
   // on pourrait rattacher une réponse au fil d'un autre signalement.
   let parent = null
-  if (parentId) {
+  if (parentId !== null && parentId !== '') {
+    if (idValide(parentId) === null) return res.status(400).json({ erreur: 'Commentaire introuvable.' })
     const { rows: parents } = await db.query(
       `SELECT c.id, c.parent_id, c.utilisateur_id, u.email AS email_auteur, u.email_verifie
        FROM commentaires c

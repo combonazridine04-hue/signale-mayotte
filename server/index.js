@@ -77,6 +77,9 @@ app.use('/api', contactRouter)
 app.use('/api', moderationRouter)
 app.use('/api', notificationsRouter)
 app.use('/api', adminsRouter)
+// Route d'API inconnue : une réponse JSON explicite, plutôt que la page d'accueil du
+// site renvoyée par le filet ci-dessous avec un statut 200 trompeur.
+app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue.' }))
 
 const distDir = path.join(__dirname, '..', 'dist')
 

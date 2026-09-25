@@ -18,12 +18,30 @@ import {
 import { mapRow, mapMiseAJour, mapCommentaire } from '../signalements/representation.js'
 import { MAX_PHOTOS, upload, traiterPhoto, traiterPhotos, contientUnePhotoInterdite } from '../signalements/photos.js'
 import { emailSuiviSignalement } from '../signalements/suivi.js'
+import { lirePosition } from '../signalements/localisation.js'
+import { celluleCsv } from '../signalements/csv.js'
+import { texte, emailValide, verifierParametreId } from '../validation.js'
 
 // Routes des signalements eux-mêmes. Les commentaires et les mises à jour, qui sont
 // des sous-ressources, ont leurs propres fichiers ; les contrôles d'accès, la conversion
 // des données et le traitement des photos vivent dans server/signalements/.
 
 const router = Router()
+
+router.param('id', verifierParametreId('Signalement introuvable.'))
+
+// Contrôles communs à la création et à la correction d'un signalement.
+function erreurDeContenu({ categorie, commune, description }) {
+  if (!CATEGORIES.includes(categorie)) return 'Catégorie invalide.'
+  if (!COMMUNES.includes(commune)) return 'Commune invalide.'
+  const longueur = texte(description).trim().length
+  if (longueur < 10) return 'La description doit contenir au moins 10 caractères.'
+  if (longueur > 2000) return 'La description ne doit pas dépasser 2000 caractères.'
+  return null
+}
+
+// FormData n'envoie que des chaînes : « false » est une chaîne non vide et serait vrai.
+const lireUrgent = (valeur) => valeur === 'true' || valeur === '1' || valeur === true
 
 router.get('/signalements/count', async (req, res) => {
   const { rows } = await db.query('SELECT COUNT(*)::int AS count FROM signalements')
@@ -84,7 +102,6 @@ router.get('/signalements/export.csv', requireAuth, async (req, res) => {
      ORDER BY s.date_signalement DESC`
   )
 
-  const echapperCsv = (valeur) => `"${String(valeur ?? '').replace(/"/g, '""')}"`
   const entetes = [
     'id',
     'categorie',
@@ -120,7 +137,7 @@ router.get('/signalements/export.csv', requireAuth, async (req, res) => {
         row.auteur_email,
         row.auteur_telephone
       ]
-        .map(echapperCsv)
+        .map(celluleCsv)
         .join(',')
     )
   }
@@ -208,15 +225,15 @@ router.get('/signalements/:id', async (req, res) => {
     [id]
   )
 
-  // Un compte est reconnu par son identifiant, un visiteur par l'empreinte de son adresse IP.
-  const { rows: soutienExistant } =
-    session?.type === 'utilisateur'
-      ? await db.query('SELECT 1 FROM soutiens WHERE signalement_id = $1 AND utilisateur_id = $2', [
-          id,
-          session.utilisateurId
-        ])
-      : await db.query('SELECT 1 FROM soutiens WHERE signalement_id = $1 AND ip_hash = $2', [id, hasherIp(req)])
-  const dejaSoutenu = soutienExistant.length > 0
+  // Soutenir exige un compte : seul un citoyen connecté peut avoir déjà soutenu.
+  let dejaSoutenu = false
+  if (session?.type === 'utilisateur') {
+    const { rows: soutienExistant } = await db.query(
+      'SELECT 1 FROM soutiens WHERE signalement_id = $1 AND utilisateur_id = $2',
+      [id, session.utilisateurId]
+    )
+    dejaSoutenu = soutienExistant.length > 0
+  }
 
   res.json({
     ...mapRow(rows[0], estAdmin, session?.utilisateurId || null),
@@ -297,13 +314,22 @@ router.post('/signalements/:id/soutenir', requireAuthUtilisateur, limiteurSoutie
   const { rows: existant } = await db.query('SELECT id FROM signalements WHERE id = $1', [id])
   if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
+  // Un soutien est rattaché à un compte citoyen. Un administrateur n'a pas de compte
+  // citoyen : sans ce refus, ses soutiens n'étaient dédoublonnés par rien.
+  if (!req.utilisateur) {
+    return res.status(403).json({ erreur: 'Seul un compte citoyen peut soutenir un signalement.' })
+  }
+
   try {
     await db.query(
       'INSERT INTO soutiens (signalement_id, ip_hash, utilisateur_id, date_soutien) VALUES ($1, $2, $3, $4)',
-      [id, ipHash, req.utilisateur?.id || null, new Date().toISOString()]
+      [id, ipHash, req.utilisateur.id, new Date().toISOString()]
     )
-  } catch {
-    return res.status(409).json({ erreur: 'Vous avez déjà soutenu ce signalement.' })
+  } catch (e) {
+    // Seul le conflit d'unicité signifie « déjà soutenu » ; toute autre erreur est une
+    // panne, qui ne doit pas être présentée à l'utilisateur comme un doublon.
+    if (e.code === '23505') return res.status(409).json({ erreur: 'Vous avez déjà soutenu ce signalement.' })
+    throw e
   }
 
   const { rows } = await db.query(
@@ -338,31 +364,21 @@ router.post(
 
     const { categorie, commune, description, latitude, longitude, email, urgent } = req.body
 
-    if (!CATEGORIES.includes(categorie)) {
-      return res.status(400).json({ erreur: 'Catégorie invalide.' })
-    }
-    if (!COMMUNES.includes(commune)) {
-      return res.status(400).json({ erreur: 'Commune invalide.' })
-    }
-    if (!description || description.trim().length < 10) {
-      return res.status(400).json({ erreur: 'La description doit contenir au moins 10 caractères.' })
-    }
-    if (description.trim().length > 2000) {
-      return res.status(400).json({ erreur: 'La description ne doit pas dépasser 2000 caractères.' })
-    }
+    const erreur = erreurDeContenu({ categorie, commune, description })
+    if (erreur) return res.status(400).json({ erreur })
+
+    const position = lirePosition(latitude, longitude)
+    if (position.erreur) return res.status(400).json({ erreur: position.erreur })
 
     if (req.files?.length && (await contientUnePhotoInterdite(req.files))) {
       return res.status(400).json({ erreur: 'Une des photos envoyées a été refusée (contenu inapproprié détecté).' })
     }
 
-    const emailValide = email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null
+    const emailContact = emailValide(texte(email).trim()) ? texte(email).trim() : null
     const photos = req.files?.length ? await traiterPhotos(req.files) : []
     const dateSignalement = new Date().toISOString()
-    const lat = latitude ? Number(latitude) : null
-    const lon = longitude ? Number(longitude) : null
     const tokenSuppression = crypto.randomBytes(24).toString('hex')
-    // FormData n'envoie que des chaînes : « false » est une chaîne non vide et serait vrai.
-    const estUrgent = urgent === 'true' || urgent === '1' || urgent === true
+    const estUrgent = lireUrgent(urgent)
 
     const { rows } = await db.query(
       `INSERT INTO signalements (categorie, commune, description, photos, statut, date_signalement, latitude, longitude, email_contact, token_suppression, utilisateur_id, urgent)
@@ -374,9 +390,9 @@ router.post(
         description.trim(),
         photos,
         dateSignalement,
-        lat,
-        lon,
-        emailValide,
+        position.latitude,
+        position.longitude,
+        emailContact,
         tokenSuppression,
         req.utilisateur?.id || null,
         estUrgent
@@ -385,8 +401,8 @@ router.post(
 
     const signalementCree = mapRow(rows[0], false, req.utilisateur?.id || null)
     envoyerNotificationSignalement(signalementCree)
-    if (emailValide) {
-      envoyerConfirmationSignalement(signalementCree, emailValide, tokenSuppression)
+    if (emailContact) {
+      envoyerConfirmationSignalement(signalementCree, emailContact, tokenSuppression)
     }
     // Le token n'est renvoyé qu'ici, une seule fois : c'est la seule façon pour le créateur
     // (sans compte) de prouver plus tard que le signalement lui appartient.
@@ -453,18 +469,14 @@ router.put('/signalements/:id', upload.array('photos', MAX_PHOTOS), async (req, 
     })
   }
 
-  if (!CATEGORIES.includes(categorie)) {
-    return res.status(400).json({ erreur: 'Catégorie invalide.' })
-  }
-  if (!COMMUNES.includes(commune)) {
-    return res.status(400).json({ erreur: 'Commune invalide.' })
-  }
-  if (!description || description.trim().length < 10) {
-    return res.status(400).json({ erreur: 'La description doit contenir au moins 10 caractères.' })
-  }
-  if (description.trim().length > 2000) {
-    return res.status(400).json({ erreur: 'La description ne doit pas dépasser 2000 caractères.' })
-  }
+  const erreur = erreurDeContenu({ categorie, commune, description })
+  if (erreur) return res.status(400).json({ erreur })
+
+  // Position non renvoyée : on garde l'ancienne.
+  const nouvellePosition = lirePosition(latitude, longitude)
+  if (nouvellePosition.erreur) return res.status(400).json({ erreur: nouvellePosition.erreur })
+  const lat = nouvellePosition.latitude ?? existant.latitude
+  const lon = nouvellePosition.longitude ?? existant.longitude
 
   if (req.files?.length && (await contientUnePhotoInterdite(req.files))) {
     return res.status(400).json({ erreur: 'Une des photos envoyées a été refusée (contenu inapproprié détecté).' })
@@ -482,16 +494,10 @@ router.put('/signalements/:id', upload.array('photos', MAX_PHOTOS), async (req, 
     }
   }
 
-  const photosSupprimees = existant.photos.filter((url) => !photosConservees.includes(url))
-  await Promise.all(photosSupprimees.map(supprimerPhoto))
-
   const nouvellesPhotos = req.files?.length
     ? await traiterPhotos(req.files.slice(0, MAX_PHOTOS - photosConservees.length))
     : []
   const photos = [...photosConservees, ...nouvellesPhotos]
-
-  const lat = latitude ? Number(latitude) : existant.latitude
-  const lon = longitude ? Number(longitude) : existant.longitude
 
   // Trace la correction : sur un registre public, le contenu ne doit pas pouvoir
   // changer en silence après coup.
@@ -499,20 +505,17 @@ router.put('/signalements/:id', upload.array('photos', MAX_PHOTOS), async (req, 
     `UPDATE signalements SET categorie = $1, commune = $2, description = $3, photos = $4, latitude = $5, longitude = $6,
             urgent = $7, date_modification = $8
      WHERE id = $9 RETURNING *`,
-    [
-      categorie,
-      commune,
-      description.trim(),
-      photos,
-      lat,
-      lon,
-      urgent === 'true' || urgent === '1' || urgent === true,
-      new Date().toISOString(),
-      id
-    ]
+    [categorie, commune, description.trim(), photos, lat, lon, lireUrgent(urgent), new Date().toISOString(), id]
   )
 
-  res.json(mapRow(rows[0]))
+  // Les photos retirées ne sont effacées du stockage qu'une fois la correction
+  // enregistrée : si l'enregistrement échouait, la base pointerait sinon vers des
+  // fichiers déjà détruits.
+  const photosSupprimees = existant.photos.filter((url) => !photosConservees.includes(url))
+  await Promise.all(photosSupprimees.map(supprimerPhoto))
+
+  const session = sessionDeLaRequete(req)
+  res.json(mapRow(rows[0], false, session?.utilisateurId || null))
 })
 
 router.delete('/signalements/:id', async (req, res) => {

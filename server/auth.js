@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { db } from './db.js'
 import { normaliserTelephone as normaliserNumero, telephoneValide } from '../shared/telephone.js'
 import { motDePasseInterdit } from '../shared/motDePasse.js'
+import { emailValide } from './validation.js'
 
 const DUREE_SESSION_MS = 12 * 60 * 60 * 1000 // 12h
 // token -> { type: 'admin', adminId, identifiant, expiration }
@@ -83,9 +84,11 @@ export function revoquerSession(token) {
   sessions.delete(token)
 }
 
-export function revoquerSessionsDe(adminId) {
+// `saufToken` : la session à conserver, celle depuis laquelle l'admin vient de changer
+// son mot de passe.
+export function revoquerSessionsDe(adminId, saufToken = null) {
   for (const [token, session] of sessions) {
-    if (session.type === 'admin' && session.adminId === adminId) sessions.delete(token)
+    if (session.type === 'admin' && session.adminId === adminId && token !== saufToken) sessions.delete(token)
   }
 }
 
@@ -118,11 +121,19 @@ export async function inscrireUtilisateur({ nom, email, telephone, motDePasse })
   const emailNormalise = normaliserEmail(email)
   const telephoneNormalise = normaliserTelephone(telephone)
 
-  if (!nom || nom.trim().length < 2) {
+  if (typeof nom !== 'string' || nom.trim().length < 2) {
     return { erreur: 'Le nom doit contenir au moins 2 caractères.' }
+  }
+  if (nom.trim().length > 100) {
+    return { erreur: 'Le nom ne doit pas dépasser 100 caractères.' }
   }
   if (!emailNormalise && !telephoneNormalise) {
     return { erreur: 'Renseignez un email ou un numéro de téléphone.' }
+  }
+  // Une adresse mal formée était acceptée : le code de confirmation partait dans le
+  // vide, et le compte restait bloqué, incapable d'envoyer le moindre signalement.
+  if (emailNormalise && !emailValide(emailNormalise)) {
+    return { erreur: 'Adresse email invalide.' }
   }
   if (telephoneNormalise && !telephoneValide(telephoneNormalise)) {
     return { erreur: 'Le numéro doit contenir 10 chiffres et commencer par 0 (ex. 06 39 06 50 31).' }
