@@ -6,7 +6,9 @@
 
 .site-footer {
   position: relative;
-  padding: 40px 0 20px;
+  /* Réserve en bas : la barre de navigation reste fixée en bas de l'écran et ne doit
+     pas recouvrir la dernière ligne du pied de page. */
+  padding: 40px 0 112px;
   color: var(--app-text);
   /* Un fond noir opaque coupait net le globe et le dégradé : en bas de page, l'image
      du site disparaissait d'un coup sur une bande horizontale. Le voile translucide

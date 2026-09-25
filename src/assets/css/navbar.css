@@ -40,6 +40,7 @@
   border-radius: 50%;
   background: transparent;
   color: var(--app-muted);
+  text-decoration: none;
   cursor: pointer;
   transition:
     color 0.2s ease,
@@ -144,6 +145,47 @@
 .icon-pill-link.active {
   color: var(--accent);
   background: rgba(34, 197, 94, 0.18);
+}
+
+/* Sur ordinateur et tablette, l'onglet de la page courante affiche son nom à côté de
+   l'icône : avec des icônes seules, on devinait mal où l'on se trouvait. Sur
+   téléphone, la place manque pour huit icônes et un libellé : l'icône verte suffit. */
+@media (min-width: 768px) {
+  .icon-pill-link.active {
+    width: auto;
+    gap: 8px;
+    padding: 0 16px 0 13px;
+    border-radius: 999px;
+  }
+
+  /* display : reste visible sur tablette tactile, où les infobulles sont masquées. */
+  .icon-pill-link.active .nav-infobulle {
+    display: inline;
+    position: static;
+    transform: none;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent);
+    font-size: 0.88rem;
+    font-weight: 700;
+    opacity: 1;
+    transition: none;
+  }
+
+  .icon-pill-link.active:hover .nav-infobulle,
+  .icon-pill-link.active:focus-visible .nav-infobulle {
+    transform: none;
+  }
+
+  /* Profil : on garde le nom, pas la ligne « Connecté · voir mon profil ». */
+  .icon-pill-link.active .nav-infobulle-detail {
+    display: none;
+  }
+
+  .icon-pill-profil.active::after {
+    display: none;
+  }
 }
 
 @media (max-width: 575.98px) {

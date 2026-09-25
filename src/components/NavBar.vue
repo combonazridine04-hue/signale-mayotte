@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
 import ClocheNotifications from './ClocheNotifications.vue'
@@ -9,74 +9,15 @@ const citoyenStore = useCitoyenStore()
 const nomAffiche = computed(() => citoyenStore.pseudo || citoyenStore.nom || 'Mon profil')
 const initiale = computed(() => (citoyenStore.pseudo || citoyenStore.nom || '?').charAt(0).toUpperCase())
 
-// La barre flotte au-dessus du contenu, ce qui est pratique en cours de lecture mais
-// recouvrait le pied de page une fois tout en bas. On réservait donc une centaine de
-// pixels vides en bas de CHAQUE page pour l'éviter. Ici elle vient plutôt se poser
-// juste au-dessus du pied de page quand celui-ci arrive : plus de recouvrement, et
-// plus de réserve perdue.
-const pilule = ref(null)
-const MARGE = 14
-let decalage = 0
-let enAttente = false
-let observateur = null
-
-function ajuster() {
-  enAttente = false
-  if (!pilule.value) return
-
-  const pied = document.querySelector('.site-footer')
-  // En dessous de 992 px, le pied de page est plus haut que l'écran : il n'y a jamais
-  // de place au-dessus de lui, et la barre finissait collée en haut de l'écran à
-  // recouvrir le nom du site. Là, elle reste flottante et c'est la réserve prévue dans
-  // la feuille de style à cette largeur qui évite qu'elle masque la dernière ligne.
-  if (!pied || !window.matchMedia('(min-width: 992px)').matches) {
-    if (decalage) {
-      decalage = 0
-      pilule.value.style.transform = ''
-    }
-    return
-  }
-
-  // On repart de la position SANS décalage, sinon chaque calcul s'ajouterait au précédent.
-  const rect = pilule.value.getBoundingClientRect()
-  const basNaturel = rect.bottom + decalage
-  const hautNaturel = rect.top + decalage
-  const hautPied = pied.getBoundingClientRect().top
-
-  // Filet de sécurité : la barre doit rester entièrement visible quoi qu'il arrive.
-  const maximum = Math.round(hautNaturel - MARGE)
-  decalage = Math.max(0, Math.min(Math.round(basNaturel + MARGE - hautPied), maximum))
-  pilule.value.style.transform = decalage ? `translateY(${-decalage}px)` : ''
-}
-
-function planifier() {
-  if (enAttente) return
-  enAttente = true
-  requestAnimationFrame(ajuster)
-}
-
-onMounted(() => {
-  window.addEventListener('scroll', planifier, { passive: true })
-  window.addEventListener('resize', planifier)
-  // La hauteur de la page change aussi sans défilement : chargement des signalements,
-  // ouverture d'un formulaire, images qui arrivent. Sans ça la barre resterait décalée.
-  if (window.ResizeObserver) {
-    observateur = new ResizeObserver(planifier)
-    observateur.observe(document.body)
-  }
-  planifier()
-})
-
-onBeforeUnmount(() => {
-  window.removeEventListener('scroll', planifier)
-  window.removeEventListener('resize', planifier)
-  observateur?.disconnect()
-})
+// La barre reste fixée en bas de l'écran, comme un dock. Elle remontait auparavant se
+// poser au-dessus du pied de page en fin de défilement, ce qui la laissait flotter au
+// milieu de la page. Le pied de page réserve désormais sa hauteur en bas, pour qu'elle
+// ne recouvre jamais son texte.
 </script>
 
 <template>
   <header class="site-header">
-    <nav ref="pilule" class="icon-pill" aria-label="Navigation principale">
+    <nav class="icon-pill" aria-label="Navigation principale">
       <RouterLink to="/" class="icon-pill-link" exact-active-class="active" aria-label="Accueil">
         <svg
           viewBox="0 0 24 24"
