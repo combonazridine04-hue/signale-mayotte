@@ -49,6 +49,41 @@ export const useAdminStore = defineStore('admin', {
       this.comptes = this.comptes.filter((c) => c.id !== id)
     },
 
+    async statutDeuxFacteurs() {
+      const reponse = await apiFetch('/api/admins/me/2fa')
+      return (await traiterReponse(reponse)).actif
+    },
+
+    async preparerDeuxFacteurs() {
+      const reponse = await apiFetch('/api/admins/me/2fa/preparer', { method: 'POST' })
+      return traiterReponse(reponse)
+    },
+
+    async activerDeuxFacteurs(code) {
+      const reponse = await apiFetch('/api/admins/me/2fa/activer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+      })
+      await traiterReponse(reponse)
+    },
+
+    async desactiverDeuxFacteurs(motDePasse, code) {
+      const reponse = await apiFetch('/api/admins/me/2fa/desactiver', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ motDePasse, code })
+      })
+      await traiterReponse(reponse)
+    },
+
+    async reinitialiserDeuxFacteurs(id) {
+      const reponse = await apiFetch(`/api/admins/${id}/2fa`, { method: 'DELETE' })
+      await traiterReponse(reponse)
+      const compte = this.comptes.find((c) => c.id === id)
+      if (compte) compte.deuxFacteurs = false
+    },
+
     async changerMotDePasse(motDePasseActuel, nouveauMotDePasse) {
       const reponse = await apiFetch('/api/admins/me/mot-de-passe', {
         method: 'PATCH',

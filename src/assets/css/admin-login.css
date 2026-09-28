@@ -79,6 +79,17 @@
   background: #ffffff;
 }
 
+.admin-login-aide {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+#code {
+  letter-spacing: 0.3em;
+  font-variant-numeric: tabular-nums;
+}
+
 .admin-login-erreur {
   margin-bottom: 1rem;
   padding: 0.55rem 0.75rem;

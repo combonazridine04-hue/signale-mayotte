@@ -4,6 +4,7 @@ import { db } from './db.js'
 import { normaliserTelephone as normaliserNumero, telephoneValide } from '../shared/telephone.js'
 import { motDePasseInterdit } from '../shared/motDePasse.js'
 import { emailValide } from './validation.js'
+import { verifierCode } from './totp.js'
 
 const DUREE_SESSION_MS = 12 * 60 * 60 * 1000 // 12h
 // token -> { type: 'admin', adminId, identifiant, expiration }
@@ -43,7 +44,26 @@ export async function verifierIdentifiants(identifiant, motDePasse) {
   }
 
   const valide = await bcrypt.compare(motDePasse, admin.mot_de_passe_hash)
-  return valide ? { id: admin.id, identifiant: admin.identifiant } : null
+  return valide
+    ? {
+        id: admin.id,
+        identifiant: admin.identifiant,
+        totpSecret: admin.totp_secret,
+        totpDernierPas: admin.totp_dernier_pas === null ? null : Number(admin.totp_dernier_pas)
+      }
+    : null
+}
+
+// Accepte le code une seule fois : la mise à jour ne passe que si aucun code plus récent
+// (ou le même, envoyé deux fois en parallèle) n'a déjà été accepté.
+export async function consommerCodeAdmin(adminId, secret, dernierPas, code) {
+  const pas = verifierCode(secret, code, { dernierPasUtilise: dernierPas })
+  if (pas === null) return false
+  const { rowCount } = await db.query(
+    'UPDATE admins SET totp_dernier_pas = $1 WHERE id = $2 AND (totp_dernier_pas IS NULL OR totp_dernier_pas < $1)',
+    [pas, adminId]
+  )
+  return rowCount === 1
 }
 
 export function creerSession(admin) {
@@ -57,13 +77,27 @@ export function creerSession(admin) {
   return token
 }
 
+// En plus des 12 h maximum : une session laissée sans activité pendant 2 h est fermée
+// (ordinateur partagé quitté sans se déconnecter).
+const INACTIVITE_MAX_MS = 2 * 60 * 60 * 1000
+
+function derniereActivite(session) {
+  return session.activite ?? session.expiration - DUREE_SESSION_MS
+}
+
+function estPerimee(session, maintenant) {
+  return maintenant > session.expiration || maintenant - derniereActivite(session) > INACTIVITE_MAX_MS
+}
+
 export function sessionValide(token) {
   if (!token || !sessions.has(token)) return null
   const session = sessions.get(token)
-  if (Date.now() > session.expiration) {
+  const maintenant = Date.now()
+  if (estPerimee(session, maintenant)) {
     sessions.delete(token)
     return null
   }
+  session.activite = maintenant
   return session
 }
 
@@ -75,7 +109,7 @@ const INTERVALLE_MENAGE_MS = 60 * 60 * 1000
 const menageSessions = setInterval(() => {
   const maintenant = Date.now()
   for (const [token, session] of sessions) {
-    if (maintenant > session.expiration) sessions.delete(token)
+    if (estPerimee(session, maintenant)) sessions.delete(token)
   }
 }, INTERVALLE_MENAGE_MS)
 // Ne doit pas empêcher le processus de s'arrêter (tests, redéploiement).

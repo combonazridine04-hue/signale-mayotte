@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { nextTick, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/authStore.js'
 import ChampMotDePasse from '../../components/ChampMotDePasse.vue'
@@ -9,20 +9,33 @@ const authStore = useAuthStore()
 
 const messageErreur = ref('')
 const envoiEnCours = ref(false)
+// Affiché quand le compte a la double authentification : le serveur a validé le mot de
+// passe et attend le code de l'application.
+const codeRequis = ref(false)
+const champCode = ref(null)
 
 const connecter = async (event) => {
   const donnees = new FormData(event.target)
   const identifiant = donnees.get('identifiant').trim()
   const motDePasse = donnees.get('motDePasse')
+  const code = String(donnees.get('code') || '').replace(/\s/g, '')
 
   envoiEnCours.value = true
   messageErreur.value = ''
 
-  const resultat = await authStore.connecter(identifiant, motDePasse)
+  const resultat = await authStore.connecter(identifiant, motDePasse, code)
   if (resultat.succes) {
     router.push({ name: 'admin-dashboard' })
   } else {
-    messageErreur.value = resultat.erreur
+    // Première étape réussie : on demande le code sans afficher d'erreur.
+    const premiereDemande = resultat.codeRequis && !codeRequis.value
+    codeRequis.value = codeRequis.value || Boolean(resultat.codeRequis)
+    messageErreur.value = premiereDemande ? '' : resultat.erreur
+    if (resultat.codeRequis) {
+      await nextTick()
+      champCode.value?.focus()
+      champCode.value?.select()
+    }
   }
 
   envoiEnCours.value = false
@@ -55,6 +68,23 @@ const connecter = async (event) => {
       <div class="admin-field">
         <label for="motDePasse">Mot de passe</label>
         <ChampMotDePasse id="motDePasse" name="motDePasse" autocomplete="current-password" required classe-input="" />
+      </div>
+
+      <div v-if="codeRequis" class="admin-field">
+        <label for="code">Code de vérification</label>
+        <input
+          id="code"
+          ref="champCode"
+          name="code"
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          pattern="[0-9]*"
+          maxlength="6"
+          placeholder="6 chiffres"
+          required
+        />
+        <p class="admin-login-aide">Ouvrez votre application d'authentification et saisissez le code affiché.</p>
       </div>
 
       <div v-if="messageErreur" class="admin-login-erreur">{{ messageErreur }}</div>

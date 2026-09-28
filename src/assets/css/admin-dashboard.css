@@ -597,3 +597,28 @@
     flex-wrap: wrap;
   }
 }
+
+/* Double authentification (onglet Comptes) */
+.admin-panel-title .admin-badge {
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.admin-etapes {
+  padding-left: 1.2rem;
+  color: #475569;
+  font-size: 0.9rem;
+}
+
+.admin-qr {
+  display: block;
+  margin: 0.5rem 0 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.admin-cle {
+  word-break: break-all;
+  user-select: all;
+}

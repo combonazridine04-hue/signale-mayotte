@@ -11,13 +11,13 @@ export const useAuthStore = defineStore('auth', {
   },
 
   actions: {
-    async connecter(identifiant, motDePasse) {
+    async connecter(identifiant, motDePasse, code = '') {
       let reponse
       try {
         reponse = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ identifiant, motDePasse })
+          body: JSON.stringify({ identifiant, motDePasse, ...(code ? { code } : {}) })
         })
       } catch {
         return {
@@ -27,9 +27,12 @@ export const useAuthStore = defineStore('auth', {
       }
 
       if (!reponse.ok) {
+        const corps = await reponse.json().catch(() => ({}))
+        if (corps.codeRequis) return { succes: false, codeRequis: true, erreur: corps.erreur }
         if (reponse.status === 401) {
           return { succes: false, erreur: 'Identifiant ou mot de passe incorrect.' }
         }
+        if (reponse.status === 429) return { succes: false, erreur: corps.erreur }
         return {
           succes: false,
           erreur: 'Le serveur ne répond pas. Il redémarre peut-être : réessayez dans un instant.'

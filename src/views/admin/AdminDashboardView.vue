@@ -78,6 +78,10 @@ onMounted(() => {
   signalementStore.chargerStats()
   contactStore.charger()
   adminStore.charger()
+  adminStore
+    .statutDeuxFacteurs()
+    .then((actif) => (deuxFacteurs.actif = actif))
+    .catch(() => {})
   partenairesAdminStore.charger()
   chargerModeration()
 })
@@ -138,6 +142,61 @@ const supprimerPartenaire = async (compte) => {
   if (!(await uiStore.confirmer(`Supprimer définitivement le compte partenaire "${compte.identifiant}" ?`))) return
   try {
     await partenairesAdminStore.supprimer(compte.id)
+  } catch (e) {
+    uiStore.alerter(e.message)
+  }
+}
+
+const deuxFacteurs = reactive({
+  actif: false,
+  qr: '',
+  secret: '',
+  code: '',
+  motDePasse: '',
+  erreur: '',
+  enCours: false
+})
+
+async function actionDeuxFacteurs(action) {
+  deuxFacteurs.erreur = ''
+  deuxFacteurs.enCours = true
+  try {
+    await action()
+  } catch (e) {
+    deuxFacteurs.erreur = e.message
+  } finally {
+    deuxFacteurs.enCours = false
+  }
+}
+
+const preparerDeuxFacteurs = () =>
+  actionDeuxFacteurs(async () => {
+    const { qr, secret } = await adminStore.preparerDeuxFacteurs()
+    deuxFacteurs.qr = qr
+    deuxFacteurs.secret = secret
+    deuxFacteurs.code = ''
+  })
+
+const activerDeuxFacteurs = () =>
+  actionDeuxFacteurs(async () => {
+    await adminStore.activerDeuxFacteurs(deuxFacteurs.code.trim())
+    Object.assign(deuxFacteurs, { actif: true, qr: '', secret: '', code: '' })
+    adminStore.charger()
+    uiStore.alerter('Double authentification activée. Elle vous sera demandée à chaque connexion.')
+  })
+
+const desactiverDeuxFacteurs = () =>
+  actionDeuxFacteurs(async () => {
+    await adminStore.desactiverDeuxFacteurs(deuxFacteurs.motDePasse, deuxFacteurs.code.trim())
+    Object.assign(deuxFacteurs, { actif: false, code: '', motDePasse: '' })
+    adminStore.charger()
+  })
+
+const reinitialiserDeuxFacteurs = async (compte) => {
+  const message = `Réinitialiser la double authentification de "${compte.identifiant}" ? Ses sessions seront fermées et il devra la reconfigurer.`
+  if (!(await uiStore.confirmer(message))) return
+  try {
+    await adminStore.reinitialiserDeuxFacteurs(compte.id)
   } catch (e) {
     uiStore.alerter(e.message)
   }
@@ -774,6 +833,93 @@ const changerStatut = async (id, statut) => {
 
         <div v-else-if="section === 'comptes'" class="d-flex flex-column gap-4">
           <div class="admin-panel">
+            <h2 class="admin-panel-title">
+              Double authentification
+              <span v-if="deuxFacteurs.actif" class="admin-badge admin-badge--resolu">Activée</span>
+              <span v-else class="admin-badge admin-badge--signale">Désactivée</span>
+            </h2>
+
+            <template v-if="deuxFacteurs.actif">
+              <p class="admin-muted">
+                Votre compte demande, en plus du mot de passe, le code à 6 chiffres de votre application
+                d'authentification. Un mot de passe volé ne suffit plus pour entrer.
+              </p>
+              <form class="admin-form" @submit.prevent="desactiverDeuxFacteurs">
+                <div class="admin-form-field">
+                  <label for="dfa-mdp">Mot de passe</label>
+                  <ChampMotDePasse
+                    id="dfa-mdp"
+                    v-model="deuxFacteurs.motDePasse"
+                    required
+                    autocomplete="current-password"
+                    classe-input=""
+                  />
+                </div>
+                <div class="admin-form-field">
+                  <label for="dfa-code-off">Code actuel de l'application</label>
+                  <input
+                    id="dfa-code-off"
+                    v-model="deuxFacteurs.code"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    maxlength="6"
+                    required
+                  />
+                </div>
+                <div v-if="deuxFacteurs.erreur" class="admin-form-erreur">{{ deuxFacteurs.erreur }}</div>
+                <button type="submit" class="admin-btn admin-btn--danger" :disabled="deuxFacteurs.enCours">
+                  Désactiver la double authentification
+                </button>
+              </form>
+            </template>
+
+            <template v-else-if="deuxFacteurs.qr">
+              <ol class="admin-etapes">
+                <li>Installez une application d'authentification (Google Authenticator, Microsoft Authenticator…).</li>
+                <li>Scannez ce QR code avec l'application.</li>
+              </ol>
+              <img :src="deuxFacteurs.qr" alt="QR code de configuration" class="admin-qr" width="220" height="220" />
+              <p class="admin-muted small">
+                Impossible de scanner ? Saisissez cette clé dans l'application :
+                <code class="admin-cle">{{ deuxFacteurs.secret }}</code>
+              </p>
+              <form class="admin-form" @submit.prevent="activerDeuxFacteurs">
+                <div class="admin-form-field">
+                  <label for="dfa-code">3. Code affiché par l'application</label>
+                  <input
+                    id="dfa-code"
+                    v-model="deuxFacteurs.code"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    maxlength="6"
+                    required
+                  />
+                </div>
+                <div v-if="deuxFacteurs.erreur" class="admin-form-erreur">{{ deuxFacteurs.erreur }}</div>
+                <button type="submit" class="admin-btn admin-btn--primary" :disabled="deuxFacteurs.enCours">
+                  Activer
+                </button>
+              </form>
+            </template>
+
+            <template v-else>
+              <p class="admin-muted">
+                Recommandé : sans elle, quiconque obtient votre mot de passe peut modérer, exporter les données
+                personnelles et gérer les comptes. Il faut une application d'authentification sur votre téléphone.
+              </p>
+              <div v-if="deuxFacteurs.erreur" class="admin-form-erreur">{{ deuxFacteurs.erreur }}</div>
+              <button
+                type="button"
+                class="admin-btn admin-btn--primary"
+                :disabled="deuxFacteurs.enCours"
+                @click="preparerDeuxFacteurs"
+              >
+                Configurer la double authentification
+              </button>
+            </template>
+          </div>
+
+          <div class="admin-panel">
             <h2 class="admin-panel-title">Changer mon mot de passe</h2>
             <form class="admin-form" @submit.prevent="changerMotDePasse">
               <div class="admin-form-field">
@@ -823,6 +969,7 @@ const changerStatut = async (id, statut) => {
               <thead>
                 <tr>
                   <th>Identifiant</th>
+                  <th>Double authentification</th>
                   <th>Créé le</th>
                   <th></th>
                 </tr>
@@ -833,8 +980,21 @@ const changerStatut = async (id, statut) => {
                     {{ c.identifiant }}
                     <span v-if="c.identifiant === authStore.identifiant" class="admin-muted">(vous)</span>
                   </td>
+                  <td data-label="Double authentification">
+                    <span v-if="c.deuxFacteurs" class="admin-badge admin-badge--resolu">Activée</span>
+                    <span v-else class="admin-badge admin-badge--signale">Non</span>
+                  </td>
                   <td data-label="Créé le">{{ new Date(c.creeLe).toLocaleDateString('fr-FR') }}</td>
-                  <td data-label="Actions">
+                  <td data-label="Actions" class="admin-actions">
+                    <button
+                      v-if="c.deuxFacteurs && c.identifiant !== authStore.identifiant"
+                      type="button"
+                      class="admin-btn admin-btn--ghost"
+                      title="Si ce collègue a perdu son téléphone"
+                      @click="reinitialiserDeuxFacteurs(c)"
+                    >
+                      Réinitialiser la 2FA
+                    </button>
                     <button
                       v-if="c.identifiant !== authStore.identifiant"
                       type="button"

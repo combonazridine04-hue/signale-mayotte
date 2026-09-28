@@ -72,6 +72,14 @@ await db.query(`
   )
 `)
 
+// Double authentification des admins (code à 6 chiffres d'une appli) : un mot de passe
+// admin volé ne suffit plus à ouvrir la modération, l'export et la gestion des comptes.
+// totp_secret_attente : secret proposé, pas encore confirmé par un premier code.
+// totp_dernier_pas : dernier code accepté, pour qu'il ne puisse pas être rejoué.
+await db.query(`ALTER TABLE admins ADD COLUMN IF NOT EXISTS totp_secret TEXT`)
+await db.query(`ALTER TABLE admins ADD COLUMN IF NOT EXISTS totp_secret_attente TEXT`)
+await db.query(`ALTER TABLE admins ADD COLUMN IF NOT EXISTS totp_dernier_pas BIGINT`)
+
 await db.query(`
   CREATE TABLE IF NOT EXISTS utilisateurs (
     id SERIAL PRIMARY KEY,

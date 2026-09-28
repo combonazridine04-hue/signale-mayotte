@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { rateLimit } from 'express-rate-limit'
 import {
   verifierIdentifiants,
+  consommerCodeAdmin,
   creerSession,
   inscrireUtilisateur,
   verifierIdentifiantsUtilisateur,
@@ -113,6 +114,18 @@ router.post('/login', async (req, res) => {
   const admin = await verifierIdentifiants(identifiant, motDePasse)
   if (!admin) {
     return res.status(401).json({ erreur: 'Identifiant ou mot de passe incorrect.' })
+  }
+
+  // Double authentification activée : le mot de passe seul ne suffit pas. Le nombre
+  // d'essais reste limité par le limiteur de /api/auth/login (10 par quart d'heure).
+  if (admin.totpSecret) {
+    const { code } = req.body || {}
+    if (!code) {
+      return res.status(401).json({ erreur: 'Saisissez le code à 6 chiffres de votre application.', codeRequis: true })
+    }
+    if (!(await consommerCodeAdmin(admin.id, admin.totpSecret, admin.totpDernierPas, code))) {
+      return res.status(401).json({ erreur: 'Code incorrect ou expiré.', codeRequis: true })
+    }
   }
 
   ouvrirSession(req, res, creerSession(admin))

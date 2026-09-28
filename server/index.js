@@ -37,6 +37,8 @@ app.use(
     // Par défaut Helmet envoie "no-referrer", ce qui empêche MapTiler de vérifier
     // l'origine des requêtes de tuiles (clé API restreinte par domaine).
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    // Le navigateur refusera d'être contacté en HTTP pendant un an (au lieu de 180 jours).
+    strictTransportSecurity: { maxAge: 365 * 24 * 60 * 60, includeSubDomains: true },
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
@@ -61,6 +63,17 @@ app.use(
     }
   })
 )
+
+// Fonctions du navigateur : seules celles dont le site se sert sont permises, et
+// uniquement pour lui (position du signalement, appareil photo, partage, copie du lien).
+// Un script injecté ne pourrait ni écouter le micro, ni demander un paiement, etc.
+app.use((req, res, next) => {
+  res.set(
+    'Permissions-Policy',
+    'geolocation=(self), camera=(self), web-share=(self), clipboard-write=(self), microphone=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=(), interest-cohort=(), browsing-topics=()'
+  )
+  next()
+})
 
 const limiteurLogin = rateLimit({
   windowMs: 15 * 60 * 1000,
