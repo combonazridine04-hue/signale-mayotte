@@ -8,6 +8,7 @@ import { emailValide } from './validation.js'
 const DUREE_SESSION_MS = 12 * 60 * 60 * 1000 // 12h
 // token -> { type: 'admin', adminId, identifiant, expiration }
 //        | { type: 'utilisateur', utilisateurId, nom, expiration }
+//        | { type: 'partenaire', partenaireId, nom, commune, expiration }
 const sessions = new Map()
 
 const { rows } = await db.query('SELECT COUNT(*)::int AS count FROM admins')
@@ -96,6 +97,44 @@ export function revoquerSessionsUtilisateur(utilisateurId) {
   for (const [token, session] of sessions) {
     if (session.type === 'utilisateur' && session.utilisateurId === utilisateurId) sessions.delete(token)
   }
+}
+
+export function revoquerSessionsPartenaire(partenaireId) {
+  for (const [token, session] of sessions) {
+    if (session.type === 'partenaire' && session.partenaireId === partenaireId) sessions.delete(token)
+  }
+}
+
+// --- Comptes partenaires (agents municipaux, distincts des admins et des citoyens) ---
+
+export async function verifierIdentifiantsPartenaire(identifiant, motDePasse) {
+  if (typeof identifiant !== 'string' || typeof motDePasse !== 'string') return null
+
+  const { rows } = await db.query('SELECT * FROM partenaires WHERE identifiant = $1', [identifiant])
+  const partenaire = rows[0]
+  if (!partenaire) {
+    // Même précaution que pour les admins : un temps de réponse identique, qu'un compte
+    // existe ou non, pour ne rien laisser deviner par le timing.
+    await bcrypt.compare(motDePasse, '$2a$12$CwTycUXWue0Thq9StjUM0uJ8Q7kJnMfCbXWDh7jHfnfjqI3sT4XVe')
+    return null
+  }
+
+  const valide = await bcrypt.compare(motDePasse, partenaire.mot_de_passe_hash)
+  return valide
+    ? { id: partenaire.id, nom: partenaire.nom, identifiant: partenaire.identifiant, commune: partenaire.commune }
+    : null
+}
+
+export function creerSessionPartenaire(partenaire) {
+  const token = randomBytes(32).toString('hex')
+  sessions.set(token, {
+    type: 'partenaire',
+    partenaireId: partenaire.id,
+    nom: partenaire.nom,
+    commune: partenaire.commune,
+    expiration: Date.now() + DUREE_SESSION_MS
+  })
+  return token
 }
 
 // --- Comptes citoyens (distincts des comptes admin) ---

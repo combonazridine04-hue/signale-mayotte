@@ -102,6 +102,21 @@ await db.query(`ALTER TABLE utilisateurs ADD COLUMN IF NOT EXISTS derniere_conne
 // de liste sans dupliquer tout le système.
 await db.query(`ALTER TABLE signalements ADD COLUMN IF NOT EXISTS urgent BOOLEAN NOT NULL DEFAULT false`)
 
+// Comptes partenaires : agents municipaux ou services techniques désignés par
+// l'association pour faire évoluer le statut des signalements de leur commune. Une
+// table séparée des admins, comme pour les citoyens : ce sont des droits différents
+// (pas de modération, pas de gestion des comptes, pas d'export), gérés par l'admin.
+await db.query(`
+  CREATE TABLE IF NOT EXISTS partenaires (
+    id SERIAL PRIMARY KEY,
+    nom TEXT NOT NULL,
+    identifiant TEXT NOT NULL UNIQUE,
+    mot_de_passe_hash TEXT NOT NULL,
+    commune TEXT,
+    cree_le TEXT NOT NULL
+  )
+`)
+
 await db.query(`
   CREATE TABLE IF NOT EXISTS signalements_abus (
     id SERIAL PRIMARY KEY,

@@ -5,9 +5,8 @@ import Footer from './components/Footer.vue'
 import ThemeToggle from './components/ThemeToggle.vue'
 import DialogueGlobal from './components/DialogueGlobal.vue'
 import { RouterView, useRoute } from 'vue-router'
-import { useCitoyenStore } from './stores/citoyenStore.js'
-import { useAuthStore } from './stores/authStore.js'
 import { etatReseau } from './utils/api.js'
+import { synchroniserSession } from './utils/session.js'
 
 const GlobeBackground = defineAsyncComponent({
   loader: () => import('./components/GlobeBackground.vue'),
@@ -22,8 +21,6 @@ const GlobeBackground = defineAsyncComponent({
 })
 
 const route = useRoute()
-const citoyenStore = useCitoyenStore()
-const authStore = useAuthStore()
 
 // Le globe fait partie de l'identité du site : il s'affiche TOUJOURS, quelle que soit la
 // connexion. Il était auparavant supprimé en mode économie de données ou quand le
@@ -43,17 +40,16 @@ function evaluerGlobe() {
 }
 
 onMounted(() => {
-  // Au chargement, on récupère le profil (pseudo, photo) pour la barre de navigation,
-  // et ça vérifie au passage que la session est toujours valide côté serveur.
-  if (citoyenStore.estConnecte) citoyenStore.chargerProfil()
-  if (authStore.estConnecte) authStore.verifierSession()
+  // Le serveur dit qui est connecté (le cookie de session est illisible pour la page) ;
+  // pour un citoyen, ça charge aussi pseudo et photo pour la barre de navigation.
+  synchroniserSession()
 
   evaluerGlobe()
 })
 </script>
 
 <template>
-  <RouterView v-if="route.meta.admin" />
+  <RouterView v-if="route.meta.admin || route.meta.partenaire" />
   <template v-else>
     <!-- Le serveur gratuit s'éteint après un quart d'heure sans visite. Pendant qu'il
          redémarre, le site réessaie tout seul : on le dit, sinon la personne croit à

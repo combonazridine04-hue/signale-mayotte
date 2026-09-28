@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '../db.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { revoquerSessionsDe } from '../auth.js'
+import { jetonDeLaRequete } from '../sessionCookie.js'
 import { motDePasseInterdit } from '../../shared/motDePasse.js'
 import { verifierParametreId } from '../validation.js'
 
@@ -87,8 +88,7 @@ router.patch('/admins/me/mot-de-passe', async (req, res) => {
   await db.query('UPDATE admins SET mot_de_passe_hash = $1 WHERE id = $2', [hash, req.admin.id])
   // Changer son mot de passe sert souvent à couper l'accès à quelqu'un qui le connaissait :
   // les autres sessions de ce compte sont fermées, seule la session en cours est gardée.
-  const enTete = req.headers.authorization || ''
-  revoquerSessionsDe(req.admin.id, enTete.startsWith('Bearer ') ? enTete.slice(7) : null)
+  revoquerSessionsDe(req.admin.id, jetonDeLaRequete(req) || null)
 
   res.status(204).end()
 })

@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import { db } from '../db.js'
 import { CATEGORIES, COMMUNES, STATUTS } from '../../src/models/signalement.js'
 import { envoyerNotificationSignalement, envoyerConfirmationSignalement, envoyerChangementStatut } from '../mailer.js'
-import { requireAuth, requireAuthUtilisateur } from '../middleware/requireAuth.js'
+import { requireAuth, requireAuthUtilisateur, requirePartenaireOuAdmin } from '../middleware/requireAuth.js'
 import { limiteurCreation, limiteurSoutien } from '../middleware/limiteurs.js'
 import { supprimerPhoto } from '../storage.js'
 import { contientContenuExplicite } from '../moderation.js'
@@ -405,7 +405,10 @@ router.post(
   }
 )
 
-router.patch('/signalements/:id', requireAuth, upload.single('photoResolution'), async (req, res) => {
+// Un admin peut tout faire ; un partenaire ne peut que faire évoluer le statut, et
+// seulement des signalements de la commune pour laquelle il a été enregistré (voir le
+// contrôle juste après la lecture du signalement).
+router.patch('/signalements/:id', requirePartenaireOuAdmin, upload.single('photoResolution'), async (req, res) => {
   const id = Number(req.params.id)
   const { statut } = req.body
 
@@ -416,6 +419,13 @@ router.patch('/signalements/:id', requireAuth, upload.single('photoResolution'),
   const { rows: rowsExistant } = await db.query('SELECT * FROM signalements WHERE id = $1', [id])
   const existant = rowsExistant[0]
   if (!existant) return res.status(404).json({ erreur: 'Signalement introuvable.' })
+
+  // Un partenaire rattaché à une commune (ex. « Mairie de Mamoudzou ») n'agit que sur
+  // les signalements de cette commune. Un partenaire sans commune (ex. un service
+  // départemental) voit et traite tous les signalements, comme un admin.
+  if (req.partenaire && req.partenaire.commune && req.partenaire.commune !== existant.commune) {
+    return res.status(403).json({ erreur: 'Ce signalement ne concerne pas votre commune.' })
+  }
 
   let photoResolution = existant.photo_resolution
   if (req.file) {

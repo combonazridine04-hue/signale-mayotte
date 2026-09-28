@@ -142,10 +142,13 @@
 
             <h2 class="h5 fw-bold mt-4">Ce que le site garde dans votre navigateur</h2>
             <p class="text-secondary">
-              Uniquement ce qui est nécessaire à son fonctionnement : votre session de connexion (effacée à la fermeture
-              de l'onglet), votre choix d'ambiance de fond et, le cas échéant, les liens de suppression de vos
-              signalements. Aucun cookie publicitaire ni outil de mesure d'audience : aucun bandeau de consentement
-              n'est donc nécessaire. La police d'écriture est servie par le site lui-même, et non par un service tiers.
+              Uniquement ce qui est nécessaire à son fonctionnement : un seul cookie, celui de votre session de
+              connexion (effacé à la déconnexion ou à la fermeture du navigateur, et au plus tard après 12 heures),
+              votre choix d'ambiance de fond et, le cas échéant, les liens de suppression de vos signalements. Ce cookie
+              est protégé : illisible par les scripts de la page, envoyé uniquement en connexion chiffrée et jamais
+              depuis un autre site. Strictement nécessaire à la connexion, il est dispensé de consentement ; le site
+              n'utilise aucun cookie publicitaire ni outil de mesure d'audience, aucun bandeau n'est donc nécessaire. La
+              police d'écriture est servie par le site lui-même, et non par un service tiers.
             </p>
 
             <h2 class="h5 fw-bold mt-4">Sécurité</h2>

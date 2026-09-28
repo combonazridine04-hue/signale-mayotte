@@ -17,8 +17,10 @@ const misesAJourRouter = (await import('./routes/misesAJour.js')).default
 const authRouter = (await import('./routes/auth.js')).default
 const contactRouter = (await import('./routes/contact.js')).default
 const adminsRouter = (await import('./routes/admins.js')).default
+const partenairesRouter = (await import('./routes/partenaires.js')).default
 const moderationRouter = (await import('./routes/moderation.js')).default
 const notificationsRouter = (await import('./routes/notifications.js')).default
+const { verifierOrigine } = await import('./middleware/verifierOrigine.js')
 const { precharger: prechargerModerationPhotos } = await import('./moderation.js')
 prechargerModerationPhotos()
 
@@ -69,6 +71,13 @@ const limiteurLogin = rateLimit({
 })
 
 app.use(express.json())
+app.use('/api', verifierOrigine)
+// Les réponses de l'API contiennent des données de compte : rien ne doit en rester dans
+// le cache du navigateur, surtout sur un ordinateur partagé (cybercafé, médiathèque).
+app.use('/api', (req, res, next) => {
+  res.set('Cache-Control', 'no-store')
+  next()
+})
 app.use('/api/auth/login', limiteurLogin)
 app.use('/api/auth', authRouter)
 app.use('/api', signalementsRouter)
@@ -78,6 +87,7 @@ app.use('/api', contactRouter)
 app.use('/api', moderationRouter)
 app.use('/api', notificationsRouter)
 app.use('/api', adminsRouter)
+app.use('/api', partenairesRouter)
 // Route d'API inconnue : une réponse JSON explicite, plutôt que la page d'accueil du
 // site renvoyée par le filet ci-dessous avec un statut 200 trompeur.
 app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue.' }))

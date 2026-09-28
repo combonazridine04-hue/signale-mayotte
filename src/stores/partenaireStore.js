@@ -1,11 +1,14 @@
 import { defineStore } from 'pinia'
 import { appliquerSession, fermerSession, lireIndice } from '../utils/session.js'
 
-export const useAuthStore = defineStore('auth', {
+// Session d'un compte partenaire (agent municipal) : mêmes principes que authStore.js,
+// adaptés à ce troisième type de compte.
+export const usePartenaireStore = defineStore('partenaire', {
   state: () => {
-    const indice = lireIndice('admin')
+    const indice = lireIndice('partenaire')
     return {
-      identifiant: indice?.identifiant || '',
+      nom: indice?.nom || '',
+      commune: indice?.commune || '',
       estConnecte: Boolean(indice)
     }
   },
@@ -14,7 +17,7 @@ export const useAuthStore = defineStore('auth', {
     async connecter(identifiant, motDePasse) {
       let reponse
       try {
-        reponse = await fetch('/api/auth/login', {
+        reponse = await fetch('/api/partenaires/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ identifiant, motDePasse })
@@ -37,17 +40,19 @@ export const useAuthStore = defineStore('auth', {
       }
 
       const donnees = await reponse.json()
-      appliquerSession({ type: 'admin', identifiant: donnees.identifiant || '' })
+      appliquerSession({ type: 'partenaire', nom: donnees.nom || '', commune: donnees.commune || '' })
       return { succes: true }
     },
 
-    remplir({ identifiant }) {
-      this.identifiant = identifiant || ''
+    remplir({ nom, commune }) {
+      this.nom = nom || ''
+      this.commune = commune || ''
       this.estConnecte = true
     },
 
     vider() {
-      this.identifiant = ''
+      this.nom = ''
+      this.commune = ''
       this.estConnecte = false
     },
 

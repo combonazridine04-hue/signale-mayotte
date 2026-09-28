@@ -1,6 +1,12 @@
 import { reactive } from 'vue'
 import { useAuthStore } from '../stores/authStore.js'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
+import { usePartenaireStore } from '../stores/partenaireStore.js'
+import { fermerSession } from './session.js'
+
+function estConnecte() {
+  return useAuthStore().estConnecte || useCitoyenStore().estConnecte || usePartenaireStore().estConnecte
+}
 
 // L'hébergement gratuit éteint le serveur après un quart d'heure sans visite. Le premier
 // visiteur le réveille, ce qui prend entre trente secondes et une minute : pendant ce
@@ -48,18 +54,9 @@ async function envoyer(url, options, delaiMs) {
 }
 
 export async function apiFetch(url, options = {}) {
-  const authStore = useAuthStore()
-  const citoyenStore = useCitoyenStore()
-
-  // Un admin connecté agit toujours avec ses droits admin ; sinon, on utilise
-  // la session citoyenne si elle existe.
-  const utiliseAdmin = Boolean(authStore.token)
-  const token = utiliseAdmin ? authStore.token : citoyenStore.token
-
+  // Le cookie de session est joint par le navigateur lui-même (même origine) : rien à
+  // ajouter ici, et surtout aucun jeton manipulé par le JavaScript de la page.
   const headers = new Headers(options.headers || {})
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`)
-  }
 
   // On ne rejoue QUE les lectures. Rejouer un envoi de signalement ou de commentaire
   // après une coupure créerait un doublon : impossible de savoir si le serveur l'avait
@@ -87,13 +84,9 @@ export async function apiFetch(url, options = {}) {
           continue
         }
 
-        if (reponse.status === 401 && token) {
-          if (utiliseAdmin) {
-            authStore.deconnecter()
-          } else {
-            citoyenStore.deconnecter()
-          }
-        }
+        // Session expirée ou effacée par un redéploiement : l'interface ne doit pas
+        // continuer à afficher « connecté ».
+        if (reponse.status === 401 && estConnecte()) fermerSession()
 
         return reponse
       } catch (e) {

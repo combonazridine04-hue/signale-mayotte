@@ -7,6 +7,8 @@ import CarteView from '../views/CarteView.vue'
 import TransparenceView from '../views/TransparenceView.vue'
 import AdminLoginView from '../views/admin/AdminLoginView.vue'
 import AdminDashboardView from '../views/admin/AdminDashboardView.vue'
+import PartenaireLoginView from '../views/partenaire/PartenaireLoginView.vue'
+import PartenaireDashboardView from '../views/partenaire/PartenaireDashboardView.vue'
 import InscriptionView from '../views/InscriptionView.vue'
 import ConnexionView from '../views/ConnexionView.vue'
 import VerifierEmailView from '../views/VerifierEmailView.vue'
@@ -18,6 +20,8 @@ import ProfilView from '../views/ProfilView.vue'
 import NotFoundView from '../views/NotFoundView.vue'
 import { useAuthStore } from '../stores/authStore.js'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
+import { usePartenaireStore } from '../stores/partenaireStore.js'
+import { synchroniserSession } from '../utils/session.js'
 
 const routes = [
   {
@@ -119,6 +123,18 @@ const routes = [
     meta: { titre: 'Espace admin', admin: true, requiresAuth: true }
   },
   {
+    path: '/partenaire/login',
+    name: 'partenaire-login',
+    component: PartenaireLoginView,
+    meta: { titre: 'Connexion partenaire', partenaire: true }
+  },
+  {
+    path: '/partenaire',
+    name: 'partenaire-dashboard',
+    component: PartenaireDashboardView,
+    meta: { titre: 'Espace partenaire', partenaire: true, requiresAuthPartenaire: true }
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'introuvable',
     component: NotFoundView,
@@ -137,15 +153,29 @@ const router = createRouter({
   }
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore()
   const citoyenStore = useCitoyenStore()
+  const partenaireStore = usePartenaireStore()
+
+  // Nouvel onglet ou rechargement : le cookie de session peut exister sans que la page le
+  // sache encore. Avant de renvoyer vers une page de connexion, on demande au serveur.
+  const pageProtegee = to.meta.requiresAuth || to.meta.requiresAuthPartenaire || to.meta.requiresAuthCitoyen
+  if (pageProtegee && !authStore.estConnecte && !partenaireStore.estConnecte && !citoyenStore.estConnecte) {
+    await synchroniserSession()
+  }
 
   if (to.meta.requiresAuth && !authStore.estConnecte) {
     return { name: 'admin-login' }
   }
   if (to.name === 'admin-login' && authStore.estConnecte) {
     return { name: 'admin-dashboard' }
+  }
+  if (to.meta.requiresAuthPartenaire && !partenaireStore.estConnecte) {
+    return { name: 'partenaire-login' }
+  }
+  if (to.name === 'partenaire-login' && partenaireStore.estConnecte) {
+    return { name: 'partenaire-dashboard' }
   }
   if (to.meta.requiresAuthCitoyen && !authStore.estConnecte && !citoyenStore.estConnecte) {
     return { name: 'connexion', query: { retour: to.fullPath } }

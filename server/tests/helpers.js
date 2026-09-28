@@ -17,8 +17,14 @@ export async function demarrerServeurTest() {
   }
 }
 
-export function authHeader(token) {
-  return { Authorization: `Bearer ${token}` }
+// Les tests parlent au serveur en HTTP : le cookie porte donc son nom sans préfixe __Host-.
+export function cookieDeSession(reponse) {
+  const cookie = reponse.headers.getSetCookie().find((c) => c.startsWith('sm_session='))
+  return cookie ? cookie.split(';')[0] : ''
+}
+
+export function authHeader(cookie) {
+  return { Cookie: cookie }
 }
 
 export async function connecterAdmin(baseUrl) {
@@ -30,6 +36,5 @@ export async function connecterAdmin(baseUrl) {
       motDePasse: process.env.ADMIN_MOT_DE_PASSE
     })
   })
-  const { token } = await reponse.json()
-  return token
+  return cookieDeSession(reponse)
 }

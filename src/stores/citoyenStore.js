@@ -1,31 +1,14 @@
 import { defineStore } from 'pinia'
+import { appliquerSession, fermerSession, lireIndice, memoriserIndice } from '../utils/session.js'
 
-const STORAGE_KEY = 'signale-mayotte-citoyen'
-const STORAGE_KEY_NOM = 'signale-mayotte-citoyen-nom'
-
-function chargerJeton() {
-  try {
-    return sessionStorage.getItem(STORAGE_KEY) || ''
-  } catch {
-    return ''
-  }
-}
-
-function chargerNom() {
-  try {
-    return sessionStorage.getItem(STORAGE_KEY_NOM) || ''
-  } catch {
-    return ''
-  }
-}
-
+// Aucun jeton ici : la session voyage dans un cookie HttpOnly que le navigateur joint
+// seul à chaque requête vers le site.
 export const useCitoyenStore = defineStore('citoyen', {
   state: () => {
-    const token = chargerJeton()
+    const indice = lireIndice('utilisateur')
     return {
-      token,
-      nom: chargerNom(),
-      estConnecte: Boolean(token),
+      nom: indice?.nom || '',
+      estConnecte: Boolean(indice),
       pseudo: '',
       avatarUrl: '',
       email: '',
@@ -40,11 +23,12 @@ export const useCitoyenStore = defineStore('citoyen', {
 
   actions: {
     enregistrerSession(donnees) {
-      this.token = donnees.token
-      this.nom = donnees.nom || ''
+      appliquerSession({ type: 'utilisateur', nom: donnees.nom || '' })
+    },
+
+    remplir({ nom }) {
+      this.nom = nom || ''
       this.estConnecte = true
-      sessionStorage.setItem(STORAGE_KEY, donnees.token)
-      sessionStorage.setItem(STORAGE_KEY_NOM, this.nom)
       // Récupère pseudo et photo pour que la barre de navigation les affiche tout de suite.
       this.chargerProfil()
     },
@@ -99,9 +83,11 @@ export const useCitoyenStore = defineStore('citoyen', {
       return { succes: true }
     },
 
-    async deconnecter() {
-      const token = this.token
-      this.token = ''
+    deconnecter() {
+      return fermerSession()
+    },
+
+    vider() {
       this.nom = ''
       this.estConnecte = false
       this.pseudo = ''
@@ -113,15 +99,6 @@ export const useCitoyenStore = defineStore('citoyen', {
       this.email = ''
       this.telephone = ''
       this.emailVerifie = false
-      sessionStorage.removeItem(STORAGE_KEY)
-      sessionStorage.removeItem(STORAGE_KEY_NOM)
-
-      if (token) {
-        fetch('/api/auth/logout', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` }
-        }).catch(() => {})
-      }
     },
 
     async demanderReinitialisationMotDePasse(email) {
@@ -165,10 +142,7 @@ export const useCitoyenStore = defineStore('citoyen', {
 
     async renvoyerVerificationEmail() {
       try {
-        const reponse = await fetch('/api/auth/renvoyer-verification', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${this.token}` }
-        })
+        const reponse = await fetch('/api/auth/renvoyer-verification', { method: 'POST' })
         if (!reponse.ok) {
           const corps = await reponse.json().catch(() => ({}))
           return { succes: false, erreur: corps.erreur || 'Envoi impossible.' }
@@ -187,7 +161,7 @@ export const useCitoyenStore = defineStore('citoyen', {
       try {
         reponse = await fetch('/api/auth/verifier-email', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code })
         })
       } catch {
@@ -206,12 +180,10 @@ export const useCitoyenStore = defineStore('citoyen', {
     },
 
     async chargerProfil() {
-      if (!this.token) return { succes: false, erreur: 'Non connecté.' }
+      if (!this.estConnecte) return { succes: false, erreur: 'Non connecté.' }
 
       try {
-        const reponse = await fetch('/api/auth/profil', {
-          headers: { Authorization: `Bearer ${this.token}` }
-        })
+        const reponse = await fetch('/api/auth/profil')
         if (!reponse.ok) {
           // Les sessions vivent en mémoire côté serveur : après un redéploiement elles
           // disparaissent. Sans ça le site continue d'afficher "connecté" avec un jeton mort.
@@ -241,7 +213,7 @@ export const useCitoyenStore = defineStore('citoyen', {
       try {
         reponse = await fetch('/api/auth/profil', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ pseudo })
         })
       } catch {
@@ -262,11 +234,9 @@ export const useCitoyenStore = defineStore('citoyen', {
     },
 
     async chargerNotifications() {
-      if (!this.token) return
+      if (!this.estConnecte) return
       try {
-        const reponse = await fetch('/api/notifications', {
-          headers: { Authorization: `Bearer ${this.token}` }
-        })
+        const reponse = await fetch('/api/notifications')
         if (!reponse.ok) return
         const donnees = await reponse.json()
         this.notifications = donnees.notifications || []
@@ -281,10 +251,7 @@ export const useCitoyenStore = defineStore('citoyen', {
       this.notificationsNonLues = 0
       this.notifications = this.notifications.map((n) => ({ ...n, lue: true }))
       try {
-        await fetch('/api/notifications/lues', {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${this.token}` }
-        })
+        await fetch('/api/notifications/lues', { method: 'POST' })
       } catch {
         // Sans conséquence : elles seront remarquées lues au prochain chargement.
       }
@@ -304,7 +271,6 @@ export const useCitoyenStore = defineStore('citoyen', {
         formData.set('avatar', fichier)
         reponse = await fetch('/api/auth/avatar', {
           method: 'PATCH',
-          headers: { Authorization: `Bearer ${this.token}` },
           body: formData
         })
       } catch {
@@ -329,13 +295,13 @@ export const useCitoyenStore = defineStore('citoyen', {
       try {
         const reponse = await fetch('/api/auth/profil', {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ nom })
         })
         const corps = await reponse.json().catch(() => ({}))
         if (!reponse.ok) return { succes: false, erreur: corps.erreur || 'Modification impossible.' }
         this.nom = corps.nom
-        sessionStorage.setItem(STORAGE_KEY_NOM, corps.nom)
+        memoriserIndice({ type: 'utilisateur', nom: corps.nom })
         return { succes: true }
       } catch {
         return {
@@ -348,9 +314,7 @@ export const useCitoyenStore = defineStore('citoyen', {
     // Droit d'accès et à la portabilité (RGPD art. 15 et 20) : télécharge un fichier JSON.
     async telechargerMesDonnees() {
       try {
-        const reponse = await fetch('/api/auth/mes-donnees', {
-          headers: { Authorization: `Bearer ${this.token}` }
-        })
+        const reponse = await fetch('/api/auth/mes-donnees')
         if (!reponse.ok) {
           const corps = await reponse.json().catch(() => ({}))
           return { succes: false, erreur: corps.erreur || 'Téléchargement impossible.' }
@@ -377,16 +341,15 @@ export const useCitoyenStore = defineStore('citoyen', {
       try {
         const reponse = await fetch('/api/auth/compte', {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${this.token}` },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ motDePasse, avecContenus })
         })
         if (!reponse.ok) {
           const corps = await reponse.json().catch(() => ({}))
           return { succes: false, erreur: corps.erreur || 'Suppression impossible.' }
         }
-        // Le serveur a déjà fermé la session : on vide seulement l'état local.
-        this.token = ''
-        await this.deconnecter()
+        // Le serveur a déjà fermé la session et effacé le cookie : on vide l'état local.
+        appliquerSession(null)
         return { succes: true }
       } catch {
         return {
@@ -398,10 +361,7 @@ export const useCitoyenStore = defineStore('citoyen', {
 
     async supprimerAvatar() {
       try {
-        const reponse = await fetch('/api/auth/avatar', {
-          method: 'DELETE',
-          headers: { Authorization: `Bearer ${this.token}` }
-        })
+        const reponse = await fetch('/api/auth/avatar', { method: 'DELETE' })
         if (!reponse.ok) {
           const corps = await reponse.json().catch(() => ({}))
           return { succes: false, erreur: corps.erreur || 'Suppression impossible.' }

@@ -5,8 +5,9 @@ import { useAuthStore } from '../../stores/authStore.js'
 import { useSignalementStore } from '../../stores/signalementStore.js'
 import { useContactStore } from '../../stores/contactStore.js'
 import { useAdminStore } from '../../stores/adminStore.js'
+import { usePartenairesAdminStore } from '../../stores/partenairesAdminStore.js'
 import { useUiStore } from '../../stores/uiStore.js'
-import { STATUTS } from '../../models/signalement.js'
+import { STATUTS, COMMUNES } from '../../models/signalement.js'
 import { apiFetch } from '../../utils/api.js'
 import FilterBar from '../../components/FilterBar.vue'
 import ChampMotDePasse from '../../components/ChampMotDePasse.vue'
@@ -16,6 +17,7 @@ const authStore = useAuthStore()
 const signalementStore = useSignalementStore()
 const contactStore = useContactStore()
 const adminStore = useAdminStore()
+const partenairesAdminStore = usePartenairesAdminStore()
 const uiStore = useUiStore()
 
 const seDeconnecter = () => {
@@ -76,6 +78,7 @@ onMounted(() => {
   signalementStore.chargerStats()
   contactStore.charger()
   adminStore.charger()
+  partenairesAdminStore.charger()
   chargerModeration()
 })
 
@@ -101,6 +104,40 @@ const supprimerCompte = async (compte) => {
   if (!(await uiStore.confirmer(`Supprimer définitivement le compte "${compte.identifiant}" ?`))) return
   try {
     await adminStore.supprimer(compte.id)
+  } catch (e) {
+    uiStore.alerter(e.message)
+  }
+}
+
+const nouveauPartenaire = reactive({ nom: '', identifiant: '', motDePasse: '', commune: '' })
+const erreurNouveauPartenaire = ref('')
+const creationPartenaireEnCours = ref(false)
+
+const creerPartenaire = async () => {
+  erreurNouveauPartenaire.value = ''
+  creationPartenaireEnCours.value = true
+  try {
+    await partenairesAdminStore.creer(
+      nouveauPartenaire.nom.trim(),
+      nouveauPartenaire.identifiant.trim(),
+      nouveauPartenaire.motDePasse,
+      nouveauPartenaire.commune
+    )
+    nouveauPartenaire.nom = ''
+    nouveauPartenaire.identifiant = ''
+    nouveauPartenaire.motDePasse = ''
+    nouveauPartenaire.commune = ''
+  } catch (e) {
+    erreurNouveauPartenaire.value = e.message
+  } finally {
+    creationPartenaireEnCours.value = false
+  }
+}
+
+const supprimerPartenaire = async (compte) => {
+  if (!(await uiStore.confirmer(`Supprimer définitivement le compte partenaire "${compte.identifiant}" ?`))) return
+  try {
+    await partenairesAdminStore.supprimer(compte.id)
   } catch (e) {
     uiStore.alerter(e.message)
   }
@@ -383,6 +420,26 @@ const changerStatut = async (id, statut) => {
         <button
           type="button"
           class="admin-nav-item"
+          :class="{ active: section === 'partenaires' }"
+          @click="choisirSection('partenaires')"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M3 21h18" />
+            <path d="M5 21V9l7-5 7 5v12" />
+            <path d="M9 21v-6h6v6" />
+          </svg>
+          Partenaires
+        </button>
+        <button
+          type="button"
+          class="admin-nav-item"
           :class="{ active: section === 'moderation' }"
           @click="choisirSection('moderation')"
         >
@@ -412,7 +469,16 @@ const changerStatut = async (id, statut) => {
     <div class="admin-main">
       <header class="admin-header d-flex align-items-center justify-content-between flex-wrap gap-2">
         <h1>
-          {{ { apercu: 'Aperçu', signalements: 'Signalements', messages: 'Messages', comptes: 'Comptes' }[section] }}
+          {{
+            {
+              apercu: 'Aperçu',
+              signalements: 'Signalements',
+              messages: 'Messages',
+              comptes: 'Comptes',
+              partenaires: 'Partenaires',
+              moderation: 'Modération'
+            }[section]
+          }}
         </h1>
         <button
           v-if="section === 'signalements'"
@@ -582,6 +648,80 @@ const changerStatut = async (id, statut) => {
               <p class="admin-message-body">{{ m.message }}</p>
             </div>
           </div>
+        </div>
+
+        <div v-else-if="section === 'partenaires'" class="admin-panel">
+          <h2 class="admin-panel-title">Comptes partenaires</h2>
+          <p class="admin-muted">
+            Un partenaire (agent municipal, service technique) peut se connecter à un espace dédié pour faire évoluer le
+            statut des signalements de sa commune. Laissez la commune vide pour un compte qui couvre toutes les communes
+            (ex. un service départemental).
+          </p>
+          <p v-if="partenairesAdminStore.chargement" class="admin-muted">Chargement...</p>
+          <table v-else class="admin-table mb-4">
+            <thead>
+              <tr>
+                <th>Nom</th>
+                <th>Identifiant</th>
+                <th>Commune</th>
+                <th>Créé le</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="c in partenairesAdminStore.comptes" :key="c.id">
+                <td data-label="Nom">{{ c.nom }}</td>
+                <td data-label="Identifiant">{{ c.identifiant }}</td>
+                <td data-label="Commune">{{ c.commune || 'Toutes les communes' }}</td>
+                <td data-label="Créé le">{{ new Date(c.creeLe).toLocaleDateString('fr-FR') }}</td>
+                <td data-label="Actions">
+                  <button type="button" class="admin-btn admin-btn--danger" @click="supprimerPartenaire(c)">
+                    Supprimer
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h3 class="admin-panel-subtitle">Ajouter un compte partenaire</h3>
+          <form class="admin-form" @submit.prevent="creerPartenaire">
+            <div class="admin-form-field">
+              <label for="partenaire-nom">Nom</label>
+              <input id="partenaire-nom" v-model="nouveauPartenaire.nom" type="text" required minlength="2" />
+            </div>
+            <div class="admin-form-field">
+              <label for="partenaire-identifiant">Identifiant</label>
+              <input
+                id="partenaire-identifiant"
+                v-model="nouveauPartenaire.identifiant"
+                type="text"
+                required
+                minlength="3"
+              />
+            </div>
+            <div class="admin-form-field">
+              <label for="partenaire-mdp">Mot de passe</label>
+              <ChampMotDePasse
+                id="partenaire-mdp"
+                v-model="nouveauPartenaire.motDePasse"
+                required
+                minlength="8"
+                autocomplete="new-password"
+                classe-input=""
+              />
+            </div>
+            <div class="admin-form-field">
+              <label for="partenaire-commune">Commune</label>
+              <select id="partenaire-commune" v-model="nouveauPartenaire.commune" class="admin-select">
+                <option value="">Toutes les communes</option>
+                <option v-for="commune in COMMUNES" :key="commune" :value="commune">{{ commune }}</option>
+              </select>
+            </div>
+            <div v-if="erreurNouveauPartenaire" class="admin-form-erreur">{{ erreurNouveauPartenaire }}</div>
+            <button type="submit" class="admin-btn admin-btn--primary" :disabled="creationPartenaireEnCours">
+              {{ creationPartenaireEnCours ? 'Création...' : 'Créer le compte' }}
+            </button>
+          </form>
         </div>
 
         <div v-else-if="section === 'moderation'" class="admin-panel">

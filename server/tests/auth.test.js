@@ -1,6 +1,6 @@
 import { after, test } from 'node:test'
 import assert from 'node:assert/strict'
-import { demarrerServeurTest } from './helpers.js'
+import { authHeader, connecterAdmin, cookieDeSession, demarrerServeurTest } from './helpers.js'
 
 const { baseUrl, fermer } = await demarrerServeurTest()
 // Importé après demarrerServeurTest() : c'est ce qui charge le .env (voir server/index.js).
@@ -15,37 +15,92 @@ test('refuse un mauvais mot de passe', async () => {
   assert.equal(reponse.status, 401)
 })
 
-test('accepte les bons identifiants et renvoie un jeton', async () => {
+test('accepte les bons identifiants et pose un cookie de session protégé', async () => {
   const reponse = await fetch(`${baseUrl}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identifiant: process.env.ADMIN_IDENTIFIANT, motDePasse: process.env.ADMIN_MOT_DE_PASSE })
   })
   assert.equal(reponse.status, 200)
-  const { token } = await reponse.json()
-  assert.ok(token && token.length > 10)
+  const corps = await reponse.json()
+  // Le jeton ne doit jamais être lisible par la page : ni dans la réponse, ni hors cookie HttpOnly.
+  assert.equal(corps.token, undefined)
+  const cookie = reponse.headers.getSetCookie().find((c) => c.startsWith('sm_session='))
+  assert.ok(cookie, 'cookie de session posé')
+  assert.match(cookie, /HttpOnly/i)
+  assert.match(cookie, /SameSite=Strict/i)
+  assert.match(cookie, /Path=\//i)
+  assert.doesNotMatch(cookie, /Expires|Max-Age/i)
 })
 
-test('refuse toute route protégée sans jeton', async () => {
+test('refuse toute route protégée sans cookie de session', async () => {
   const reponse = await fetch(`${baseUrl}/api/contact`)
   assert.equal(reponse.status, 401)
 })
 
-test('le jeton devient invalide après déconnexion', async () => {
-  const connexion = await fetch(`${baseUrl}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identifiant: process.env.ADMIN_IDENTIFIANT, motDePasse: process.env.ADMIN_MOT_DE_PASSE })
-  })
-  const { token } = await connexion.json()
+test("l'ancien en-tête Authorization n'ouvre plus aucune session", async () => {
+  const cookie = await connecterAdmin(baseUrl)
+  const jeton = cookie.split('=')[1]
+  const reponse = await fetch(`${baseUrl}/api/contact`, { headers: { Authorization: `Bearer ${jeton}` } })
+  assert.equal(reponse.status, 401)
+})
 
-  const avant = await fetch(`${baseUrl}/api/contact`, { headers: { Authorization: `Bearer ${token}` } })
+test('la session devient invalide après déconnexion, et le cookie est effacé', async () => {
+  const cookie = await connecterAdmin(baseUrl)
+
+  const avant = await fetch(`${baseUrl}/api/contact`, { headers: authHeader(cookie) })
   assert.equal(avant.status, 200)
 
-  await fetch(`${baseUrl}/api/auth/logout`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } })
+  const deconnexion = await fetch(`${baseUrl}/api/auth/logout`, { method: 'POST', headers: authHeader(cookie) })
+  assert.match(deconnexion.headers.getSetCookie().join(), /sm_session=;/)
 
-  const apres = await fetch(`${baseUrl}/api/contact`, { headers: { Authorization: `Bearer ${token}` } })
+  const apres = await fetch(`${baseUrl}/api/contact`, { headers: authHeader(cookie) })
   assert.equal(apres.status, 401)
+})
+
+test('se reconnecter ferme la session précédente du même navigateur', async () => {
+  const premier = await connecterAdmin(baseUrl)
+  const reponse = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeader(premier) },
+    body: JSON.stringify({ identifiant: process.env.ADMIN_IDENTIFIANT, motDePasse: process.env.ADMIN_MOT_DE_PASSE })
+  })
+  assert.ok(cookieDeSession(reponse))
+  const ancien = await fetch(`${baseUrl}/api/contact`, { headers: authHeader(premier) })
+  assert.equal(ancien.status, 401)
+})
+
+test('/session dit qui est connecté, sans jamais renvoyer le jeton', async () => {
+  const anonyme = await fetch(`${baseUrl}/api/auth/session`)
+  assert.deepEqual(await anonyme.json(), { type: null })
+
+  const cookie = await connecterAdmin(baseUrl)
+  const connecte = await fetch(`${baseUrl}/api/auth/session`, { headers: authHeader(cookie) })
+  assert.deepEqual(await connecte.json(), { type: 'admin', identifiant: process.env.ADMIN_IDENTIFIANT })
+})
+
+test('refuse une requête venue d’un autre site (anti-CSRF)', async () => {
+  const cookie = await connecterAdmin(baseUrl)
+  const autreSite = await fetch(`${baseUrl}/api/auth/logout`, {
+    method: 'POST',
+    headers: { ...authHeader(cookie), 'Sec-Fetch-Site': 'cross-site' }
+  })
+  assert.equal(autreSite.status, 403)
+
+  const autreOrigine = await fetch(`${baseUrl}/api/auth/logout`, {
+    method: 'POST',
+    headers: { ...authHeader(cookie), Origin: 'https://site-malveillant.example' }
+  })
+  assert.equal(autreOrigine.status, 403)
+
+  // La session a survécu aux deux tentatives.
+  const toujours = await fetch(`${baseUrl}/api/contact`, { headers: authHeader(cookie) })
+  assert.equal(toujours.status, 200)
+})
+
+test('les réponses de l’API ne sont jamais mises en cache', async () => {
+  const reponse = await fetch(`${baseUrl}/api/signalements`)
+  assert.equal(reponse.headers.get('cache-control'), 'no-store')
 })
 
 test('rejette un token de réinitialisation invalide', async () => {

@@ -3,7 +3,6 @@ import { rateLimit } from 'express-rate-limit'
 import {
   verifierIdentifiants,
   creerSession,
-  revoquerSession,
   inscrireUtilisateur,
   verifierIdentifiantsUtilisateur,
   creerSessionUtilisateur,
@@ -19,6 +18,7 @@ import {
 import { envoyerVerificationEmail, envoyerReinitialisationMotDePasse } from '../mailer.js'
 import { motDePasseInterdit } from '../../shared/motDePasse.js'
 import { requireAuthUtilisateur } from '../middleware/requireAuth.js'
+import { fermerSession, ouvrirSession, sessionDeLaRequete } from '../sessionCookie.js'
 import { creerUpload, traiterPhoto } from '../photoUpload.js'
 import { supprimerPhoto } from '../storage.js'
 import { contientContenuExplicite } from '../moderation.js'
@@ -115,7 +115,8 @@ router.post('/login', async (req, res) => {
     return res.status(401).json({ erreur: 'Identifiant ou mot de passe incorrect.' })
   }
 
-  res.json({ token: creerSession(admin), identifiant: admin.identifiant })
+  ouvrirSession(req, res, creerSession(admin))
+  res.json({ identifiant: admin.identifiant })
 })
 
 router.post('/inscription', limiteurInscription, async (req, res) => {
@@ -135,8 +136,8 @@ router.post('/inscription', limiteurInscription, async (req, res) => {
     envoyerVerificationEmail(resultat.utilisateur.nom, resultat.utilisateur.email, resultat.codeVerification)
   }
 
+  ouvrirSession(req, res, creerSessionUtilisateur(resultat.utilisateur))
   res.status(201).json({
-    token: creerSessionUtilisateur(resultat.utilisateur),
     nom: resultat.utilisateur.nom,
     emailAConfirmer: Boolean(resultat.codeVerification)
   })
@@ -174,7 +175,20 @@ router.post('/connexion', limiteurConnexionUtilisateur, async (req, res) => {
   }
 
   noterConnexion(utilisateur.id)
-  res.json({ token: creerSessionUtilisateur(utilisateur), nom: utilisateur.nom })
+  ouvrirSession(req, res, creerSessionUtilisateur(utilisateur))
+  res.json({ nom: utilisateur.nom })
+})
+
+// Le cookie de session est illisible pour la page : c'est ici qu'elle apprend qui est
+// connecté (nouvel onglet, rechargement, session effacée par un redéploiement).
+router.get('/session', (req, res) => {
+  const session = sessionDeLaRequete(req)
+  if (!session) return res.json({ type: null })
+  if (session.type === 'admin') return res.json({ type: 'admin', identifiant: session.identifiant })
+  if (session.type === 'partenaire') {
+    return res.json({ type: 'partenaire', nom: session.nom, commune: session.commune || '' })
+  }
+  res.json({ type: 'utilisateur', nom: session.nom })
 })
 
 router.get('/profil', requireAuthUtilisateur, async (req, res) => {
@@ -291,13 +305,12 @@ router.delete('/compte', requireAuthUtilisateur, limiteurSuppressionCompte, asyn
   }
   const efface = await effacerCompte(req.utilisateur.id, { avecContenus: avecContenus === true })
   if (!efface) return res.status(404).json({ erreur: 'Compte introuvable.' })
+  fermerSession(req, res)
   res.status(204).end()
 })
 
 router.post('/logout', (req, res) => {
-  const enTete = req.headers.authorization || ''
-  const token = enTete.startsWith('Bearer ') ? enTete.slice(7) : ''
-  revoquerSession(token)
+  fermerSession(req, res)
   res.status(204).end()
 })
 
