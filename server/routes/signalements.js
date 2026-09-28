@@ -15,6 +15,8 @@ import { emailSuiviSignalement } from '../signalements/suivi.js'
 import { lirePosition } from '../signalements/localisation.js'
 import { celluleCsv } from '../signalements/csv.js'
 import { texte, emailValide, verifierParametreId } from '../validation.js'
+import { dansLePerimetre } from '../../shared/perimetrePartenaire.js'
+import { alerterPartenaires } from '../partenaires/alerte.js'
 
 // Routes des signalements eux-mêmes. Les commentaires et les mises à jour, qui sont
 // des sous-ressources, ont leurs propres fichiers ; les contrôles d'accès, la conversion
@@ -396,6 +398,7 @@ router.post(
 
     const signalementCree = mapRow(rows[0], false, req.utilisateur?.id || null)
     envoyerNotificationSignalement(signalementCree)
+    alerterPartenaires(signalementCree)
     if (emailContact) {
       envoyerConfirmationSignalement(signalementCree, emailContact, tokenSuppression)
     }
@@ -406,8 +409,7 @@ router.post(
 )
 
 // Un admin peut tout faire ; un partenaire ne peut que faire évoluer le statut, et
-// seulement des signalements de la commune pour laquelle il a été enregistré (voir le
-// contrôle juste après la lecture du signalement).
+// seulement dans son périmètre (voir le contrôle juste après la lecture du signalement).
 router.patch('/signalements/:id', requirePartenaireOuAdmin, upload.single('photoResolution'), async (req, res) => {
   const id = Number(req.params.id)
   const { statut } = req.body
@@ -420,11 +422,10 @@ router.patch('/signalements/:id', requirePartenaireOuAdmin, upload.single('photo
   const existant = rowsExistant[0]
   if (!existant) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
-  // Un partenaire rattaché à une commune (ex. « Mairie de Mamoudzou ») n'agit que sur
-  // les signalements de cette commune. Un partenaire sans commune (ex. un service
-  // départemental) voit et traite tous les signalements, comme un admin.
-  if (req.partenaire && req.partenaire.commune && req.partenaire.commune !== existant.commune) {
-    return res.status(403).json({ erreur: 'Ce signalement ne concerne pas votre commune.' })
+  // Un partenaire n'agit que dans son périmètre : sa commune (ex. « Mairie de Mamoudzou »)
+  // et/ou ses domaines (ex. SIDEVAM976 : les déchets, sur toute l'île).
+  if (req.partenaire && !dansLePerimetre(req.partenaire, existant)) {
+    return res.status(403).json({ erreur: 'Ce signalement ne relève pas de votre périmètre (commune ou domaine).' })
   }
 
   let photoResolution = existant.photo_resolution

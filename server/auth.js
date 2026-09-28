@@ -154,9 +154,22 @@ export async function verifierIdentifiantsPartenaire(identifiant, motDePasse) {
   }
 
   const valide = await bcrypt.compare(motDePasse, partenaire.mot_de_passe_hash)
-  return valide
-    ? { id: partenaire.id, nom: partenaire.nom, identifiant: partenaire.identifiant, commune: partenaire.commune }
-    : null
+  if (!valide) return null
+
+  // « Nouveaux » = arrivés depuis sa connexion précédente (ou depuis la création du compte).
+  const depuis = partenaire.derniere_connexion || partenaire.cree_le
+  await db.query('UPDATE partenaires SET derniere_connexion = $1 WHERE id = $2', [
+    new Date().toISOString(),
+    partenaire.id
+  ])
+  return {
+    id: partenaire.id,
+    nom: partenaire.nom,
+    identifiant: partenaire.identifiant,
+    commune: partenaire.commune,
+    categories: partenaire.categories || [],
+    depuis
+  }
 }
 
 export function creerSessionPartenaire(partenaire) {
@@ -166,6 +179,8 @@ export function creerSessionPartenaire(partenaire) {
     partenaireId: partenaire.id,
     nom: partenaire.nom,
     commune: partenaire.commune,
+    categories: partenaire.categories,
+    depuis: partenaire.depuis,
     expiration: Date.now() + DUREE_SESSION_MS
   })
   return token

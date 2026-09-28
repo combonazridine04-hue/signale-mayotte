@@ -199,7 +199,13 @@ router.get('/session', (req, res) => {
   if (!session) return res.json({ type: null })
   if (session.type === 'admin') return res.json({ type: 'admin', identifiant: session.identifiant })
   if (session.type === 'partenaire') {
-    return res.json({ type: 'partenaire', nom: session.nom, commune: session.commune || '' })
+    return res.json({
+      type: 'partenaire',
+      nom: session.nom,
+      commune: session.commune || '',
+      categories: session.categories || [],
+      depuis: session.depuis || ''
+    })
   }
   res.json({ type: 'utilisateur', nom: session.nom })
 })

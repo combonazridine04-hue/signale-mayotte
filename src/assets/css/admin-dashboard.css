@@ -622,3 +622,65 @@
   word-break: break-all;
   user-select: all;
 }
+
+/* Partenaires : mode test des alertes, domaines, nouveaux signalements */
+.admin-alerte-test {
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.875rem;
+}
+
+.admin-legende {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+fieldset.admin-form-field {
+  border: 0;
+  padding: 0;
+  margin-inline: 0;
+  min-width: 0;
+}
+
+/* Plus spécifique que « .admin-form-field label / input », faits pour les champs texte. */
+.admin-form-field .admin-case {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 400;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.admin-form-field .admin-case input {
+  width: auto;
+  margin: 0;
+  padding: 0;
+  accent-color: #16a34a;
+}
+
+.partenaire-nouveaux {
+  padding: 0.55rem 0.8rem;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #0f766e;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.admin-badge--nouveau {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.ligne-nouvelle {
+  background: #f0fdfa;
+}

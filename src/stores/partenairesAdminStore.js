@@ -16,6 +16,7 @@ async function traiterReponse(reponse) {
 export const usePartenairesAdminStore = defineStore('partenairesAdmin', {
   state: () => ({
     comptes: [],
+    modeAlertes: null,
     chargement: false,
     erreur: ''
   }),
@@ -35,11 +36,20 @@ export const usePartenairesAdminStore = defineStore('partenairesAdmin', {
       }
     },
 
-    async creer(nom, identifiant, motDePasse, commune) {
+    async chargerModeAlertes() {
+      try {
+        const reponse = await apiFetch('/api/partenaires-alertes')
+        this.modeAlertes = await traiterReponse(reponse)
+      } catch {
+        this.modeAlertes = null
+      }
+    },
+
+    async creer({ nom, identifiant, motDePasse, commune, categories, email }) {
       const reponse = await apiFetch('/api/partenaires', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nom, identifiant, motDePasse, commune })
+        body: JSON.stringify({ nom, identifiant, motDePasse, commune, categories, email })
       })
       const compte = await traiterReponse(reponse)
       this.comptes.push(compte)

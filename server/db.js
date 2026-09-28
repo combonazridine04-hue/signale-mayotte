@@ -124,6 +124,11 @@ await db.query(`
     cree_le TEXT NOT NULL
   )
 `)
+// Domaines du partenaire (vide = tous), adresse de ses alertes, et date de sa dernière
+// connexion (pour lui montrer ce qui est arrivé depuis).
+await db.query(`ALTER TABLE partenaires ADD COLUMN IF NOT EXISTS categories TEXT[] NOT NULL DEFAULT '{}'`)
+await db.query(`ALTER TABLE partenaires ADD COLUMN IF NOT EXISTS email TEXT`)
+await db.query(`ALTER TABLE partenaires ADD COLUMN IF NOT EXISTS derniere_connexion TEXT`)
 
 await db.query(`
   CREATE TABLE IF NOT EXISTS signalements_abus (
@@ -213,6 +218,31 @@ await db.query(`
   )
 `)
 await db.query(`CREATE INDEX IF NOT EXISTS idx_notifications_utilisateur ON notifications (utilisateur_id, lue)`)
+
+// Supabase publie automatiquement chaque table sur Internet (API REST), avec les rôles
+// « anon » et « authenticated », à côté de notre serveur. Cinq tables (dont les comptes,
+// avec e-mails, téléphones et mots de passe hachés) étaient ouvertes en lecture ET en
+// écriture à quiconque obtenait la clé publique du projet. Le site ne passe jamais par
+// là : on ferme cette porte. RLS sans aucune règle = aucune ligne accessible, et plus
+// aucun droit pour ces rôles, y compris sur les tables créées plus tard. Le serveur n'est
+// pas concerné : son compte (postgres) contourne RLS. Hors Supabase, ces rôles
+// n'existent pas et le bloc ne fait rien.
+await db.query(`
+  DO $$
+  DECLARE t record;
+  BEGIN
+    FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+      EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t.tablename);
+    END LOOP;
+    IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
+       AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+      REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
+      REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
+    END IF;
+  END $$
+`)
 
 const donneesDemo = [
   {

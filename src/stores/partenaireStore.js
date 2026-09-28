@@ -9,6 +9,8 @@ export const usePartenaireStore = defineStore('partenaire', {
     return {
       nom: indice?.nom || '',
       commune: indice?.commune || '',
+      categories: indice?.categories || [],
+      depuis: indice?.depuis || '',
       estConnecte: Boolean(indice)
     }
   },
@@ -40,19 +42,29 @@ export const usePartenaireStore = defineStore('partenaire', {
       }
 
       const donnees = await reponse.json()
-      appliquerSession({ type: 'partenaire', nom: donnees.nom || '', commune: donnees.commune || '' })
+      appliquerSession({
+        type: 'partenaire',
+        nom: donnees.nom || '',
+        commune: donnees.commune || '',
+        categories: donnees.categories || [],
+        depuis: donnees.depuis || ''
+      })
       return { succes: true }
     },
 
-    remplir({ nom, commune }) {
+    remplir({ nom, commune, categories, depuis }) {
       this.nom = nom || ''
       this.commune = commune || ''
+      this.categories = categories || []
+      this.depuis = depuis || ''
       this.estConnecte = true
     },
 
     vider() {
       this.nom = ''
       this.commune = ''
+      this.categories = []
+      this.depuis = ''
       this.estConnecte = false
     },
 

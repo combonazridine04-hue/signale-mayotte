@@ -40,7 +40,13 @@ export function requirePartenaireOuAdmin(req, res, next) {
   if (session.type === 'admin') {
     req.admin = { id: session.adminId, identifiant: session.identifiant }
   } else {
-    req.partenaire = { id: session.partenaireId, nom: session.nom, commune: session.commune }
+    req.partenaire = {
+      id: session.partenaireId,
+      nom: session.nom,
+      commune: session.commune,
+      categories: session.categories || [],
+      depuis: session.depuis
+    }
   }
   next()
 }

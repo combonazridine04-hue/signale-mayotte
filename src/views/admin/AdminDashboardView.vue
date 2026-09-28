@@ -7,7 +7,7 @@ import { useContactStore } from '../../stores/contactStore.js'
 import { useAdminStore } from '../../stores/adminStore.js'
 import { usePartenairesAdminStore } from '../../stores/partenairesAdminStore.js'
 import { useUiStore } from '../../stores/uiStore.js'
-import { STATUTS, COMMUNES } from '../../models/signalement.js'
+import { STATUTS, COMMUNES, CATEGORIES } from '../../models/signalement.js'
 import { apiFetch } from '../../utils/api.js'
 import FilterBar from '../../components/FilterBar.vue'
 import ChampMotDePasse from '../../components/ChampMotDePasse.vue'
@@ -83,6 +83,7 @@ onMounted(() => {
     .then((actif) => (deuxFacteurs.actif = actif))
     .catch(() => {})
   partenairesAdminStore.charger()
+  partenairesAdminStore.chargerModeAlertes()
   chargerModeration()
 })
 
@@ -113,7 +114,8 @@ const supprimerCompte = async (compte) => {
   }
 }
 
-const nouveauPartenaire = reactive({ nom: '', identifiant: '', motDePasse: '', commune: '' })
+const partenaireVide = () => ({ nom: '', identifiant: '', motDePasse: '', commune: '', categories: [], email: '' })
+const nouveauPartenaire = reactive(partenaireVide())
 const erreurNouveauPartenaire = ref('')
 const creationPartenaireEnCours = ref(false)
 
@@ -121,16 +123,13 @@ const creerPartenaire = async () => {
   erreurNouveauPartenaire.value = ''
   creationPartenaireEnCours.value = true
   try {
-    await partenairesAdminStore.creer(
-      nouveauPartenaire.nom.trim(),
-      nouveauPartenaire.identifiant.trim(),
-      nouveauPartenaire.motDePasse,
-      nouveauPartenaire.commune
-    )
-    nouveauPartenaire.nom = ''
-    nouveauPartenaire.identifiant = ''
-    nouveauPartenaire.motDePasse = ''
-    nouveauPartenaire.commune = ''
+    await partenairesAdminStore.creer({
+      ...nouveauPartenaire,
+      nom: nouveauPartenaire.nom.trim(),
+      identifiant: nouveauPartenaire.identifiant.trim(),
+      email: nouveauPartenaire.email.trim()
+    })
+    Object.assign(nouveauPartenaire, partenaireVide())
   } catch (e) {
     erreurNouveauPartenaire.value = e.message
   } finally {
@@ -712,17 +711,27 @@ const changerStatut = async (id, statut) => {
         <div v-else-if="section === 'partenaires'" class="admin-panel">
           <h2 class="admin-panel-title">Comptes partenaires</h2>
           <p class="admin-muted">
-            Un partenaire (agent municipal, service technique) peut se connecter à un espace dédié pour faire évoluer le
-            statut des signalements de sa commune. Laissez la commune vide pour un compte qui couvre toutes les communes
-            (ex. un service départemental).
+            Un partenaire (SIDEVAM976, SMAE, EDM, une mairie…) se connecte à un espace dédié pour faire évoluer le
+            statut des signalements de son périmètre : ses domaines, sur sa commune ou sur toute l'île. S'il a une
+            adresse e-mail, il est prévenu à chaque nouveau signalement qui le concerne.
           </p>
+          <div
+            v-if="partenairesAdminStore.modeAlertes && !partenairesAdminStore.modeAlertes.reelles"
+            class="admin-alerte-test"
+            role="status"
+          >
+            <strong>Mode test :</strong> les alertes ne partent pas aux adresses des partenaires, mais toutes vers la
+            boîte de test ({{ partenairesAdminStore.modeAlertes.boiteTest }}), avec « [TEST] » dans l'objet.
+          </div>
           <p v-if="partenairesAdminStore.chargement" class="admin-muted">Chargement...</p>
           <table v-else class="admin-table mb-4">
             <thead>
               <tr>
                 <th>Nom</th>
                 <th>Identifiant</th>
+                <th>Domaines</th>
                 <th>Commune</th>
+                <th>Alertes</th>
                 <th>Créé le</th>
                 <th></th>
               </tr>
@@ -731,7 +740,12 @@ const changerStatut = async (id, statut) => {
               <tr v-for="c in partenairesAdminStore.comptes" :key="c.id">
                 <td data-label="Nom">{{ c.nom }}</td>
                 <td data-label="Identifiant">{{ c.identifiant }}</td>
+                <td data-label="Domaines">{{ c.categories.length ? c.categories.join(', ') : 'Tous' }}</td>
                 <td data-label="Commune">{{ c.commune || 'Toutes les communes' }}</td>
+                <td data-label="Alertes">
+                  <span v-if="c.email">{{ c.email }}</span>
+                  <span v-else class="admin-muted">Pas d'e-mail</span>
+                </td>
                 <td data-label="Créé le">{{ new Date(c.creeLe).toLocaleDateString('fr-FR') }}</td>
                 <td data-label="Actions">
                   <button type="button" class="admin-btn admin-btn--danger" @click="supprimerPartenaire(c)">
@@ -775,6 +789,17 @@ const changerStatut = async (id, statut) => {
                 <option value="">Toutes les communes</option>
                 <option v-for="commune in COMMUNES" :key="commune" :value="commune">{{ commune }}</option>
               </select>
+            </div>
+            <fieldset class="admin-form-field">
+              <legend class="admin-legende">Domaines (aucun coché = tous)</legend>
+              <label v-for="categorie in CATEGORIES" :key="categorie" class="admin-case">
+                <input v-model="nouveauPartenaire.categories" type="checkbox" :value="categorie" />
+                {{ categorie }}
+              </label>
+            </fieldset>
+            <div class="admin-form-field">
+              <label for="partenaire-email">E-mail pour les alertes (facultatif)</label>
+              <input id="partenaire-email" v-model="nouveauPartenaire.email" type="email" autocomplete="off" />
             </div>
             <div v-if="erreurNouveauPartenaire" class="admin-form-erreur">{{ erreurNouveauPartenaire }}</div>
             <button type="submit" class="admin-btn admin-btn--primary" :disabled="creationPartenaireEnCours">

@@ -165,6 +165,11 @@ router.beforeEach(async (to) => {
     await synchroniserSession()
   }
 
+  // Un partenaire n'a rien à faire dans l'espace admin (le serveur le refuserait de toute
+  // façon) : on le ramène dans le sien plutôt que de lui montrer la connexion admin.
+  if (to.meta.admin && !authStore.estConnecte && partenaireStore.estConnecte) {
+    return { name: 'partenaire-dashboard' }
+  }
   if (to.meta.requiresAuth && !authStore.estConnecte) {
     return { name: 'admin-login' }
   }

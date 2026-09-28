@@ -129,6 +129,77 @@ export async function envoyerNotificationSignalement(signalement) {
   })
 }
 
+// Tant que la plateforme n'est pas en service avec de vrais partenaires, leurs alertes
+// partent vers une boîte de test (par défaut celle de l'association), JAMAIS vers
+// l'adresse réelle de l'organisme. Pour les envoyer pour de vrai, il faut le décider
+// explicitement : ALERTES_PARTENAIRES_REELLES=oui.
+export const alertesPartenairesReelles = process.env.ALERTES_PARTENAIRES_REELLES === 'oui'
+export const boiteTestPartenaires = process.env.EMAIL_TEST_PARTENAIRES || destinataire
+
+export function messageAlertePartenaire(partenaire, signalement) {
+  const lienDetail = `${SITE_URL}/signalements/${signalement.id}`
+  const lienEspace = `${SITE_URL}/partenaire`
+  const dateFormatee = new Date(signalement.dateSignalement).toLocaleString('fr-FR')
+  const test = !alertesPartenairesReelles
+  const bandeauTexte = test
+    ? `[TEST] Cet e-mail était destiné à ${partenaire.nom}${partenaire.email ? ` (${partenaire.email})` : ''}. Il a été envoyé à la boîte de test : la plateforme n'est pas encore en service.`
+    : ''
+  const urgent = signalement.urgent ? 'URGENT — ' : ''
+
+  return {
+    to: test ? boiteTestPartenaires : partenaire.email,
+    subject: `${test ? '[TEST] ' : ''}${urgent}Nouveau signalement pour ${partenaire.nom} — ${signalement.categorie} à ${signalement.commune}`,
+    text: [
+      bandeauTexte,
+      bandeauTexte ? '' : null,
+      `Bonjour ${partenaire.nom},`,
+      '',
+      'Un nouveau signalement relève de votre périmètre :',
+      `Catégorie : ${signalement.categorie}`,
+      `Commune : ${signalement.commune}`,
+      signalement.urgent ? 'Marqué URGENT (danger immédiat)' : null,
+      `Description : ${signalement.description}`,
+      `Signalé le : ${dateFormatee}`,
+      '',
+      `Voir le signalement : ${lienDetail}`,
+      `Votre espace partenaire (pour passer le statut à « En cours » puis « Résolu ») : ${lienEspace}`
+    ]
+      .filter((ligne) => ligne !== null)
+      .join('\n'),
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+        ${test ? `<div style="background: #fef3c7; color: #92400e; padding: 10px 20px; font-size: 13px;">${echapperHtml(bandeauTexte)}</div>` : ''}
+        <div style="background: #0f766e; color: #ffffff; padding: 16px 20px;">
+          <h2 style="margin: 0; font-size: 18px;">${signalement.urgent ? 'URGENT — ' : ''}Nouveau signalement à traiter</h2>
+        </div>
+        <div style="padding: 20px; color: #0f172a;">
+          <p style="margin: 0 0 12px;">Bonjour ${echapperHtml(partenaire.nom)}, un nouveau signalement relève de votre périmètre :</p>
+          <p style="margin: 0 0 8px;"><strong>Catégorie :</strong> ${echapperHtml(signalement.categorie)}</p>
+          <p style="margin: 0 0 8px;"><strong>Commune :</strong> ${echapperHtml(signalement.commune)}</p>
+          <p style="margin: 0 0 8px;"><strong>Description :</strong> ${echapperHtml(signalement.description)}</p>
+          <p style="margin: 0 0 16px; color: #64748b; font-size: 13px;">Signalé le ${dateFormatee}</p>
+          <a href="${lienDetail}" style="display: inline-block; background: #0f766e; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
+            Voir le signalement
+          </a>
+          <p style="margin: 16px 0 0; font-size: 13px;">
+            Une fois sur place, faites évoluer le statut depuis
+            <a href="${lienEspace}" style="color: #0f766e;">votre espace partenaire</a> :
+            « En cours », puis « Résolu ». L'habitant qui a signalé le problème sera prévenu.
+          </p>
+        </div>
+      </div>
+    `
+  }
+}
+
+export async function envoyerAlertePartenaire(partenaire, signalement) {
+  const message = messageAlertePartenaire(partenaire, signalement)
+  console.log(
+    `[mailer] alerte signalement #${signalement.id} pour « ${partenaire.nom} » → ${alertesPartenairesReelles ? 'adresse réelle' : 'boîte de test'}${fournisseur ? '' : ' (aucun fournisseur e-mail : non envoyée)'}`
+  )
+  await envoyerEmail(message)
+}
+
 export async function envoyerConfirmationSignalement(signalement, emailCitoyen, tokenSuppression) {
   if (!emailCitoyen) return
 
