@@ -16,6 +16,14 @@ export const db = new Pool({
   ssl: { rejectUnauthorized: false }
 })
 
+// Supabase ferme de lui-même les connexions restées inactives (maintenance, délai du
+// pooler). pg le signale par un événement « error » sur le pool ; sans écouteur, Node
+// considère l'erreur comme fatale et arrête tout le serveur. Le pool remplace la
+// connexion perdue à la requête suivante : il suffit de le noter.
+db.on('error', (e) => {
+  console.error('[db] connexion inactive fermée par la base :', e.message)
+})
+
 await db.query(`
   CREATE TABLE IF NOT EXISTS signalements (
     id SERIAL PRIMARY KEY,

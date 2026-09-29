@@ -8,7 +8,7 @@ import { preparerEnvironnementTest } from '../../server/tests/environnementTest.
 preparerEnvironnementTest()
 
 const { app } = await import('../../server/index.js')
-const { reinitialiserDonneesDemo } = await import('../../server/db.js')
+const { db, reinitialiserDonneesDemo } = await import('../../server/db.js')
 await reinitialiserDonneesDemo()
 const serveur = app.listen(0)
 await new Promise((resolve) => serveur.once('listening', resolve))
@@ -53,6 +53,21 @@ try {
     "3 signalements de démo visibles à l'accueil sans connexion"
   )
 
+  // Signaler demande un compte citoyen : on en crée un, comme un habitant le ferait.
+  await page.goto(BASE + 'signaler', { waitUntil: 'networkidle' })
+  verifier(/\/connexion/.test(page.url()), 'signaler sans compte renvoie vers la connexion')
+  // Numéro différent à chaque passage : la base de test garde les comptes d'une fois sur l'autre.
+  const telephone = '0639' + String(Date.now()).slice(-6)
+  const inscription = await page.evaluate(async (tel) => {
+    const r = await fetch('/api/auth/inscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nom: 'Habitant Test', telephone: tel, motDePasse: 'MotDePasseE2e2026!' })
+    })
+    return r.status
+  }, telephone)
+  verifier(inscription === 201, `inscription d'un citoyen par téléphone (statut ${inscription})`)
+
   await page.goto(BASE + 'signaler', { waitUntil: 'networkidle' })
   await page.selectOption('#categorie', 'Eau')
   await page.selectOption('#commune', 'Dzaoudzi')
@@ -60,9 +75,11 @@ try {
   await page.setInputFiles('.photo-dropzone input[type=file]', cheminPhoto)
   await page.click('button:has-text("Utiliser ma position actuelle")')
   await page.waitForTimeout(500)
+  // Première photo analysée : le modèle de détection des images inappropriées doit
+  // d'abord être téléchargé et chargé, ce qui peut dépasser 20 s sur une connexion lente.
   const [reponseCreation] = await Promise.all([
     page.waitForResponse((r) => r.url().includes('/api/signalements') && r.request().method() === 'POST', {
-      timeout: 20000
+      timeout: 90000
     }),
     page.click('button[type=submit]')
   ])
@@ -80,11 +97,14 @@ try {
   verifier(nbMarqueurs >= 1, `au moins un marqueur affiché sur la carte (trouvé ${nbMarqueurs})`)
 
   console.log('')
-  console.log('--- suppression par le créateur, sans être admin ---')
+  console.log('--- correction et suppression par le créateur, sans être admin ---')
   await page.goto(BASE + 'signaler', { waitUntil: 'networkidle' })
   await page.selectOption('#categorie', 'Voirie')
   await page.selectOption('#commune', 'Sada')
   await page.fill('#description', 'Signalement que je vais supprimer moi-même, sans être admin.')
+  // Position obligatoire : sans elle, le formulaire refuse l'envoi.
+  await page.click('button:has-text("Utiliser ma position actuelle")')
+  await page.waitForTimeout(500)
   const [reponseCreationJetable] = await Promise.all([
     page.waitForResponse((r) => r.url().includes('/api/signalements') && r.request().method() === 'POST', {
       timeout: 20000
@@ -101,9 +121,10 @@ try {
     .catch(() => false)
 
   verifier(boutonSupprimerCreateur, 'le créateur (non-admin) voit le bouton Supprimer sur son propre signalement')
+  // RG-13 : l'auteur peut corriger son signalement tant qu'il est encore « Signalé ».
   verifier(
-    !(await page.locator('button:has-text("Modifier")').isVisible()),
-    "le créateur (non-admin) ne voit PAS le bouton Modifier (réservé à l'admin)"
+    await page.locator('button:has-text("Modifier")').isVisible(),
+    'le créateur voit le bouton Modifier tant que son signalement est « Signalé »'
   )
 
   await page.click('button:has-text("Supprimer")')
@@ -138,17 +159,16 @@ try {
   verifier(await page.locator('.admin-sidebar').isVisible(), 'connexion admin réussie, tableau de bord affiché')
   verifier(/\/admin$/.test(page.url()), 'redirection vers /admin après connexion')
 
+  // Créé depuis la page, avec la session admin : signaler exige d'être connecté.
   const texteJetable = 'Signalement jetable créé uniquement pour tester la suppression depuis le tableau admin.'
-  await fetch(`${BASE}api/signalements`, {
-    method: 'POST',
-    body: (() => {
-      const f = new FormData()
-      f.set('categorie', 'Eau')
-      f.set('commune', 'Sada')
-      f.set('description', texteJetable)
-      return f
-    })()
-  })
+  const statutJetable = await page.evaluate(async (description) => {
+    const f = new FormData()
+    f.set('categorie', 'Eau')
+    f.set('commune', 'Sada')
+    f.set('description', description)
+    return (await fetch('/api/signalements', { method: 'POST', body: f })).status
+  }, texteJetable)
+  verifier(statutJetable === 201, `signalement jetable créé pour le tableau admin (statut ${statutJetable})`)
 
   // Le tableau de bord admin ne charge les données qu'au montage : on recharge la page
   // pour être sûr que le signalement jetable créé ci-dessus apparaît bien dans le tableau.
@@ -233,7 +253,9 @@ try {
   verifier(erreursConsole.length === 0, `aucune erreur JS (${erreursConsole.length} trouvée(s))`)
 } finally {
   await browser.close()
+  serveur.closeAllConnections?.()
   await new Promise((resolve) => serveur.close(resolve))
+  await db.end()
   rmSync(dossierTemp, { recursive: true, force: true })
 }
 

@@ -4,7 +4,7 @@ export async function demarrerServeurTest() {
   preparerEnvironnementTest()
 
   const { app } = await import('../index.js')
-  const { reinitialiserDonneesDemo } = await import('../db.js')
+  const { db, reinitialiserDonneesDemo } = await import('../db.js')
   await reinitialiserDonneesDemo()
 
   const serveur = app.listen(0)
@@ -13,7 +13,13 @@ export async function demarrerServeurTest() {
 
   return {
     baseUrl: `http://localhost:${port}`,
-    fermer: () => new Promise((resolve) => serveur.close(resolve))
+    // Fermer aussi les connexions à la base : sinon le fichier de test reste ouvert
+    // longtemps après ses tests, jusqu'à ce que la base coupe elle-même la connexion.
+    fermer: async () => {
+      serveur.closeAllConnections?.()
+      await new Promise((resolve) => serveur.close(resolve))
+      await db.end()
+    }
   }
 }
 
