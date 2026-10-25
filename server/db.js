@@ -235,19 +235,29 @@ await db.query(`CREATE INDEX IF NOT EXISTS idx_notifications_utilisateur ON noti
 // aucun droit pour ces rôles, y compris sur les tables créées plus tard. Le serveur n'est
 // pas concerné : son compte (postgres) contourne RLS. Hors Supabase, ces rôles
 // n'existent pas et le bloc ne fait rien.
+// Les anciennes règles RLS « ouvertes » (ajout public de signalements, soutiens, messages)
+// restaient en place : inutilisables sans droits sur les tables, mais une seule
+// réattribution de droits les aurait rouvertes. On les supprime, et les fonctions SQL
+// (security definer) ne sont plus appelables depuis l'API publique.
 await db.query(`
   DO $$
   DECLARE t record;
+  DECLARE p record;
   BEGIN
     FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
       EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t.tablename);
+    END LOOP;
+    FOR p IN SELECT policyname, tablename FROM pg_policies WHERE schemaname = 'public' LOOP
+      EXECUTE format('DROP POLICY %I ON public.%I', p.policyname, p.tablename);
     END LOOP;
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon')
        AND EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
       REVOKE ALL ON ALL TABLES IN SCHEMA public FROM anon, authenticated;
       REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM anon, authenticated;
+      REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC, anon, authenticated;
       ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;
       ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon, authenticated;
+      ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC, anon, authenticated;
     END IF;
   END $$
 `)
