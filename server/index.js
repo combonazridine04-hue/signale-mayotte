@@ -175,7 +175,10 @@ if (estLanceDirectement) {
   const { planifierPurge } = await import('./retention.js')
   planifierPurge()
 
-  app.listen(PORT, () => {
-    console.log(`API Signale Mayotte disponible sur http://localhost:${PORT}`)
+  // Chez alwaysdata, l'application DOIT écouter sur l'adresse et le port qu'il fournit
+  // (variables IP ou HOST, et PORT). En local, aucune adresse : toutes les interfaces.
+  const ADRESSE = process.env.IP || process.env.HOST || undefined
+  app.listen(PORT, ADRESSE, () => {
+    console.log(`API Signale Mayotte disponible sur ${ADRESSE ? `${ADRESSE}:${PORT}` : `http://localhost:${PORT}`}`)
   })
 }

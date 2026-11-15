@@ -19,9 +19,12 @@ if (url.protocol !== 'mysql:') {
   throw new Error('DATABASE_URL doit commencer par mysql:// ou mariadb:// (base MariaDB).')
 }
 
-// Base sur ce PC (développement, tests, consultée avec DBeaver) : pas de chiffrement.
-// Base distante (production) : connexion chiffrée obligatoire, certificat vérifié.
-const estLocale = ['localhost', '127.0.0.1', '::1'].includes(url.hostname)
+// Chiffrement de la connexion (TLS) :
+// - base sur ce PC (localhost) : aucun, la connexion ne sort pas de la machine ;
+// - base distante : TLS obligatoire, certificat vérifié ;
+// - DATABASE_TLS=non : aucun, pour une base joignable seulement par le réseau interne de
+//   l'hébergeur (cas d'alwaysdata, où le site et la base sont chez lui).
+const estLocale = ['localhost', '127.0.0.1', '::1'].includes(url.hostname) || process.env.DATABASE_TLS === 'non'
 
 // Colonnes JSON (listes) : MariaDB les stocke en texte, on les rend sous forme de tableau.
 const COLONNES_JSON = new Set(['photos', 'categories', 'motifs'])
