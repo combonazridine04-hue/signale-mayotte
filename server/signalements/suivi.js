@@ -8,7 +8,7 @@ export async function emailSuiviSignalement(signalementId) {
     `SELECT s.email_contact, u.email AS email_compte, u.email_verifie
      FROM signalements s
      LEFT JOIN utilisateurs u ON u.id = s.utilisateur_id
-     WHERE s.id = $1`,
+     WHERE s.id = ?`,
     [signalementId]
   )
   const ligne = rows[0]

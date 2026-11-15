@@ -3,6 +3,7 @@ import { computed, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { apiFetch } from '../utils/api.js'
 import PanneauAide from '../components/PanneauAide.vue'
+import CaptchaTurnstile from '../components/CaptchaTurnstile.vue'
 import { SUJETS_CONTACT } from '../../shared/sujetsContact.js'
 
 // L'adresse contact@signale-mayotte.yt est affichée parce qu'elle va être créée.
@@ -24,6 +25,9 @@ const formulaire = reactive({
   site_web: ''
 })
 
+const captcha = ref(null)
+const jetonCaptcha = ref('')
+
 const envoye = ref(false)
 const envoiEnCours = ref(false)
 const succes = ref(false)
@@ -42,13 +46,17 @@ const envoyer = async () => {
   succes.value = false
   erreurEnvoi.value = ''
   if (!formulaireValide.value) return
+  if (captcha.value?.requis && !jetonCaptcha.value) {
+    erreurEnvoi.value = 'Patientez pendant la vérification anti-robot, juste au-dessus du bouton.'
+    return
+  }
 
   envoiEnCours.value = true
   try {
     const reponse = await apiFetch('/api/contact', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formulaire)
+      body: JSON.stringify({ ...formulaire, captcha: jetonCaptcha.value })
     })
     if (!reponse.ok) {
       const corps = await reponse.json().catch(() => ({}))
@@ -65,6 +73,7 @@ const envoyer = async () => {
     erreurEnvoi.value = e.message
   } finally {
     envoiEnCours.value = false
+    captcha.value?.reinitialiser()
   }
 }
 </script>
@@ -164,6 +173,8 @@ const envoyer = async () => {
               <label for="contact-site-web">Site web</label>
               <input id="contact-site-web" v-model="formulaire.site_web" type="text" tabindex="-1" autocomplete="off" />
             </div>
+
+            <CaptchaTurnstile ref="captcha" v-model="jetonCaptcha" />
 
             <div v-if="succes" class="alert alert-success">Votre message a bien été envoyé.</div>
             <div v-if="erreurEnvoi" class="alert alert-danger py-2">{{ erreurEnvoi }}</div>

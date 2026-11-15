@@ -91,7 +91,10 @@ async function envoyerEmail(message) {
 
 export async function envoyerNotificationSignalement(signalement) {
   const lienDetail = `${SITE_URL}/signalements/${signalement.id}`
-  const lienPhoto = signalement.photoUrls?.[0] || ''
+  // Photo stockée sur le disque (mode local) : son adresse est relative au site, ce
+  // qu'un client email ne sait pas résoudre.
+  const premierePhoto = signalement.photoUrls?.[0] || ''
+  const lienPhoto = premierePhoto.startsWith('/') ? `${SITE_URL}${premierePhoto}` : premierePhoto
   const nbAutresPhotos = Math.max(0, (signalement.photoUrls?.length || 0) - 1)
   const dateFormatee = new Date(signalement.dateSignalement).toLocaleString('fr-FR')
 
@@ -403,6 +406,44 @@ export async function envoyerReinitialisationMotDePasse(nom, email, token) {
             Choisir un nouveau mot de passe
           </a>
           <p style="margin: 16px 0 0; color: #64748b; font-size: 12px;">Ce lien expire dans 1 heure. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email : votre mot de passe restera inchangé.</p>
+        </div>
+      </div>
+    `
+  })
+}
+
+// Prévient l'association qu'un contenu a été signalé comme abusif, pour qu'il ne
+// reste pas en ligne jusqu'à la prochaine visite de l'onglet Modération.
+export async function envoyerAlerteContenuAbusif({ type, signalementId, extrait, motif }) {
+  const lienDetail = `${SITE_URL}/signalements/${signalementId}`
+  const lienModeration = `${SITE_URL}/admin`
+  const libelle = type === 'commentaire' ? 'Un commentaire' : 'Un signalement'
+
+  await envoyerEmail({
+    to: destinataire,
+    subject: `[Modération] ${libelle} a été signalé comme abusif`,
+    text: [
+      `${libelle} a été signalé comme abusif.`,
+      extrait ? `Contenu : ${extrait}` : '',
+      `Motif : ${motif || 'non précisé'}`,
+      `Voir le signalement : ${lienDetail}`,
+      `Espace de modération : ${lienModeration}`
+    ]
+      .filter(Boolean)
+      .join('\n'),
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+        <div style="background: #dc2626; color: #ffffff; padding: 16px 20px;">
+          <h2 style="margin: 0; font-size: 18px;">Contenu signalé comme abusif</h2>
+        </div>
+        <div style="padding: 20px; color: #0f172a;">
+          <p style="margin: 0 0 8px;"><strong>${libelle}</strong> a été signalé par un utilisateur.</p>
+          ${extrait ? `<p style="margin: 0 0 8px;"><strong>Contenu :</strong> ${echapperHtml(extrait)}</p>` : ''}
+          <p style="margin: 0 0 16px;"><strong>Motif :</strong> ${echapperHtml(motif || 'non précisé')}</p>
+          <a href="${lienDetail}" style="display: inline-block; background: #dc2626; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
+            Voir le signalement
+          </a>
+          <p style="margin: 16px 0 0; color: #64748b; font-size: 13px;">Décision à prendre dans l'onglet Modération : <a href="${lienModeration}">${lienModeration}</a></p>
         </div>
       </div>
     `

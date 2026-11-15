@@ -33,13 +33,13 @@ export const useCitoyenStore = defineStore('citoyen', {
       this.chargerProfil()
     },
 
-    async inscrire({ nom, email, telephone, motDePasse, site_web }) {
+    async inscrire({ nom, email, telephone, motDePasse, site_web, captcha }) {
       let reponse
       try {
         reponse = await fetch('/api/auth/inscription', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nom, email, telephone, motDePasse, site_web })
+          body: JSON.stringify({ nom, email, telephone, motDePasse, site_web, captcha })
         })
       } catch {
         return {
@@ -101,13 +101,19 @@ export const useCitoyenStore = defineStore('citoyen', {
       this.emailVerifie = false
     },
 
-    async demanderReinitialisationMotDePasse(email) {
+    async demanderReinitialisationMotDePasse(email, captcha) {
       try {
-        await fetch('/api/auth/mot-de-passe-oublie', {
+        const reponse = await fetch('/api/auth/mot-de-passe-oublie', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email })
+          body: JSON.stringify({ email, captcha })
         })
+        // Le serveur répond pareil qu'un compte existe ou non ; seul un refus (captcha,
+        // trop de demandes) mérite d'être montré.
+        if (!reponse.ok) {
+          const corps = await reponse.json().catch(() => ({}))
+          return { succes: false, erreur: corps.erreur || 'Demande impossible, réessayez.' }
+        }
         return { succes: true }
       } catch {
         return {

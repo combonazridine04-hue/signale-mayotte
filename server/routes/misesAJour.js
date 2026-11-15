@@ -26,7 +26,7 @@ router.post('/signalements/:id/mises-a-jour', requireAuth, async (req, res) => {
   }
 
   const { rows: existant } = await db.query(
-    'SELECT id, categorie, commune, utilisateur_id FROM signalements WHERE id = $1',
+    'SELECT id, categorie, commune, utilisateur_id FROM signalements WHERE id = ?',
     [id]
   )
   if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
@@ -34,7 +34,7 @@ router.post('/signalements/:id/mises-a-jour', requireAuth, async (req, res) => {
   // Enregistré avant de prévenir : en cas d'échec, personne ne reçoit l'annonce d'un
   // message qui n'existe pas.
   const { rows } = await db.query(
-    'INSERT INTO mises_a_jour (signalement_id, texte, date_creation) VALUES ($1, $2, $3) RETURNING *',
+    'INSERT INTO mises_a_jour (signalement_id, texte, date_creation) VALUES (?, ?, ?) RETURNING *',
     [id, texte.trim(), new Date().toISOString()]
   )
 
@@ -52,7 +52,7 @@ router.post('/signalements/:id/mises-a-jour', requireAuth, async (req, res) => {
 })
 
 router.delete('/signalements/:id/mises-a-jour/:miseAJourId', requireAuth, async (req, res) => {
-  const { rowCount } = await db.query('DELETE FROM mises_a_jour WHERE id = $1 AND signalement_id = $2', [
+  const { rowCount } = await db.query('DELETE FROM mises_a_jour WHERE id = ? AND signalement_id = ?', [
     Number(req.params.miseAJourId),
     Number(req.params.id)
   ])

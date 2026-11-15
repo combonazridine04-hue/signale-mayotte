@@ -9,8 +9,8 @@ export async function alerterPartenaires(signalement) {
     const { rows } = await db.query(
       `SELECT id, nom, email FROM partenaires
        WHERE email IS NOT NULL
-         AND (commune IS NULL OR commune = $1)
-         AND (cardinality(categories) = 0 OR $2 = ANY(categories))`,
+         AND (commune IS NULL OR commune = ?)
+         AND (JSON_LENGTH(categories) = 0 OR JSON_CONTAINS(categories, JSON_QUOTE(?)))`,
       [signalement.commune, signalement.categorie]
     )
     for (const partenaire of rows) await envoyerAlertePartenaire(partenaire, signalement)

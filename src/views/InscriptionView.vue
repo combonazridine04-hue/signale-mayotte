@@ -5,6 +5,7 @@ import { useCitoyenStore } from '../stores/citoyenStore.js'
 import ChampMotDePasse from '../components/ChampMotDePasse.vue'
 import JaugeMotDePasse from '../components/JaugeMotDePasse.vue'
 import PanneauAide from '../components/PanneauAide.vue'
+import CaptchaTurnstile from '../components/CaptchaTurnstile.vue'
 import logo from '../assets/img/logo.svg'
 import { erreurTelephone, formaterTelephone, normaliserTelephone, telephoneValide } from '../../shared/telephone.js'
 import { motDePasseInterdit } from '../../shared/motDePasse.js'
@@ -39,6 +40,8 @@ const formulaire = reactive({
   confirmationMotDePasse: ''
 })
 const siteWeb = ref('')
+const captcha = ref(null)
+const jetonCaptcha = ref('')
 
 const soumis = ref(false)
 const erreurEnvoi = ref('')
@@ -68,6 +71,10 @@ const inscrire = async () => {
   soumis.value = true
   erreurEnvoi.value = ''
   if (!formulaireValide.value) return
+  if (captcha.value?.requis && !jetonCaptcha.value) {
+    erreurEnvoi.value = 'Patientez pendant la vérification anti-robot, juste au-dessus du bouton.'
+    return
+  }
 
   envoiEnCours.value = true
   const resultat = await citoyenStore.inscrire({
@@ -75,12 +82,15 @@ const inscrire = async () => {
     email: formulaire.email.trim(),
     telephone: normaliserTelephone(formulaire.telephone),
     motDePasse: formulaire.motDePasse,
-    site_web: siteWeb.value
+    site_web: siteWeb.value,
+    captcha: jetonCaptcha.value
   })
   if (resultat.succes) {
     router.push(resultat.emailAConfirmer ? { name: 'verifier-email' } : { name: 'mes-signalements' })
   } else {
     erreurEnvoi.value = resultat.erreur
+    // Le jeton a été consommé par le serveur : il en faut un nouveau pour réessayer.
+    captcha.value?.reinitialiser()
   }
   envoiEnCours.value = false
 }
@@ -201,6 +211,8 @@ const inscrire = async () => {
               <label for="inscription-site-web">Site web</label>
               <input id="inscription-site-web" v-model="siteWeb" type="text" tabindex="-1" autocomplete="off" />
             </div>
+
+            <CaptchaTurnstile ref="captcha" v-model="jetonCaptcha" />
 
             <div v-if="erreurEnvoi" class="alert alert-danger py-2 mt-3 mb-0">{{ erreurEnvoi }}</div>
 

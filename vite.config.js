@@ -6,7 +6,9 @@ export default defineConfig({
   plugins: [vue()],
   server: {
     proxy: {
-      '/api': 'http://localhost:3001'
+      '/api': 'http://localhost:3001',
+      // Photos stockées sur le disque en local (voir server/storage.js).
+      '/uploads': 'http://localhost:3001'
     }
   }
 })

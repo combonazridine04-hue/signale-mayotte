@@ -20,7 +20,10 @@ const adminsRouter = (await import('./routes/admins.js')).default
 const partenairesRouter = (await import('./routes/partenaires.js')).default
 const moderationRouter = (await import('./routes/moderation.js')).default
 const notificationsRouter = (await import('./routes/notifications.js')).default
+const journalRouter = (await import('./routes/journal.js')).default
+const { configurationPublique: configurationCaptcha } = await import('./captcha.js')
 const { verifierOrigine } = await import('./middleware/verifierOrigine.js')
+const { stockageLocal, DOSSIER_UPLOADS } = await import('./storage.js')
 const { precharger: prechargerModerationPhotos } = await import('./moderation.js')
 prechargerModerationPhotos()
 
@@ -42,8 +45,11 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        // Bootstrap est désormais servi par le site : plus aucun script tiers autorisé.
-        scriptSrc: ["'self'"],
+        // Bootstrap est servi par le site. Seule exception : le widget anti-robot de
+        // Cloudflare (Turnstile), qui doit être chargé depuis Cloudflare pour être fiable.
+        scriptSrc: ["'self'", 'https://challenges.cloudflare.com'],
+        // Le widget s'affiche dans un cadre (iframe) servi par Cloudflare.
+        frameSrc: ['https://challenges.cloudflare.com'],
         // Plus aucune police chargée chez Google : tout vient du site.
         styleSrc: ["'self'", "'unsafe-inline'"],
         fontSrc: ["'self'"],
@@ -101,9 +107,27 @@ app.use('/api', moderationRouter)
 app.use('/api', notificationsRouter)
 app.use('/api', adminsRouter)
 app.use('/api', partenairesRouter)
+app.use('/api', journalRouter)
+// Publique : le formulaire doit savoir s'il affiche le widget anti-robot, et avec quelle clé.
+app.get('/api/captcha', (req, res) => res.json(configurationCaptcha()))
 // Route d'API inconnue : une réponse JSON explicite, plutôt que la page d'accueil du
 // site renvoyée par le filet ci-dessous avec un statut 200 trompeur.
 app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue.' }))
+
+// Photos rangées sur le disque (mode local, sans Supabase : voir storage.js). Ce sont
+// des images réencodées par sharp, aux noms générés par le serveur. Par précaution, le
+// navigateur ne doit jamais les traiter comme une page : aucun script, aucun contenu actif.
+if (stockageLocal) {
+  app.use(
+    '/uploads',
+    express.static(DOSSIER_UPLOADS, {
+      dotfiles: 'deny',
+      index: false,
+      fallthrough: false,
+      setHeaders: (res) => res.set('Content-Security-Policy', "default-src 'none'; sandbox")
+    })
+  )
+}
 
 const distDir = path.join(__dirname, '..', 'dist')
 

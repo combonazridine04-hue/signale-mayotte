@@ -9,7 +9,7 @@ import { AUTEUR_SUPPRIME } from './signalements/representation.js'
 
 export async function motDePasseCorrect(utilisateurId, motDePasse) {
   if (typeof motDePasse !== 'string' || !motDePasse) return false
-  const { rows } = await db.query('SELECT mot_de_passe_hash FROM utilisateurs WHERE id = $1', [utilisateurId])
+  const { rows } = await db.query('SELECT mot_de_passe_hash FROM utilisateurs WHERE id = ?', [utilisateurId])
   if (!rows[0]) return false
   return bcrypt.compare(motDePasse, rows[0].mot_de_passe_hash)
 }
@@ -31,7 +31,7 @@ export async function effacerCompte(utilisateurId, { avecContenus = false } = {}
   try {
     await client.query('BEGIN')
 
-    const { rows } = await client.query('SELECT avatar_url FROM utilisateurs WHERE id = $1 FOR UPDATE', [utilisateurId])
+    const { rows } = await client.query('SELECT avatar_url FROM utilisateurs WHERE id = ? FOR UPDATE', [utilisateurId])
     if (!rows[0]) {
       await client.query('ROLLBACK')
       return false
@@ -42,22 +42,22 @@ export async function effacerCompte(utilisateurId, { avecContenus = false } = {}
       // Les soutiens, commentaires, mises à jour et notifications liés à ces
       // signalements partent avec eux (ON DELETE CASCADE).
       const { rows: supprimes } = await client.query(
-        'DELETE FROM signalements WHERE utilisateur_id = $1 RETURNING photos, photo_resolution',
+        'DELETE FROM signalements WHERE utilisateur_id = ? RETURNING photos, photo_resolution',
         [utilisateurId]
       )
       for (const s of supprimes) photos.push(...(s.photos || []), s.photo_resolution)
-      await client.query('DELETE FROM commentaires WHERE utilisateur_id = $1', [utilisateurId])
+      await client.query('DELETE FROM commentaires WHERE utilisateur_id = ?', [utilisateurId])
     } else {
-      await client.query('UPDATE signalements SET email_contact = NULL WHERE utilisateur_id = $1', [utilisateurId])
-      await client.query('UPDATE commentaires SET auteur = $2 WHERE utilisateur_id = $1', [
-        utilisateurId,
-        AUTEUR_SUPPRIME
+      await client.query('UPDATE signalements SET email_contact = NULL WHERE utilisateur_id = ?', [utilisateurId])
+      await client.query('UPDATE commentaires SET auteur = ? WHERE utilisateur_id = ?', [
+        AUTEUR_SUPPRIME,
+        utilisateurId
       ])
     }
 
     // Le reste suit les clés étrangères : notifications supprimées (CASCADE) ; soutiens,
     // signalements restants, commentaires et signalements d'abus détachés (SET NULL).
-    await client.query('DELETE FROM utilisateurs WHERE id = $1', [utilisateurId])
+    await client.query('DELETE FROM utilisateurs WHERE id = ?', [utilisateurId])
     await client.query('COMMIT')
   } catch (e) {
     await client.query('ROLLBACK')
@@ -77,7 +77,7 @@ export async function exporterDonnees(utilisateurId) {
   const [profil] = await requete(
     `SELECT nom, email, telephone, pseudo, avatar_url AS photo_de_profil, email_verifie,
             cree_le AS compte_cree_le, derniere_connexion
-     FROM utilisateurs WHERE id = $1`
+     FROM utilisateurs WHERE id = ?`
   )
   if (!profil) return null
 
@@ -88,22 +88,22 @@ export async function exporterDonnees(utilisateurId) {
     signalements: await requete(
       `SELECT id, categorie, commune, description, photos, statut, urgent, latitude, longitude,
               email_contact AS email_de_suivi, nb_soutiens, date_signalement, date_modification, date_resolution
-       FROM signalements WHERE utilisateur_id = $1 ORDER BY date_signalement`
+       FROM signalements WHERE utilisateur_id = ? ORDER BY date_signalement`
     ),
     commentaires: await requete(
       `SELECT id, signalement_id, parent_id AS en_reponse_a, texte, date_creation
-       FROM commentaires WHERE utilisateur_id = $1 ORDER BY date_creation`
+       FROM commentaires WHERE utilisateur_id = ? ORDER BY date_creation`
     ),
     soutiens: await requete(
-      'SELECT signalement_id, date_soutien FROM soutiens WHERE utilisateur_id = $1 ORDER BY date_soutien'
+      'SELECT signalement_id, date_soutien FROM soutiens WHERE utilisateur_id = ? ORDER BY date_soutien'
     ),
     contenus_signales_a_la_moderation: await requete(
       `SELECT type, cible_id, motif, date_creation
-       FROM signalements_abus WHERE utilisateur_id = $1 ORDER BY date_creation`
+       FROM signalements_abus WHERE utilisateur_id = ? ORDER BY date_creation`
     ),
     notifications: await requete(
       `SELECT signalement_id, texte, lue, date_creation
-       FROM notifications WHERE utilisateur_id = $1 ORDER BY date_creation`
+       FROM notifications WHERE utilisateur_id = ? ORDER BY date_creation`
     )
   }
 }
@@ -114,6 +114,6 @@ export async function mettreAJourNom(utilisateurId, nom) {
   const valeur = typeof nom === 'string' ? nom.trim() : ''
   if (valeur.length < 2) return { erreur: 'Le nom doit contenir au moins 2 caractères.' }
   if (valeur.length > 100) return { erreur: 'Le nom ne doit pas dépasser 100 caractères.' }
-  await db.query('UPDATE utilisateurs SET nom = $1 WHERE id = $2', [valeur, utilisateurId])
+  await db.query('UPDATE utilisateurs SET nom = ? WHERE id = ?', [valeur, utilisateurId])
   return { nom: valeur }
 }

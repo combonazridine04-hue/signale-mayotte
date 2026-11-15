@@ -2,14 +2,15 @@ import { writeFileSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { chromium } from 'playwright-chromium'
-import { preparerEnvironnementTest } from '../../server/tests/environnementTest.js'
+import { preparerAdminTest, preparerEnvironnementTest } from '../../server/tests/environnementTest.js'
 
 // Base, stockage des photos et emails isolés : même garde que les tests d'API, un seul module.
 preparerEnvironnementTest()
 
 const { app } = await import('../../server/index.js')
 const { db, reinitialiserDonneesDemo } = await import('../../server/db.js')
-await reinitialiserDonneesDemo()
+await reinitialiserDonneesDemo({ viderStockage: true })
+await preparerAdminTest(db)
 const serveur = app.listen(0)
 await new Promise((resolve) => serveur.once('listening', resolve))
 const port = serveur.address().port

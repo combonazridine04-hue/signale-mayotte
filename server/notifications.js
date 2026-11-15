@@ -7,7 +7,7 @@ export async function creerNotification(utilisateurId, { signalementId = null, t
 
   try {
     await db.query(
-      'INSERT INTO notifications (utilisateur_id, signalement_id, texte, date_creation) VALUES ($1, $2, $3, $4)',
+      'INSERT INTO notifications (utilisateur_id, signalement_id, texte, date_creation) VALUES (?, ?, ?, ?)',
       [utilisateurId, signalementId, texte, new Date().toISOString()]
     )
   } catch (e) {
@@ -21,9 +21,9 @@ export async function listerNotifications(utilisateurId, limite = 30) {
   const { rows } = await db.query(
     `SELECT id, signalement_id, texte, lue, date_creation
      FROM notifications
-     WHERE utilisateur_id = $1
+     WHERE utilisateur_id = ?
      ORDER BY date_creation DESC
-     LIMIT $2`,
+     LIMIT ?`,
     [utilisateurId, limite]
   )
   return rows.map((r) => ({
@@ -36,13 +36,12 @@ export async function listerNotifications(utilisateurId, limite = 30) {
 }
 
 export async function compterNonLues(utilisateurId) {
-  const { rows } = await db.query(
-    'SELECT COUNT(*)::int AS n FROM notifications WHERE utilisateur_id = $1 AND lue = false',
-    [utilisateurId]
-  )
+  const { rows } = await db.query('SELECT COUNT(*) AS n FROM notifications WHERE utilisateur_id = ? AND lue = FALSE', [
+    utilisateurId
+  ])
   return rows[0].n
 }
 
 export async function marquerToutesLues(utilisateurId) {
-  await db.query('UPDATE notifications SET lue = true WHERE utilisateur_id = $1 AND lue = false', [utilisateurId])
+  await db.query('UPDATE notifications SET lue = TRUE WHERE utilisateur_id = ? AND lue = FALSE', [utilisateurId])
 }

@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
 import PanneauAide from '../components/PanneauAide.vue'
+import CaptchaTurnstile from '../components/CaptchaTurnstile.vue'
 import logo from '../assets/img/logo.svg'
 
 // C'est la page où les gens se retrouvent bloqués. Chaque point correspond à une
@@ -32,12 +33,26 @@ const citoyenStore = useCitoyenStore()
 const email = ref('')
 const envoiEnCours = ref(false)
 const envoye = ref(false)
+const erreur = ref('')
+const captcha = ref(null)
+const jetonCaptcha = ref('')
 
 const envoyer = async () => {
+  erreur.value = ''
+  if (captcha.value?.requis && !jetonCaptcha.value) {
+    erreur.value = 'Patientez pendant la vérification anti-robot, juste au-dessus du bouton.'
+    return
+  }
+
   envoiEnCours.value = true
-  await citoyenStore.demanderReinitialisationMotDePasse(email.value.trim())
+  const resultat = await citoyenStore.demanderReinitialisationMotDePasse(email.value.trim(), jetonCaptcha.value)
   envoiEnCours.value = false
-  envoye.value = true
+  if (resultat.succes) {
+    envoye.value = true
+  } else {
+    erreur.value = resultat.erreur
+    captcha.value?.reinitialiser()
+  }
 }
 </script>
 
@@ -91,6 +106,10 @@ const envoyer = async () => {
                   class="form-control"
                 />
               </div>
+
+              <CaptchaTurnstile ref="captcha" v-model="jetonCaptcha" />
+
+              <div v-if="erreur" class="alert alert-danger py-2 mb-0">{{ erreur }}</div>
 
               <button type="submit" class="btn btn-primary btn-lg w-100 mt-2" :disabled="envoiEnCours">
                 {{ envoiEnCours ? 'Envoi...' : 'Envoyer le lien' }}

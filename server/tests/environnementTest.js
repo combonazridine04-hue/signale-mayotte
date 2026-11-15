@@ -11,6 +11,23 @@ import { fileURLToPath } from 'node:url'
 
 export const BUCKET_TESTS = 'signalement-photos-tests'
 
+// Le serveur ne crée le compte admin que si la table est vide : une base de test plus
+// ancienne garde donc l'admin créé avec l'ANCIEN mot de passe du .env, et toute connexion
+// admin des tests échoue (401). On réaligne ce compte sur le .env actuel, sans double
+// authentification (un test l'active, un autre test ne doit pas en hériter). Appelé
+// uniquement sur la base de test, après preparerEnvironnementTest().
+export async function preparerAdminTest(db) {
+  const bcrypt = (await import('bcryptjs')).default
+  const hash = await bcrypt.hash(process.env.ADMIN_MOT_DE_PASSE, 10)
+  await db.query(
+    `INSERT INTO admins (identifiant, mot_de_passe_hash, cree_le) VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       mot_de_passe_hash = VALUES(mot_de_passe_hash),
+       totp_secret = NULL, totp_secret_attente = NULL, totp_dernier_pas = NULL`,
+    [process.env.ADMIN_IDENTIFIANT, hash, new Date().toISOString()]
+  )
+}
+
 export function preparerEnvironnementTest() {
   const racine = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
   try {
@@ -41,4 +58,13 @@ export function preparerEnvironnementTest() {
   for (const cle of ['BREVO_API_KEY', 'BREVO_EXPEDITEUR', 'RESEND_API_KEY', 'RESEND_FROM']) {
     delete process.env[cle]
   }
+
+  // 4. Journal NoSQL (NeDB) : les tests le vident. Ils écrivent donc dans leur propre
+  // fichier, jamais dans le vrai journal (server/data/journal/journal-activite.db).
+  process.env.JOURNAL_FICHIER = 'journal-test.db'
+
+  // 5. Captcha : les tests appellent l'API sans navigateur, donc sans widget. Ils
+  // vérifient la protection séparément (server/tests/unitaires/captcha.test.js).
+  delete process.env.TURNSTILE_SITE_KEY
+  delete process.env.TURNSTILE_SECRET_KEY
 }

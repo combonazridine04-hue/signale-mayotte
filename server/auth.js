@@ -12,7 +12,7 @@ const DUREE_SESSION_MS = 12 * 60 * 60 * 1000 // 12h
 //        | { type: 'partenaire', partenaireId, nom, commune, expiration }
 const sessions = new Map()
 
-const { rows } = await db.query('SELECT COUNT(*)::int AS count FROM admins')
+const { rows } = await db.query('SELECT COUNT(*) AS count FROM admins')
 if (rows[0].count === 0) {
   const identifiant = process.env.ADMIN_IDENTIFIANT
   const motDePasse = process.env.ADMIN_MOT_DE_PASSE
@@ -24,7 +24,7 @@ if (rows[0].count === 0) {
   }
 
   const hash = await bcrypt.hash(motDePasse, 12)
-  await db.query('INSERT INTO admins (identifiant, mot_de_passe_hash, cree_le) VALUES ($1, $2, $3)', [
+  await db.query('INSERT INTO admins (identifiant, mot_de_passe_hash, cree_le) VALUES (?, ?, ?)', [
     identifiant,
     hash,
     new Date().toISOString()
@@ -34,7 +34,7 @@ if (rows[0].count === 0) {
 export async function verifierIdentifiants(identifiant, motDePasse) {
   if (typeof identifiant !== 'string' || typeof motDePasse !== 'string') return null
 
-  const { rows } = await db.query('SELECT * FROM admins WHERE identifiant = $1', [identifiant])
+  const { rows } = await db.query('SELECT * FROM admins WHERE identifiant = ?', [identifiant])
   const admin = rows[0]
   if (!admin) {
     // Coût de calcul similaire à une vraie vérification, pour ne pas fuiter
@@ -60,8 +60,8 @@ export async function consommerCodeAdmin(adminId, secret, dernierPas, code) {
   const pas = verifierCode(secret, code, { dernierPasUtilise: dernierPas })
   if (pas === null) return false
   const { rowCount } = await db.query(
-    'UPDATE admins SET totp_dernier_pas = $1 WHERE id = $2 AND (totp_dernier_pas IS NULL OR totp_dernier_pas < $1)',
-    [pas, adminId]
+    'UPDATE admins SET totp_dernier_pas = ? WHERE id = ? AND (totp_dernier_pas IS NULL OR totp_dernier_pas < ?)',
+    [pas, adminId, pas]
   )
   return rowCount === 1
 }
@@ -144,7 +144,7 @@ export function revoquerSessionsPartenaire(partenaireId) {
 export async function verifierIdentifiantsPartenaire(identifiant, motDePasse) {
   if (typeof identifiant !== 'string' || typeof motDePasse !== 'string') return null
 
-  const { rows } = await db.query('SELECT * FROM partenaires WHERE identifiant = $1', [identifiant])
+  const { rows } = await db.query('SELECT * FROM partenaires WHERE identifiant = ?', [identifiant])
   const partenaire = rows[0]
   if (!partenaire) {
     // Même précaution que pour les admins : un temps de réponse identique, qu'un compte
@@ -158,7 +158,7 @@ export async function verifierIdentifiantsPartenaire(identifiant, motDePasse) {
 
   // « Nouveaux » = arrivés depuis sa connexion précédente (ou depuis la création du compte).
   const depuis = partenaire.derniere_connexion || partenaire.cree_le
-  await db.query('UPDATE partenaires SET derniere_connexion = $1 WHERE id = $2', [
+  await db.query('UPDATE partenaires SET derniere_connexion = ? WHERE id = ?', [
     new Date().toISOString(),
     partenaire.id
   ])
@@ -236,17 +236,17 @@ export async function inscrireUtilisateur({ nom, email, telephone, motDePasse })
   // Un code de vérification à 6 chiffres est généré dès l'inscription si un email est fourni ;
   // le compte reste utilisable normalement, seul l'envoi d'un signalement l'exigera.
   const codeVerification = emailNormalise ? genererCodeVerification() : null
-  const codeExpiration = codeVerification ? new Date(Date.now() + DUREE_CODE_VERIFICATION_MS).toISOString() : null
+  const codeExpiration = codeVerification ? new Date(Date.now() + DUREE_CODE_VERIFICATION_MS) : null
 
   try {
     const { rows } = await db.query(
       `INSERT INTO utilisateurs (nom, email, telephone, mot_de_passe_hash, cree_le, token_verification, token_verification_expire)
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, nom, email, telephone, email_verifie`,
+       VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id, nom, email, telephone, email_verifie`,
       [nom.trim(), emailNormalise, telephoneNormalise, hash, creeLe, codeVerification, codeExpiration]
     )
     return { utilisateur: rows[0], codeVerification }
   } catch (e) {
-    if (e.code === '23505') {
+    if (e.code === 'ER_DUP_ENTRY') {
       return { erreur: 'Un compte existe déjà avec cet email ou ce numéro.' }
     }
     throw e
@@ -257,23 +257,24 @@ export async function inscrireUtilisateur({ nom, email, telephone, motDePasse })
 // avec seulement 6 chiffres, plusieurs comptes pourraient en théorie partager le même).
 export async function confirmerEmailUtilisateur(utilisateurId, code) {
   if (!code) return false
-  const { rows } = await db.query(
-    `UPDATE utilisateurs SET email_verifie = true, token_verification = NULL, token_verification_expire = NULL
-     WHERE id = $1 AND token_verification = $2 AND token_verification_expire > NOW() RETURNING id`,
+  // UTC_TIMESTAMP() : l'expiration est enregistrée en UTC (voir db.js).
+  const { rowCount } = await db.query(
+    `UPDATE utilisateurs SET email_verifie = TRUE, token_verification = NULL, token_verification_expire = NULL
+     WHERE id = ? AND token_verification = ? AND token_verification_expire > UTC_TIMESTAMP()`,
     [utilisateurId, code]
   )
-  return rows.length > 0
+  return rowCount > 0
 }
 
 // Renvoie { code, email, nom } pour un nouvel envoi, ou null si déjà vérifié / pas d'email / compte introuvable.
 export async function regenererTokenVerification(utilisateurId) {
-  const { rows } = await db.query('SELECT email, nom, email_verifie FROM utilisateurs WHERE id = $1', [utilisateurId])
+  const { rows } = await db.query('SELECT email, nom, email_verifie FROM utilisateurs WHERE id = ?', [utilisateurId])
   const utilisateur = rows[0]
   if (!utilisateur || !utilisateur.email || utilisateur.email_verifie) return null
 
   const code = genererCodeVerification()
-  const expiration = new Date(Date.now() + DUREE_CODE_VERIFICATION_MS).toISOString()
-  await db.query('UPDATE utilisateurs SET token_verification = $1, token_verification_expire = $2 WHERE id = $3', [
+  const expiration = new Date(Date.now() + DUREE_CODE_VERIFICATION_MS)
+  await db.query('UPDATE utilisateurs SET token_verification = ?, token_verification_expire = ? WHERE id = ?', [
     code,
     expiration,
     utilisateurId
@@ -289,16 +290,17 @@ export async function genererTokenReinitialisation(email) {
   const emailNormalise = normaliserEmail(email)
   if (!emailNormalise) return null
 
-  const { rows } = await db.query('SELECT id, nom FROM utilisateurs WHERE LOWER(email) = $1', [emailNormalise])
+  const { rows } = await db.query('SELECT id, nom FROM utilisateurs WHERE LOWER(email) = ?', [emailNormalise])
   const utilisateur = rows[0]
   if (!utilisateur) return null
 
   const token = randomBytes(24).toString('hex')
-  const expiration = new Date(Date.now() + DUREE_TOKEN_REINITIALISATION_MS).toISOString()
-  await db.query(
-    'UPDATE utilisateurs SET token_reinitialisation = $1, token_reinitialisation_expire = $2 WHERE id = $3',
-    [token, expiration, utilisateur.id]
-  )
+  const expiration = new Date(Date.now() + DUREE_TOKEN_REINITIALISATION_MS)
+  await db.query('UPDATE utilisateurs SET token_reinitialisation = ?, token_reinitialisation_expire = ? WHERE id = ?', [
+    token,
+    expiration,
+    utilisateur.id
+  ])
   return { token, nom: utilisateur.nom, email: emailNormalise }
 }
 
@@ -307,7 +309,7 @@ export async function reinitialiserMotDePasse(token, nouveauMotDePasse) {
   if (!token || !nouveauMotDePasse || nouveauMotDePasse.length < 8) return false
 
   const { rows } = await db.query(
-    'SELECT id FROM utilisateurs WHERE token_reinitialisation = $1 AND token_reinitialisation_expire > NOW()',
+    'SELECT id FROM utilisateurs WHERE token_reinitialisation = ? AND token_reinitialisation_expire > UTC_TIMESTAMP()',
     [token]
   )
   const utilisateur = rows[0]
@@ -315,7 +317,7 @@ export async function reinitialiserMotDePasse(token, nouveauMotDePasse) {
 
   const hash = await bcrypt.hash(nouveauMotDePasse, 12)
   await db.query(
-    'UPDATE utilisateurs SET mot_de_passe_hash = $1, token_reinitialisation = NULL, token_reinitialisation_expire = NULL WHERE id = $2',
+    'UPDATE utilisateurs SET mot_de_passe_hash = ?, token_reinitialisation = NULL, token_reinitialisation_expire = NULL WHERE id = ?',
     [hash, utilisateur.id]
   )
   revoquerSessionsUtilisateur(utilisateur.id)
@@ -332,7 +334,7 @@ export async function verifierIdentifiantsUtilisateur(identifiant, motDePasse) {
   const numeroCanonique = normaliserTelephone(identifiant)
   if (numeroCanonique && !numeros.includes(numeroCanonique)) numeros.push(numeroCanonique)
 
-  const { rows } = await db.query('SELECT * FROM utilisateurs WHERE LOWER(email) = $1 OR telephone = ANY($2::text[])', [
+  const { rows } = await db.query('SELECT * FROM utilisateurs WHERE LOWER(email) = ? OR telephone IN (?)', [
     valeur,
     numeros
   ])
@@ -361,7 +363,7 @@ const REGEX_PSEUDO = /^[a-zA-Z0-9 _-]{2,24}$/
 
 export async function recupererProfil(utilisateurId) {
   const { rows } = await db.query(
-    'SELECT nom, email, telephone, pseudo, avatar_url, email_verifie, cree_le FROM utilisateurs WHERE id = $1',
+    'SELECT nom, email, telephone, pseudo, avatar_url, email_verifie, cree_le FROM utilisateurs WHERE id = ?',
     [utilisateurId]
   )
   const utilisateur = rows[0]
@@ -380,17 +382,17 @@ export async function recupererProfil(utilisateurId) {
 // Contributions du citoyen, affichées sur sa page profil.
 export async function recupererStatsUtilisateur(utilisateurId) {
   const { rows } = await db.query(
-    `SELECT COUNT(*)::int AS signalements,
-            COUNT(*) FILTER (WHERE statut = 'Résolu')::int AS resolus,
-            COALESCE(SUM(nb_soutiens), 0)::int AS soutiens
-     FROM signalements WHERE utilisateur_id = $1`,
+    `SELECT COUNT(*) AS signalements,
+            COALESCE(SUM(statut = 'Résolu'), 0) AS resolus,
+            COALESCE(SUM(nb_soutiens), 0) AS soutiens
+     FROM signalements WHERE utilisateur_id = ?`,
     [utilisateurId]
   )
   return rows[0]
 }
 
 export async function mettreAJourAvatar(utilisateurId, avatarUrl) {
-  await db.query('UPDATE utilisateurs SET avatar_url = $1 WHERE id = $2', [avatarUrl, utilisateurId])
+  await db.query('UPDATE utilisateurs SET avatar_url = ? WHERE id = ?', [avatarUrl, utilisateurId])
 }
 
 // Renvoie { erreur } ou { pseudo }. Le pseudo est ce qui est affiché publiquement
@@ -402,6 +404,6 @@ export async function mettreAJourPseudo(utilisateurId, pseudo) {
     return { erreur: 'Le pseudo doit contenir entre 2 et 24 caractères (lettres, chiffres, espaces, - ou _).' }
   }
 
-  await db.query('UPDATE utilisateurs SET pseudo = $1 WHERE id = $2', [valeur || null, utilisateurId])
+  await db.query('UPDATE utilisateurs SET pseudo = ? WHERE id = ?', [valeur || null, utilisateurId])
   return { pseudo: valeur || null }
 }

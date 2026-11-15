@@ -11,6 +11,7 @@ import { STATUTS, COMMUNES, CATEGORIES } from '../../models/signalement.js'
 import { apiFetch } from '../../utils/api.js'
 import FilterBar from '../../components/FilterBar.vue'
 import ChampMotDePasse from '../../components/ChampMotDePasse.vue'
+import JournalActivite from '../../components/JournalActivite.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -515,6 +516,25 @@ const changerStatut = async (id, statut) => {
           Modération
           <span v-if="signalementsAbus.length" class="admin-nav-badge">{{ signalementsAbus.length }}</span>
         </button>
+        <button
+          type="button"
+          class="admin-nav-item"
+          :class="{ active: section === 'journal' }"
+          @click="choisirSection('journal')"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.8"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M6 3h9l4 4v14H6z" />
+            <path d="M9 11h7M9 15h7M9 7h3" />
+          </svg>
+          Journal
+        </button>
       </nav>
 
       <div class="admin-sidebar-footer">
@@ -534,7 +554,8 @@ const changerStatut = async (id, statut) => {
               messages: 'Messages',
               comptes: 'Comptes',
               partenaires: 'Partenaires',
-              moderation: 'Modération'
+              moderation: 'Modération',
+              journal: "Journal d'activité"
             }[section]
           }}
         </h1>
@@ -855,6 +876,8 @@ const changerStatut = async (id, statut) => {
             </div>
           </div>
         </div>
+
+        <JournalActivite v-else-if="section === 'journal'" />
 
         <div v-else-if="section === 'comptes'" class="d-flex flex-column gap-4">
           <div class="admin-panel">

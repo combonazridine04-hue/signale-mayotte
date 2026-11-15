@@ -5,7 +5,7 @@
   "description": "Plateforme citoyenne de signalement des problèmes du quotidien dans les communes de Mayotte.",
   "type": "module",
   "engines": {
-    "node": ">=20.12.0"
+    "node": ">=20.19.0"
   },
   "scripts": {
     "dev": "concurrently \"npm:dev:client\" \"npm:server\"",
@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@fontsource/inter": "^5.3.0",
+    "@seald-io/nedb": "^4.1.2",
     "@supabase/supabase-js": "^2.112.3",
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
@@ -35,8 +36,8 @@
     "helmet": "^8.3.0",
     "leaflet": "^1.9.4",
     "multer": "^2.2.0",
+    "mysql2": "^3.24.6",
     "nsfwjs": "^4.3.0",
-    "pg": "^8.23.0",
     "pinia": "^3.0.4",
     "qrcode": "^1.5.4",
     "sharp": "^0.35.3",

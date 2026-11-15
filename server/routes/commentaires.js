@@ -26,7 +26,7 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
   let auteur = `Admin (${req.admin?.identifiant})`
   let auteurAvatarUrl = null
   if (req.utilisateur) {
-    const { rows } = await db.query('SELECT nom, pseudo, avatar_url FROM utilisateurs WHERE id = $1', [
+    const { rows } = await db.query('SELECT nom, pseudo, avatar_url FROM utilisateurs WHERE id = ?', [
       req.utilisateur.id
     ])
     auteur = rows[0]?.pseudo || nomPublic(rows[0]?.nom || req.utilisateur.nom)
@@ -41,7 +41,7 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
   }
 
   const { rows: existant } = await db.query(
-    'SELECT id, categorie, commune, utilisateur_id FROM signalements WHERE id = $1',
+    'SELECT id, categorie, commune, utilisateur_id FROM signalements WHERE id = ?',
     [id]
   )
   if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
@@ -56,7 +56,7 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
       `SELECT c.id, c.parent_id, c.utilisateur_id, u.email AS email_auteur, u.email_verifie
        FROM commentaires c
        LEFT JOIN utilisateurs u ON u.id = c.utilisateur_id
-       WHERE c.id = $1 AND c.signalement_id = $2`,
+       WHERE c.id = ? AND c.signalement_id = ?`,
       [Number(parentId), id]
     )
     if (!parents.length) return res.status(400).json({ erreur: 'Commentaire introuvable.' })
@@ -68,7 +68,7 @@ router.post('/signalements/:id/commentaires', requireAuthUtilisateur, limiteurCo
   const parentFinal = parent ? parent.parent_id || parent.id : null
 
   const { rows } = await db.query(
-    'INSERT INTO commentaires (signalement_id, auteur, texte, date_creation, utilisateur_id, parent_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+    'INSERT INTO commentaires (signalement_id, auteur, texte, date_creation, utilisateur_id, parent_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING *',
     [id, auteur, texte.trim(), new Date().toISOString(), req.utilisateur?.id || null, parentFinal]
   )
 
@@ -112,7 +112,7 @@ router.delete('/signalements/:id/commentaires/:commentaireId', requireAuthUtilis
   const commentaireId = Number(req.params.commentaireId)
   const signalementId = Number(req.params.id)
 
-  const { rows } = await db.query('SELECT utilisateur_id FROM commentaires WHERE id = $1 AND signalement_id = $2', [
+  const { rows } = await db.query('SELECT utilisateur_id FROM commentaires WHERE id = ? AND signalement_id = ?', [
     commentaireId,
     signalementId
   ])
@@ -123,7 +123,7 @@ router.delete('/signalements/:id/commentaires/:commentaireId', requireAuthUtilis
     return res.status(403).json({ erreur: 'Vous ne pouvez supprimer que vos propres commentaires.' })
   }
 
-  await db.query('DELETE FROM commentaires WHERE id = $1', [commentaireId])
+  await db.query('DELETE FROM commentaires WHERE id = ?', [commentaireId])
   res.status(204).end()
 })
 

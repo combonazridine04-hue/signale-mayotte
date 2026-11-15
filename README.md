@@ -20,22 +20,24 @@ L'identité des contributeurs n'est jamais affichée : un pseudo, ou à défaut 
 
 ## Stack
 
-|                 | Technologies                                                                             |
-| --------------- | ---------------------------------------------------------------------------------------- |
-| **Front**       | Vue 3 (`<script setup>`), Vue Router, Pinia, Vite, Bootstrap 5, Leaflet, Three.js        |
-| **Back**        | Node.js, Express 5, `pg`, bcryptjs, helmet, express-rate-limit, multer, sharp            |
-| **Données**     | PostgreSQL (Supabase), Supabase Storage pour les photos                                  |
-| **Services**    | Brevo (emails, par API HTTPS), MapTiler (fonds de carte), nsfwjs (modération des photos) |
-| **Qualité**     | ESLint, Prettier, EditorConfig, GitHub Actions                                           |
-| **Hébergement** | Render                                                                                   |
+|                 | Technologies                                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| **Front**       | Vue 3 (`<script setup>`), Vue Router, Pinia, Vite, Bootstrap 5, Leaflet, Three.js                                           |
+| **Back**        | Node.js, Express 5, `mysql2`, bcryptjs, helmet, express-rate-limit, multer, sharp                                           |
+| **Données**     | MariaDB (données métier, SQL), NeDB (journal d'activité, NoSQL), photos sur disque (Supabase Storage en production)         |
+| **Services**    | Brevo (emails, par API HTTPS), MapTiler (fonds de carte), nsfwjs (modération des photos), Cloudflare Turnstile (anti-robot) |
+| **Qualité**     | ESLint, Prettier, EditorConfig, GitHub Actions                                                                              |
+| **Hébergement** | Render                                                                                                                      |
 
 ## Architecture
 
 ```
-Navigateur ──HTTP/JSON──▶ Express ──▶ PostgreSQL
+Navigateur ──HTTP/JSON──▶ Express ──▶ MariaDB           (données métier, SQL)
   (Vue 3)                    │
+                             ├──▶ NeDB              (journal d'activité, NoSQL, fichier local)
                              ├──▶ Supabase Storage  (photos)
-                             └──▶ API Brevo         (emails)
+                             ├──▶ API Brevo         (emails)
+                             └──▶ Turnstile         (anti-robot, optionnel)
 ```
 
 En production, un seul service Node.js sert l'API **et** le front compilé : même origine, donc aucune configuration CORS.
@@ -46,8 +48,9 @@ server/
 ├── routes/             un routeur par ressource (signalements, commentaires, auth…)
 ├── signalements/       contrôles d'accès, conversion des données, photos
 ├── middleware/         authentification, limites de débit
-├── db.js               connexion PostgreSQL et schéma
-└── auth.js, mailer.js, storage.js, moderation.js…
+├── db.js               connexion MariaDB et schéma
+├── journal.js          journal d'activité (NeDB, NoSQL)
+└── auth.js, captcha.js, mailer.js, storage.js, moderation.js…
 src/
 ├── views/              écrans
 ├── components/         composants réutilisables
@@ -60,7 +63,21 @@ Le dossier `shared/` garantit qu'une règle de validation, écrite une seule foi
 
 ## Démarrage
 
-**Prérequis :** Node.js 20.12 ou plus récent, un projet [Supabase](https://supabase.com) (base PostgreSQL et stockage).
+**Prérequis :** Node.js 20.19 ou plus récent, MariaDB installé sur le PC. Aucun service en ligne n'est nécessaire en développement : sans clés Supabase dans `.env`, les photos sont enregistrées sur le disque (`server/data/uploads/`).
+
+Créer les deux bases (développement et tests) et le compte de l'application, en `root` (par exemple dans DBeaver) :
+
+```sql
+CREATE DATABASE signale_mayotte CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE signale_mayotte_test CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'signale'@'localhost' IDENTIFIED BY 'un-mot-de-passe-long';
+GRANT ALL PRIVILEGES ON signale_mayotte.* TO 'signale'@'localhost';
+GRANT ALL PRIVILEGES ON signale_mayotte_test.* TO 'signale'@'localhost';
+```
+
+Puis, dans `.env` : `DATABASE_URL=mysql://signale:un-mot-de-passe-long@localhost:3306/signale_mayotte` (et `TEST_DATABASE_URL` vers `signale_mayotte_test`).
+
+Les tables se créent seules au premier démarrage. Pour consulter la base : dans DBeaver, connexion MariaDB `localhost:3306`, base `signale_mayotte`, utilisateur `signale`.
 
 ```bash
 npm install
@@ -78,8 +95,8 @@ Toutes les variables sont décrites dans [`.env.example`](.env.example). Les pri
 
 | Variable                                    | Rôle                                                              |
 | ------------------------------------------- | ----------------------------------------------------------------- |
-| `DATABASE_URL`                              | Connexion PostgreSQL — **obligatoire**                            |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Stockage des photos — **obligatoires**                            |
+| `DATABASE_URL`                              | Connexion MariaDB (`mysql://…`) — **obligatoire**                 |
+| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Photos sur Supabase (production) ; vides = photos sur le disque   |
 | `ADMIN_IDENTIFIANT`, `ADMIN_MOT_DE_PASSE`   | Premier compte administrateur, créé au tout premier démarrage     |
 | `BREVO_API_KEY`, `BREVO_EXPEDITEUR`         | Envoi des emails. Sans eux, le site fonctionne mais n'envoie rien |
 | `VITE_MAPTILER_KEY`                         | Fonds de carte. Sans elle, repli sur OpenStreetMap France         |
@@ -103,11 +120,9 @@ Toutes les variables sont décrites dans [`.env.example`](.env.example). Les pri
 
 ## Tests
 
-Les tests remettent la base à zéro (`TRUNCATE`) à chaque exécution. Ils exigent donc une base de données **séparée**, désignée par `TEST_DATABASE_URL`, et **refusent de démarrer** si cette variable est absente ou identique à `DATABASE_URL`.
+Les tests remettent la base à zéro à chaque exécution. Ils exigent donc une base de données **séparée**, désignée par `TEST_DATABASE_URL` (la base MariaDB `signale_mayotte_test`), et **refusent de démarrer** si cette variable est absente ou identique à `DATABASE_URL`.
 
-Créer pour cela un second projet Supabase, gratuit, réservé aux tests.
-
-> **À reprendre :** le test de parcours (`tests/e2e/parcours.spec.js`) décrit un fonctionnement antérieur — dépôt d'un signalement sans compte, modification réservée à l'administrateur. Depuis, un compte est obligatoire pour signaler et l'auteur peut corriger son signalement tant qu'il n'est pas pris en charge. Le test doit être mis à jour avant de servir de non-régression.
+Le test de parcours (`tests/e2e/parcours.spec.js`) pilote un vrai navigateur : inscription, signalement avec photo et position, carte, modification et suppression par l'auteur, puis connexion admin, suppression depuis le tableau de bord et déconnexion. Avant chaque série, les tests réalignent le compte admin de la base de test sur les identifiants du `.env`.
 
 ## Qualité du code
 
@@ -127,11 +142,24 @@ Hébergé sur Render, en service web Node.js :
 
 Chaque `push` sur `main` redéploie automatiquement. Un workflow planifié ([`keep-alive.yml`](.github/workflows/keep-alive.yml)) visite le site toutes les dix minutes, pour limiter la mise en veille de l'offre gratuite.
 
+Procédure complète (services externes, variables, vérifications, retour arrière) : [`docs/deploiement.md`](docs/deploiement.md).
+
+## Documentation
+
+| Document                                             | Contenu                                                     |
+| ---------------------------------------------------- | ----------------------------------------------------------- |
+| [`docs/maquettes.md`](docs/maquettes.md)             | Arborescence, parcours, zonage des écrans, charte graphique |
+| [`docs/base-de-donnees.md`](docs/base-de-donnees.md) | MCD, MLD, diagramme des tables, base NoSQL du journal       |
+| [`docs/deploiement.md`](docs/deploiement.md)         | Mise en production sur Render, pas à pas                    |
+| [`docs/pentest.md`](docs/pentest.md)                 | Méthode de test d'intrusion de l'application                |
+
 ## Sécurité
 
 - Mots de passe hachés avec bcrypt ; comparaison factice quand un compte n'existe pas, pour ne pas révéler son existence par le temps de réponse.
 - Requêtes SQL toujours paramétrées ; tri choisi dans une liste blanche.
-- En-têtes HTTP via helmet, dont une politique de sécurité du contenu n'autorisant aucun script tiers.
-- Limites de débit sur toutes les routes sensibles, et champ piège contre les robots.
+- En-têtes HTTP via helmet, dont une politique de sécurité du contenu n'autorisant qu'un seul script tiers : le widget anti-robot de Cloudflare.
+- Limites de débit sur toutes les routes sensibles, champ piège et captcha Turnstile contre les robots.
+- Double authentification (TOTP) des administrateurs, avec protection contre le rejeu d'un code.
+- Journal des actions sensibles (connexions, comptes, statuts) dans une base NoSQL (NeDB), effacé automatiquement après un an.
 - Photos : liste blanche de formats (SVG exclu), réencodage systématique, suppression des métadonnées dont la position GPS, analyse automatique du contenu avant publication.
 - Données d'identité des contributeurs exposées uniquement aux administrateurs.

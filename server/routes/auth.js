@@ -25,6 +25,8 @@ import { supprimerPhoto } from '../storage.js'
 import { contientContenuExplicite } from '../moderation.js'
 import { db } from '../db.js'
 import { effacerCompte, exporterDonnees, motDePasseCorrect, mettreAJourNom } from '../compte.js'
+import { exigerCaptcha } from '../captcha.js'
+import { journaliser } from '../journal.js'
 
 const router = Router()
 
@@ -102,7 +104,7 @@ const limiteurSuppressionCompte = rateLimit({
 
 // Sert à effacer les comptes restés inutilisés trop longtemps (voir retention.js).
 function noterConnexion(utilisateurId) {
-  db.query('UPDATE utilisateurs SET derniere_connexion = $1 WHERE id = $2', [
+  db.query('UPDATE utilisateurs SET derniere_connexion = ? WHERE id = ?', [
     new Date().toISOString(),
     utilisateurId
   ]).catch((e) => console.error('[auth] derniere_connexion :', e.message))
@@ -113,8 +115,12 @@ router.post('/login', async (req, res) => {
 
   const admin = await verifierIdentifiants(identifiant, motDePasse)
   if (!admin) {
+    // L'identifiant tapé n'est pas gardé : ce pourrait être un mot de passe saisi dans
+    // le mauvais champ.
+    journaliser(req, 'admin.connexion', { resultat: 'echec', details: { motif: 'identifiants' } })
     return res.status(401).json({ erreur: 'Identifiant ou mot de passe incorrect.' })
   }
+  const acteur = { type: 'admin', id: admin.id, nom: admin.identifiant }
 
   // Double authentification activée : le mot de passe seul ne suffit pas. Le nombre
   // d'essais reste limité par le limiteur de /api/auth/login (10 par quart d'heure).
@@ -124,15 +130,17 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ erreur: 'Saisissez le code à 6 chiffres de votre application.', codeRequis: true })
     }
     if (!(await consommerCodeAdmin(admin.id, admin.totpSecret, admin.totpDernierPas, code))) {
+      journaliser(req, 'admin.connexion', { resultat: 'echec', acteur, details: { motif: 'code 2FA' } })
       return res.status(401).json({ erreur: 'Code incorrect ou expiré.', codeRequis: true })
     }
   }
 
   ouvrirSession(req, res, creerSession(admin))
+  journaliser(req, 'admin.connexion', { acteur, details: { deuxFacteurs: Boolean(admin.totpSecret) } })
   res.json({ identifiant: admin.identifiant })
 })
 
-router.post('/inscription', limiteurInscription, async (req, res) => {
+router.post('/inscription', limiteurInscription, exigerCaptcha, async (req, res) => {
   const { nom, email, telephone, motDePasse, site_web: honeypot } = req.body || {}
 
   if (honeypot) {
@@ -273,7 +281,7 @@ router.delete('/avatar', requireAuthUtilisateur, async (req, res) => {
   res.status(204).end()
 })
 
-router.post('/mot-de-passe-oublie', limiteurMotDePasseOublie, async (req, res) => {
+router.post('/mot-de-passe-oublie', limiteurMotDePasseOublie, exigerCaptcha, async (req, res) => {
   const { email } = req.body || {}
 
   const resultat = await genererTokenReinitialisation(email)

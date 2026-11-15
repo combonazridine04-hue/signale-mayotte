@@ -20,17 +20,17 @@ function ilYa({ mois = 0, ans = 0 }) {
 // Les dates sont stockées en texte ISO 8601 : l'ordre alphabétique est l'ordre
 // chronologique, la comparaison de chaînes est donc correcte.
 export async function purgerDonneesExpirees() {
-  const messages = await db.query('DELETE FROM messages_contact WHERE date_envoi < $1', [
+  const messages = await db.query('DELETE FROM messages_contact WHERE date_envoi < ?', [
     ilYa({ mois: CONSERVATION.messagesContactMois })
   ])
-  const notifications = await db.query('DELETE FROM notifications WHERE date_creation < $1', [
+  const notifications = await db.query('DELETE FROM notifications WHERE date_creation < ?', [
     ilYa({ mois: CONSERVATION.notificationsMois })
   ])
 
   // Compte sans aucune connexion depuis 3 ans : effacé comme si la personne l'avait
   // supprimé elle-même, ses signalements restant en ligne sous forme anonyme.
   const { rows: inactifs } = await db.query(
-    'SELECT id FROM utilisateurs WHERE COALESCE(derniere_connexion, cree_le) < $1',
+    'SELECT id FROM utilisateurs WHERE COALESCE(derniere_connexion, cree_le) < ?',
     [ilYa({ ans: CONSERVATION.compteInactifAns })]
   )
   for (const { id } of inactifs) await effacerCompte(id)

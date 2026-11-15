@@ -8,6 +8,7 @@ import { alertesPartenairesReelles, boiteTestPartenaires } from '../mailer.js'
 import { creerSessionPartenaire, revoquerSessionsPartenaire, verifierIdentifiantsPartenaire } from '../auth.js'
 import { motDePasseInterdit } from '../../shared/motDePasse.js'
 import { emailValide, verifierParametreId } from '../validation.js'
+import { journaliser } from '../journal.js'
 
 // « benoblock440@gmail.com » → « be•••••••@gmail.com »
 function masquerEmail(email) {
@@ -44,10 +45,12 @@ router.post('/partenaires/login', limiteurLoginPartenaire, async (req, res) => {
 
   const partenaire = await verifierIdentifiantsPartenaire(identifiant, motDePasse)
   if (!partenaire) {
+    journaliser(req, 'partenaire.connexion', { resultat: 'echec', details: { motif: 'identifiants' } })
     return res.status(401).json({ erreur: 'Identifiant ou mot de passe incorrect.' })
   }
 
   ouvrirSession(req, res, creerSessionPartenaire(partenaire))
+  journaliser(req, 'partenaire.connexion', { acteur: { type: 'partenaire', id: partenaire.id, nom: partenaire.nom } })
   res.json({
     nom: partenaire.nom,
     commune: partenaire.commune,
@@ -62,12 +65,14 @@ router.post('/partenaires/login', limiteurLoginPartenaire, async (req, res) => {
 router.get('/partenaires/moi/nouveaux', requirePartenaireOuAdmin, async (req, res) => {
   if (!req.partenaire) return res.status(400).json({ erreur: 'Réservé aux comptes partenaires.' })
   const { commune, categories, depuis } = req.partenaire
+  // Périmètre : commune NULL = toute l'île ; liste de domaines vide = tous les domaines.
+  const domaines = JSON.stringify(categories || [])
   const { rows } = await db.query(
-    `SELECT COUNT(*)::int AS nombre FROM signalements
-     WHERE date_signalement > $1
-       AND ($2::text IS NULL OR commune = $2)
-       AND (cardinality($3::text[]) = 0 OR categorie = ANY($3::text[]))`,
-    [depuis || '', commune || null, categories]
+    `SELECT COUNT(*) AS nombre FROM signalements
+     WHERE date_signalement > ?
+       AND (? IS NULL OR commune = ?)
+       AND (JSON_LENGTH(?) = 0 OR JSON_CONTAINS(?, JSON_QUOTE(categorie)))`,
+    [depuis || '', commune || null, commune || null, domaines, domaines]
   )
   res.json({ depuis: depuis || '', nombre: rows[0].nombre })
 })
@@ -118,7 +123,7 @@ router.post('/partenaires', async (req, res) => {
   }
 
   const identifiantTrim = identifiant.trim()
-  const { rows: existant } = await db.query('SELECT id FROM partenaires WHERE identifiant = $1', [identifiantTrim])
+  const { rows: existant } = await db.query('SELECT id FROM partenaires WHERE identifiant = ?', [identifiantTrim])
   if (existant.length) {
     return res.status(409).json({ erreur: 'Cet identifiant existe déjà.' })
   }
@@ -126,20 +131,35 @@ router.post('/partenaires', async (req, res) => {
   const hash = await bcrypt.hash(motDePasse, 12)
   const { rows } = await db.query(
     `INSERT INTO partenaires (nom, identifiant, mot_de_passe_hash, commune, categories, email, cree_le)
-     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-    [nom.trim(), identifiantTrim, hash, commune || null, categories, emailPropre || null, new Date().toISOString()]
+     VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`,
+    [
+      nom.trim(),
+      identifiantTrim,
+      hash,
+      commune || null,
+      // Colonne JSON : la liste est enregistrée sous forme de texte JSON.
+      JSON.stringify(categories),
+      emailPropre || null,
+      new Date().toISOString()
+    ]
   )
 
+  journaliser(req, 'partenaire.creation', {
+    cible: { type: 'partenaire', id: rows[0].id, nom: rows[0].nom },
+    // Un document journal peut porter des champs propres à son type : ici le périmètre.
+    details: { commune: rows[0].commune || 'toute l’île', categories: rows[0].categories || [] }
+  })
   res.status(201).json(mapRow(rows[0]))
 })
 
 router.delete('/partenaires/:id', async (req, res) => {
   const id = Number(req.params.id)
 
-  const { rowCount } = await db.query('DELETE FROM partenaires WHERE id = $1', [id])
-  if (!rowCount) return res.status(404).json({ erreur: 'Compte introuvable.' })
+  const { rows: supprime } = await db.query('DELETE FROM partenaires WHERE id = ? RETURNING nom', [id])
+  if (!supprime.length) return res.status(404).json({ erreur: 'Compte introuvable.' })
 
   revoquerSessionsPartenaire(id)
+  journaliser(req, 'partenaire.suppression', { cible: { type: 'partenaire', id, nom: supprime[0].nom } })
   res.status(204).end()
 })
 

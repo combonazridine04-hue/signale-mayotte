@@ -5,6 +5,7 @@ import { db } from '../db.js'
 import { requireAuth } from '../middleware/requireAuth.js'
 import { SUJETS_CONTACT } from '../../shared/sujetsContact.js'
 import { texte, emailValide, verifierParametreId } from '../validation.js'
+import { exigerCaptcha } from '../captcha.js'
 
 const router = Router()
 
@@ -30,7 +31,7 @@ function mapRow(row) {
   }
 }
 
-router.post('/contact', limiteurContact, async (req, res) => {
+router.post('/contact', limiteurContact, exigerCaptcha, async (req, res) => {
   const corps = req.body || {}
   const nom = texte(corps.nom)
   const email = texte(corps.email).trim()
@@ -67,7 +68,7 @@ router.post('/contact', limiteurContact, async (req, res) => {
 
   await db.query(
     `INSERT INTO messages_contact (nom, email, sujet, message, date_envoi, lu)
-     VALUES ($1, $2, $3, $4, $5, false)`,
+     VALUES (?, ?, ?, ?, ?, false)`,
     [nomTrim, email, sujet, messageTrim, dateEnvoi]
   )
 
@@ -90,14 +91,16 @@ router.get('/contact', requireAuth, async (req, res) => {
 router.patch('/contact/:id', requireAuth, async (req, res) => {
   const id = Number(req.params.id)
   const { lu } = req.body || {}
-  const { rows } = await db.query('UPDATE messages_contact SET lu = $1 WHERE id = $2 RETURNING *', [Boolean(lu), id])
+  // MariaDB ne sait pas renvoyer la ligne modifiée (pas de UPDATE … RETURNING) : on la relit.
+  await db.query('UPDATE messages_contact SET lu = ? WHERE id = ?', [Boolean(lu), id])
+  const { rows } = await db.query('SELECT * FROM messages_contact WHERE id = ?', [id])
   if (!rows[0]) return res.status(404).json({ erreur: 'Message introuvable.' })
   res.json(mapRow(rows[0]))
 })
 
 router.delete('/contact/:id', requireAuth, async (req, res) => {
   const id = Number(req.params.id)
-  const { rowCount } = await db.query('DELETE FROM messages_contact WHERE id = $1', [id])
+  const { rowCount } = await db.query('DELETE FROM messages_contact WHERE id = ?', [id])
   if (!rowCount) return res.status(404).json({ erreur: 'Message introuvable.' })
   res.status(204).end()
 })

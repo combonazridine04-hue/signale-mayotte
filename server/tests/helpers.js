@@ -1,11 +1,14 @@
-import { preparerEnvironnementTest } from './environnementTest.js'
+import { preparerAdminTest, preparerEnvironnementTest } from './environnementTest.js'
 
 export async function demarrerServeurTest() {
   preparerEnvironnementTest()
 
   const { app } = await import('../index.js')
   const { db, reinitialiserDonneesDemo } = await import('../db.js')
-  await reinitialiserDonneesDemo()
+  const { fermerJournal, viderJournal } = await import('../journal.js')
+  await reinitialiserDonneesDemo({ viderStockage: true })
+  await preparerAdminTest(db)
+  await viderJournal()
 
   const serveur = app.listen(0)
   await new Promise((resolve) => serveur.once('listening', resolve))
@@ -19,6 +22,7 @@ export async function demarrerServeurTest() {
       serveur.closeAllConnections?.()
       await new Promise((resolve) => serveur.close(resolve))
       await db.end()
+      await fermerJournal()
     }
   }
 }
