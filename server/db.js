@@ -311,7 +311,7 @@ const donneesDemo = [
 // Vide les signalements (et, par cascade, leurs soutiens, commentaires, mises à jour et
 // notifications), puis remet les données de démonstration.
 // viderStockage : réservé aux tests, qui travaillent dans leur propre espace photos
-// (SUPABASE_BUCKET forcé par server/tests/environnementTest.js).
+// (ESPACE_PHOTOS forcé par server/tests/environnementTest.js).
 export async function reinitialiserDonneesDemo({ viderStockage = false } = {}) {
   // TRUNCATE est refusé sur une table visée par des clés étrangères : DELETE déclenche les
   // ON DELETE CASCADE, puis on remet le compteur d'identifiants à 1.

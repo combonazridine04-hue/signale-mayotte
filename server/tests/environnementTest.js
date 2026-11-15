@@ -39,8 +39,8 @@ export function preparerEnvironnementTest() {
   // 1. Base de données : les tests font des TRUNCATE.
   if (!process.env.TEST_DATABASE_URL) {
     throw new Error(
-      'TEST_DATABASE_URL manquant. Les tests effacent la base : créez un projet Supabase séparé ' +
-        'pour les tests et renseignez TEST_DATABASE_URL dans .env (voir .env.example).'
+      'TEST_DATABASE_URL manquant. Les tests effacent la base : créez une base MariaDB séparée ' +
+        '(ex. signale_mayotte_test) et renseignez TEST_DATABASE_URL dans .env (voir .env.example).'
     )
   }
   if (process.env.TEST_DATABASE_URL === process.env.DATABASE_URL) {
@@ -51,7 +51,7 @@ export function preparerEnvironnementTest() {
   // 2. Photos : la remise à zéro des tests vide l'espace de stockage. Sans cet espace
   // dédié, elle viderait celui de la production — toutes les photos des signalements et
   // tous les avatars —, même avec une base de test correctement séparée.
-  process.env.SUPABASE_BUCKET = BUCKET_TESTS
+  process.env.ESPACE_PHOTOS = BUCKET_TESTS
 
   // 3. Emails : aucun test ne doit en envoyer de vrai. Les noms de variables suivent les
   // fournisseurs réellement utilisés par mailer.js (Brevo, puis Resend en secours).

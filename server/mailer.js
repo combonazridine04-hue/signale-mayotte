@@ -1,5 +1,5 @@
-// Envoi d'email par API HTTPS, jamais en SMTP : Render bloque les connexions SMTP
-// sortantes sur ses instances (anti-abus), donc Gmail/nodemailer échouait en silence.
+// Envoi d'email par API HTTPS, jamais en SMTP : beaucoup d'hébergeurs bloquent les
+// connexions SMTP sortantes (anti-abus) ; un envoi SMTP y échouerait en silence.
 //
 // Brevo est prioritaire sur Resend : Resend refuse (403) tout destinataire autre que
 // le propriétaire du compte tant qu'un nom de domaine n'est pas vérifié, ce qui

@@ -332,5 +332,5 @@ NoSQL, ce qui écarte l'injection d'opérateurs (`$ne`, `$gt`, `$where`…).
 **Résilience :** si le fichier du journal ne peut pas être ouvert, le journal est
 simplement indisponible ; le reste du site fonctionne normalement.
 
-**Limite :** en production sur l'offre gratuite de Render, le disque est effacé à chaque
-redéploiement ; le journal repart alors de zéro (voir [`deploiement.md`](deploiement.md)).
+**Hébergement :** en production chez alwaysdata, le disque est permanent : le journal est
+conservé d'une mise à jour à l'autre (voir [`deploiement.md`](deploiement.md)).

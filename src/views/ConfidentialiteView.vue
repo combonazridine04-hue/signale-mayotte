@@ -101,12 +101,16 @@
               Ces sociétés traitent des données uniquement pour faire fonctionner le site, sur nos instructions :
             </p>
             <ul class="text-secondary">
-              <li><strong>Render</strong> (États-Unis) : hébergement du site.</li>
               <li>
-                <strong>Supabase</strong> : base de données et photos, stockées sur des serveurs à Londres (Royaume-Uni,
-                pays reconnu par l'Union européenne comme protégeant correctement les données).
+                <strong>alwaysdata</strong> (France) : hébergement du site, de la base de données et des photos, sur des
+                serveurs situés en France.
               </li>
               <li><strong>Brevo</strong> (France) : envoi des emails.</li>
+              <li>
+                <strong>Cloudflare</strong> (vérification anti-robot Turnstile) : sur les formulaires d'inscription, de
+                contact et de mot de passe oublié, votre navigateur lui transmet votre adresse IP et des informations
+                techniques, uniquement pour distinguer un humain d'un robot.
+              </li>
               <li>
                 <strong>MapTiler</strong> (Suisse, pays reconnu de la même façon) : fonds de carte. Votre navigateur lui
                 transmet votre adresse IP pour afficher la carte.

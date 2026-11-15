@@ -83,7 +83,8 @@ export async function exporterDonnees(utilisateurId) {
 
   return {
     exporte_le: new Date().toISOString(),
-    source: 'Signale Mayotte — https://signale-mayotte.onrender.com',
+    // Adresse publique du site (SITE_URL), quel que soit l'hébergeur.
+    source: `Signale Mayotte — ${(process.env.SITE_URL || 'http://localhost:5173').replace(/\/$/, '')}`,
     profil,
     signalements: await requete(
       `SELECT id, categorie, commune, description, photos, statut, urgent, latitude, longitude,

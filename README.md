@@ -4,7 +4,7 @@
 
 Plateforme citoyenne pour signaler les problèmes du quotidien — dépôts sauvages, voirie, éclairage public, eau — dans les communes de Mayotte, et suivre publiquement leur traitement.
 
-**En ligne :** https://signale-mayotte.onrender.com
+**En ligne :** hébergé chez [alwaysdata](https://www.alwaysdata.com) (France).
 
 ## Fonctionnalités
 
@@ -24,10 +24,10 @@ L'identité des contributeurs n'est jamais affichée : un pseudo, ou à défaut 
 | --------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | **Front**       | Vue 3 (`<script setup>`), Vue Router, Pinia, Vite, Bootstrap 5, Leaflet, Three.js                                           |
 | **Back**        | Node.js, Express 5, `mysql2`, bcryptjs, helmet, express-rate-limit, multer, sharp                                           |
-| **Données**     | MariaDB (données métier, SQL), NeDB (journal d'activité, NoSQL), photos sur disque (Supabase Storage en production)         |
+| **Données**     | MariaDB (données métier, SQL), NeDB (journal d'activité, NoSQL), photos sur le disque du serveur                            |
 | **Services**    | Brevo (emails, par API HTTPS), MapTiler (fonds de carte), nsfwjs (modération des photos), Cloudflare Turnstile (anti-robot) |
 | **Qualité**     | ESLint, Prettier, EditorConfig, GitHub Actions                                                                              |
-| **Hébergement** | Render                                                                                                                      |
+| **Hébergement** | alwaysdata (France) : site Node.js, MariaDB et disque permanent                                                             |
 
 ## Architecture
 
@@ -35,7 +35,7 @@ L'identité des contributeurs n'est jamais affichée : un pseudo, ou à défaut 
 Navigateur ──HTTP/JSON──▶ Express ──▶ MariaDB           (données métier, SQL)
   (Vue 3)                    │
                              ├──▶ NeDB              (journal d'activité, NoSQL, fichier local)
-                             ├──▶ Supabase Storage  (photos)
+                             ├──▶ Disque du serveur (photos, server/data/uploads)
                              ├──▶ API Brevo         (emails)
                              └──▶ Turnstile         (anti-robot, optionnel)
 ```
@@ -63,7 +63,7 @@ Le dossier `shared/` garantit qu'une règle de validation, écrite une seule foi
 
 ## Démarrage
 
-**Prérequis :** Node.js 20.19 ou plus récent, MariaDB installé sur le PC. Aucun service en ligne n'est nécessaire en développement : sans clés Supabase dans `.env`, les photos sont enregistrées sur le disque (`server/data/uploads/`).
+**Prérequis :** Node.js 20.19 ou plus récent, MariaDB installé sur le PC. Aucun service en ligne n'est nécessaire en développement : les photos sont enregistrées sur le disque (`server/data/uploads/`).
 
 Créer les deux bases (développement et tests) et le compte de l'application, en `root` (par exemple dans DBeaver) :
 
@@ -93,16 +93,15 @@ Au premier démarrage, le schéma de la base est créé automatiquement, ainsi q
 
 Toutes les variables sont décrites dans [`.env.example`](.env.example). Les principales :
 
-| Variable                                    | Rôle                                                              |
-| ------------------------------------------- | ----------------------------------------------------------------- |
-| `DATABASE_URL`                              | Connexion MariaDB (`mysql://…`) — **obligatoire**                 |
-| `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Photos sur Supabase (production) ; vides = photos sur le disque   |
-| `ADMIN_IDENTIFIANT`, `ADMIN_MOT_DE_PASSE`   | Premier compte administrateur, créé au tout premier démarrage     |
-| `BREVO_API_KEY`, `BREVO_EXPEDITEUR`         | Envoi des emails. Sans eux, le site fonctionne mais n'envoie rien |
-| `VITE_MAPTILER_KEY`                         | Fonds de carte. Sans elle, repli sur OpenStreetMap France         |
-| `TEST_DATABASE_URL`                         | Base **distincte** pour les tests (voir plus bas)                 |
+| Variable                                  | Rôle                                                              |
+| ----------------------------------------- | ----------------------------------------------------------------- |
+| `DATABASE_URL`                            | Connexion MariaDB (`mysql://…`) — **obligatoire**                 |
+| `ADMIN_IDENTIFIANT`, `ADMIN_MOT_DE_PASSE` | Premier compte administrateur, créé au tout premier démarrage     |
+| `BREVO_API_KEY`, `BREVO_EXPEDITEUR`       | Envoi des emails. Sans eux, le site fonctionne mais n'envoie rien |
+| `VITE_MAPTILER_KEY`                       | Fonds de carte. Sans elle, repli sur OpenStreetMap France         |
+| `TEST_DATABASE_URL`                       | Base **distincte** pour les tests (voir plus bas)                 |
 
-> Les emails passent par l'API HTTPS de Brevo et non par SMTP : Render bloque les connexions SMTP sortantes, et un envoi SMTP y échouerait en silence.
+> Les emails passent par l'API HTTPS de Brevo et non par SMTP : beaucoup d'hébergeurs bloquent les connexions SMTP sortantes, et un envoi SMTP y échouerait en silence.
 
 ## Scripts
 
@@ -134,13 +133,13 @@ npm run lint && npm run format:check && npm run build
 
 ## Déploiement
 
-Hébergé sur Render, en service web Node.js :
+Hébergé chez **alwaysdata** (France), en site Node.js, avec sa base MariaDB et un disque permanent (photos et journal y restent d'une mise à jour à l'autre) :
 
-- **Build :** `npm install && npm run build`
-- **Démarrage :** `npm start`
-- **Variables :** à renseigner dans l'interface Render, jamais dans le dépôt
+- **Installation des dépendances et build :** `npm ci && npm run build`
+- **Démarrage :** `node server/index.js` (commande du site dans le panneau alwaysdata)
+- **Variables :** dans le fichier `.env` du serveur, jamais dans le dépôt
 
-Chaque `push` sur `main` redéploie automatiquement. Un workflow planifié ([`keep-alive.yml`](.github/workflows/keep-alive.yml)) visite le site toutes les dix minutes, pour limiter la mise en veille de l'offre gratuite.
+Le site ne se met pas en veille : aucun « réveil » planifié n'est nécessaire.
 
 Procédure complète (services externes, variables, vérifications, retour arrière) : [`docs/deploiement.md`](docs/deploiement.md).
 
@@ -150,7 +149,7 @@ Procédure complète (services externes, variables, vérifications, retour arri�
 | ---------------------------------------------------- | ----------------------------------------------------------- |
 | [`docs/maquettes.md`](docs/maquettes.md)             | Arborescence, parcours, zonage des écrans, charte graphique |
 | [`docs/base-de-donnees.md`](docs/base-de-donnees.md) | MCD, MLD, diagramme des tables, base NoSQL du journal       |
-| [`docs/deploiement.md`](docs/deploiement.md)         | Mise en production sur Render, pas à pas                    |
+| [`docs/deploiement.md`](docs/deploiement.md)         | Mise en production sur alwaysdata, pas à pas                |
 | [`docs/pentest.md`](docs/pentest.md)                 | Méthode de test d'intrusion de l'application                |
 
 ## Sécurité

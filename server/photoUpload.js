@@ -41,5 +41,5 @@ export async function traiterPhoto(fichier, { largeurMax } = {}) {
   }
 
   const nomFichier = `${Date.now()}-${Math.round(Math.random() * 1e9)}.${format}`
-  return uploaderPhoto(buffer, nomFichier, fichier.mimetype)
+  return uploaderPhoto(buffer, nomFichier)
 }

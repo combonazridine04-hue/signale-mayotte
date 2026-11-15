@@ -23,7 +23,7 @@ const notificationsRouter = (await import('./routes/notifications.js')).default
 const journalRouter = (await import('./routes/journal.js')).default
 const { configurationPublique: configurationCaptcha } = await import('./captcha.js')
 const { verifierOrigine } = await import('./middleware/verifierOrigine.js')
-const { stockageLocal, DOSSIER_UPLOADS } = await import('./storage.js')
+const { DOSSIER_UPLOADS } = await import('./storage.js')
 const { precharger: prechargerModerationPhotos } = await import('./moderation.js')
 prechargerModerationPhotos()
 
@@ -53,14 +53,7 @@ app.use(
         // Plus aucune police chargée chez Google : tout vient du site.
         styleSrc: ["'self'", "'unsafe-inline'"],
         fontSrc: ["'self'"],
-        imgSrc: [
-          "'self'",
-          'data:',
-          'blob:',
-          'https://api.maptiler.com',
-          'https://*.tile.openstreetmap.fr',
-          'https://*.supabase.co'
-        ],
+        imgSrc: ["'self'", 'data:', 'blob:', 'https://api.maptiler.com', 'https://*.tile.openstreetmap.fr'],
         connectSrc: ["'self'"],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
@@ -114,20 +107,18 @@ app.get('/api/captcha', (req, res) => res.json(configurationCaptcha()))
 // site renvoyée par le filet ci-dessous avec un statut 200 trompeur.
 app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue.' }))
 
-// Photos rangées sur le disque (mode local, sans Supabase : voir storage.js). Ce sont
+// Photos rangées sur le disque du serveur (voir storage.js). Ce sont
 // des images réencodées par sharp, aux noms générés par le serveur. Par précaution, le
 // navigateur ne doit jamais les traiter comme une page : aucun script, aucun contenu actif.
-if (stockageLocal) {
-  app.use(
-    '/uploads',
-    express.static(DOSSIER_UPLOADS, {
-      dotfiles: 'deny',
-      index: false,
-      fallthrough: false,
-      setHeaders: (res) => res.set('Content-Security-Policy', "default-src 'none'; sandbox")
-    })
-  )
-}
+app.use(
+  '/uploads',
+  express.static(DOSSIER_UPLOADS, {
+    dotfiles: 'deny',
+    index: false,
+    fallthrough: false,
+    setHeaders: (res) => res.set('Content-Security-Policy', "default-src 'none'; sandbox")
+  })
+)
 
 const distDir = path.join(__dirname, '..', 'dist')
 
