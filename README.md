@@ -51,6 +51,25 @@ npm ci && npm run build    # produit dist/, à servir comme site statique
 
 Procédure complète d'hébergement chez alwaysdata : `docs/deploiement.md` du back-end.
 
+### Hébergement sur Cloudflare Pages
+
+1. Cloudflare → *Workers & Pages* → *Create* → *Pages* → connecter ce dépôt GitHub.
+2. Réglages du build :
+   - Framework preset : `Vue` (ou aucun)
+   - Build command : `npm run build`
+   - Build output directory : `dist`
+3. Variables d'environnement (*Settings → Variables*) :
+   - `VITE_API_URL` = adresse de l'API, sans `/` final (ex. `https://api.COMPTE.alwaysdata.net`)
+   - `VITE_MAPTILER_KEY` = clé des fonds de carte (facultatif)
+   - `NODE_VERSION` = `22`
+4. Côté API (`.env` du back-end sur alwaysdata) :
+   - `FRONTEND_URL=https://<projet>.pages.dev` (l'adresse exacte donnée par Cloudflare)
+   - `COOKIE_SAMESITE=none` : le front et l'API sont sur deux sites différents.
+
+`public/_redirects` (renvoie `index.html` pour toute adresse inconnue) et `public/_headers` (en-têtes de sécurité) remplacent le `.htaccess` d'Apache sur Cloudflare.
+
+> Safari bloque les cookies « tiers » : avec `pages.dev` + `alwaysdata.net`, la connexion peut échouer sur iPhone. La solution est un nom de domaine commun (ex. `signale-mayotte.fr` pour le front, `api.signale-mayotte.fr` pour l'API).
+
 ## Scripts
 
 | Commande               | Rôle                                          |
