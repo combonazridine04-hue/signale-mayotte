@@ -122,7 +122,7 @@ await db.query(`
     token_reinitialisation_expire DATETIME NULL,
     avatar_url VARCHAR(500) NULL,
     cree_le VARCHAR(30) NOT NULL,
-    -- Sert à effacer les comptes inactifs depuis trop longtemps (voir retention.js).
+    -- Sert à effacer les comptes inactifs depuis trop longtemps (voir retentionService.js).
     derniere_connexion VARCHAR(30) NULL,
     CONSTRAINT utilisateurs_email_ou_telephone CHECK (email IS NOT NULL OR telephone IS NOT NULL)
   ) ${OPTIONS_TABLE}

@@ -54,7 +54,7 @@ export function preparerEnvironnementTest() {
   process.env.ESPACE_PHOTOS = BUCKET_TESTS
 
   // 3. Emails : aucun test ne doit en envoyer de vrai. Les noms de variables suivent les
-  // fournisseurs réellement utilisés par mailer.js (Brevo, puis Resend en secours).
+  // fournisseurs réellement utilisés par emailService.js (Brevo, puis Resend en secours).
   for (const cle of ['BREVO_API_KEY', 'BREVO_EXPEDITEUR', 'RESEND_API_KEY', 'RESEND_FROM']) {
     delete process.env[cle]
   }

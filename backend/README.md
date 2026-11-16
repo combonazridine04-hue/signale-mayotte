@@ -58,7 +58,8 @@ backend/
 │   ├── app.js          application Express : sécurité (helmet, CORS, anti-CSRF), routes, erreurs
 │   ├── config/         connexion MariaDB et schéma (db.js), stockage des photos (storage.js)
 │   ├── middlewares/    authentification, CORS, anti-CSRF, limites de débit, upload, validation
-│   ├── routes/         un fichier par ressource (signalements.routes.js, auth.routes.js…)
+│   ├── routes/         chemins de l'API + middlewares, par ressource (signalements.routes.js…)
+│   ├── controllers/    ce que fait chaque route : lit la requête, répond (signalementsController.js…)
 │   ├── services/       logique métier : authService, emailService, journalService (NeDB)…
 │   │   ├── signalements/   contrôles d'accès, conversion des données, photos
 │   │   └── partenaires/    alertes envoyées aux partenaires
