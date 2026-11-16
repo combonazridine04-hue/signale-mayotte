@@ -101,7 +101,7 @@ sh scripts/mettre-a-jour.sh
 
 # Front-end
 cd ~
-git clone <adresse du dépôt signale-mayotte-frontend> signale-mayotte-frontend
+git clone https://github.com/combonazridine04-hue/signale-mayotte-frontend.git
 cd signale-mayotte-frontend
 echo "VITE_API_URL=https://api.COMPTE.alwaysdata.net" > .env.production
 npm ci && npm run build   # produit dist/ : les fichiers du site
