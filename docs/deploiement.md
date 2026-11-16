@@ -53,9 +53,17 @@ l'autre. Les sites ne se mettent jamais en veille.
 | [Cloudflare Turnstile](https://dash.cloudflare.com) | Gratuit                                                                   | Non, mais conseillé en production |
 | [MapTiler](https://cloud.maptiler.com)              | Clé gratuite                                                              | Non (repli sur OpenStreetMap)     |
 
-Mesures de l'API, pour vérifier qu'elle tient dans l'offre gratuite : ~100 Mo de mémoire
-au repos, ~180 Mo au plus fort de l'analyse des photos (modèle d'IA de modération),
-~480 Mo de dépendances de production. Le front compilé pèse quelques Mo.
+Mesures faites **sur le serveur alwaysdata** (offre gratuite, 256 Mo de mémoire) :
+
+| Commande de l'API                                                      | Au repos | Pic (analyse de 3 photos)    |
+| ---------------------------------------------------------------------- | -------- | ---------------------------- |
+| `node server/index.js`                                                 | 217 Mo   | 230 Mo : trop juste          |
+| `node --max-old-space-size=96 --max-semi-space-size=2 server/index.js` | 151 Mo   | **183 Mo** : ~70 Mo de marge |
+
+La seconde commande limite la mémoire de JavaScript et force un nettoyage plus fréquent :
+c'est elle qu'on utilise. L'analyse d'une photo par le modèle d'IA de modération prend
+alors 8 à 10 secondes sur ce serveur (¼ de processeur). Dépendances de production :
+364 Mo. Front compilé : 3 Mo.
 
 ---
 
@@ -99,27 +107,34 @@ echo "VITE_API_URL=https://api.COMPTE.alwaysdata.net" > .env.production
 npm ci && npm run build   # produit dist/ : les fichiers du site
 ```
 
-[`scripts/mettre-a-jour.sh`](../scripts/mettre-a-jour.sh) installe les dépendances de
-l'API et retire les outils de développement (pour économiser le disque).
+[`scripts/mettre-a-jour.sh`](../scripts/mettre-a-jour.sh) installe **uniquement** les
+dépendances de production de l'API. Installer aussi les outils de développement (tests,
+lint) dépasse la mémoire de l'offre gratuite : le serveur arrête alors l'installation
+(« Killed »).
+
+Le front peut aussi être compilé sur le poste de développement, puis seul son dossier
+`dist/` envoyé sur le serveur (par SFTP) : c'est plus rapide et sans risque pour la
+mémoire du serveur.
 
 ### 3.4 Créer les deux sites
 
-**Web → Sites → Ajouter un site**, deux fois :
+**Web → Sites** : modifier le site existant `COMPTE.alwaysdata.net` (créé avec le compte)
+pour le front, et **Ajouter un site** pour l'API :
 
-| Champ              | Site de l'API               | Site du front                   |
-| ------------------ | --------------------------- | ------------------------------- |
-| Adresses           | `api.COMPTE.alwaysdata.net` | `COMPTE.alwaysdata.net`         |
-| Type               | **Node.js**                 | **Fichiers statiques**          |
-| Commande           | `node server/index.js`      | —                               |
-| Répertoire         | `signale-mayotte`           | `signale-mayotte-frontend/dist` |
-| Version de Node.js | 22                          | —                               |
+| Champ                 | Site de l'API (nouveau)                                                | Site du front (existant, modifié)            |
+| --------------------- | ---------------------------------------------------------------------- | -------------------------------------------- |
+| Adresses              | `api.COMPTE.alwaysdata.net`                                            | `COMPTE.alwaysdata.net`                      |
+| Type                  | **Node.js**                                                            | **PHP** (serveur Apache, garde le type)      |
+| Commande              | `node --max-old-space-size=96 --max-semi-space-size=2 server/index.js` | —                                            |
+| Répertoire de travail | `/home/COMPTE/signale-mayotte`                                         | —                                            |
+| Répertoire racine     | —                                                                      | `/home/COMPTE/signale-mayotte-frontend/dist` |
 
 - L'API écoute sur l'adresse et le port imposés par alwaysdata (variables `IP`/`HOST` et
   `PORT`) : le serveur les lit tout seul ([`server/index.js`](../server/index.js)).
-- Le front est une application à page unique : pour que les adresses comme
-  `/signalements/42` fonctionnent quand on recharge la page, toute adresse inconnue du
-  site statique doit renvoyer `index.html` (réglage de réécriture / page d'erreur 404 du
-  site statique dans le panneau).
+- Le front est servi par Apache, qui lit le fichier `.htaccess` du front (copié dans
+  `dist/` au build) : toute adresse qui n'est pas un fichier (ex. `/signalements/42`)
+  renvoie `index.html`, et les en-têtes de sécurité du site sont posés (HSTS, interdiction
+  d'affichage dans un cadre, fonctions du navigateur autorisées).
 - HTTPS est fourni par alwaysdata (certificat automatique) sur les deux adresses.
 
 ### 3.5 Services externes
@@ -254,18 +269,18 @@ npm test   # unitaires + API + parcours dans un navigateur (front et API sépar�
 
 ## 8. Pannes fréquentes
 
-| Symptôme                                                            | Cause probable                                           | Solution                                                       |
-| ------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------- |
-| L'API ne démarre pas, erreur `DATABASE_URL manquant`                | `.env` absent ou incomplet sur le serveur                | Le compléter, puis redémarrer le site de l'API                 |
-| Erreur de connexion à MariaDB (`ECONNREFUSED`, accès refusé)        | Mauvais hôte, mot de passe ou droits                     | Vérifier `DATABASE_URL` et les droits de l'utilisateur         |
-| Erreur TLS vers MariaDB                                             | `DATABASE_TLS=non` oublié                                | L'ajouter dans `.env`                                          |
-| Le site affiche « Le serveur ne répond pas », console : erreur CORS | `FRONTEND_URL` absent ou différent de l'adresse du front | Mettre l'adresse exacte du front (https, sans « / » final)     |
-| Requêtes refusées : « elle ne provient pas du site » (403)          | Même cause : origine du front non déclarée               | Corriger `FRONTEND_URL`, redémarrer l'API                      |
-| Connexion qui ne tient pas (déconnecté à chaque page)               | Front et API sur deux sites différents, cookie bloqué    | Mettre l'API en `api.COMPTE.alwaysdata.net` (section 1)        |
-| Le front appelle `localhost` ou une mauvaise adresse                | `VITE_API_URL` absent ou faux au moment du build         | Corriger `.env.production`, relancer `npm run build`           |
-| Page blanche en rechargeant `/carte` ou `/signalements/42`          | Pas de renvoi vers `index.html` sur le site statique     | Régler la réécriture / page 404 du site statique (section 3.4) |
-| Photos absentes, console : erreur CSP                               | `VITE_API_URL` absent au build (CSP du front sans l'API) | Le renseigner et relancer `npm run build`                      |
-| Erreur 502 sur l'API                                                | Elle n'écoute pas sur l'adresse imposée, ou a planté     | Lire les journaux ; vérifier la commande du site               |
-| Mémoire dépassée au moment d'analyser des photos                    | Offre gratuite (256 Mo) et envois simultanés             | Réessayer ; offre supérieure si cela se répète                 |
-| Aucun email reçu                                                    | `BREVO_EXPEDITEUR` non validé, ou clé absente            | Valider l'expéditeur dans Brevo                                |
-| La case anti-robot ne s'affiche pas ou échoue toujours              | Domaine du front absent du widget Turnstile              | Ajouter `COMPTE.alwaysdata.net` dans Cloudflare                |
+| Symptôme                                                            | Cause probable                                                   | Solution                                                        |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------------------------- |
+| L'API ne démarre pas, erreur `DATABASE_URL manquant`                | `.env` absent ou incomplet sur le serveur                        | Le compléter, puis redémarrer le site de l'API                  |
+| Erreur de connexion à MariaDB (`ECONNREFUSED`, accès refusé)        | Mauvais hôte, mot de passe ou droits                             | Vérifier `DATABASE_URL` et les droits de l'utilisateur          |
+| Erreur TLS vers MariaDB                                             | `DATABASE_TLS=non` oublié                                        | L'ajouter dans `.env`                                           |
+| Le site affiche « Le serveur ne répond pas », console : erreur CORS | `FRONTEND_URL` absent ou différent de l'adresse du front         | Mettre l'adresse exacte du front (https, sans « / » final)      |
+| Requêtes refusées : « elle ne provient pas du site » (403)          | Même cause : origine du front non déclarée                       | Corriger `FRONTEND_URL`, redémarrer l'API                       |
+| Connexion qui ne tient pas (déconnecté à chaque page)               | Front et API sur deux sites différents, cookie bloqué            | Mettre l'API en `api.COMPTE.alwaysdata.net` (section 1)         |
+| Le front appelle `localhost` ou une mauvaise adresse                | `VITE_API_URL` absent ou faux au moment du build                 | Corriger `.env.production`, relancer `npm run build`            |
+| Page blanche en rechargeant `/carte` ou `/signalements/42`          | `.htaccess` absent de `dist/`, ou site d'un autre type qu'Apache | Recompiler le front ; site de type PHP (section 3.4)            |
+| Photos absentes, console : erreur CSP                               | `VITE_API_URL` absent au build (CSP du front sans l'API)         | Le renseigner et relancer `npm run build`                       |
+| Erreur 502 sur l'API                                                | Elle n'écoute pas sur l'adresse imposée, ou a planté             | Lire les journaux ; vérifier la commande du site                |
+| API redémarrée en pleine analyse de photos (mémoire dépassée)       | Commande sans limite de mémoire, ou envois simultanés            | Commande de la section 3.4 ; offre supérieure si cela se répète |
+| Aucun email reçu                                                    | `BREVO_EXPEDITEUR` non validé, ou clé absente                    | Valider l'expéditeur dans Brevo                                 |
+| La case anti-robot ne s'affiche pas ou échoue toujours              | Domaine du front absent du widget Turnstile                      | Ajouter `COMPTE.alwaysdata.net` dans Cloudflare                 |
