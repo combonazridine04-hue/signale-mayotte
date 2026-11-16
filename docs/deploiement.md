@@ -55,8 +55,8 @@ l'autre. Les sites ne se mettent jamais en veille.
 
 Mesures faites **sur le serveur alwaysdata** (offre gratuite, 256 Mo de mémoire) :
 
-| Commande de l'API                                                      | Au repos | Pic (analyse de 3 photos)    |
-| ---------------------------------------------------------------------- | -------- | ---------------------------- |
+| Commande de l'API                                                    | Au repos | Pic (analyse de 3 photos)    |
+| -------------------------------------------------------------------- | -------- | ---------------------------- |
 | `node src/server.js`                                                 | 217 Mo   | 230 Mo : trop juste          |
 | `node --max-old-space-size=96 --max-semi-space-size=2 src/server.js` | 151 Mo   | **183 Mo** : ~70 Mo de marge |
 
@@ -120,13 +120,13 @@ mémoire du serveur.
 **Web → Sites** : modifier le site existant `COMPTE.alwaysdata.net` (créé avec le compte)
 pour le front, et **Ajouter un site** pour l'API :
 
-| Champ                 | Site de l'API (nouveau)                                                | Site du front (existant, modifié)            |
-| --------------------- | ---------------------------------------------------------------------- | -------------------------------------------- |
-| Adresses              | `api.COMPTE.alwaysdata.net`                                            | `COMPTE.alwaysdata.net`                      |
-| Type                  | **Node.js**                                                            | **PHP** (serveur Apache, garde le type)      |
+| Champ                 | Site de l'API (nouveau)                                              | Site du front (existant, modifié)            |
+| --------------------- | -------------------------------------------------------------------- | -------------------------------------------- |
+| Adresses              | `api.COMPTE.alwaysdata.net`                                          | `COMPTE.alwaysdata.net`                      |
+| Type                  | **Node.js**                                                          | **PHP** (serveur Apache, garde le type)      |
 | Commande              | `node --max-old-space-size=96 --max-semi-space-size=2 src/server.js` | —                                            |
-| Répertoire de travail | `/home/COMPTE/signale-mayotte/backend`                                 | —                                            |
-| Répertoire racine     | —                                                                      | `/home/COMPTE/signale-mayotte/frontend/dist` |
+| Répertoire de travail | `/home/COMPTE/signale-mayotte/backend`                               | —                                            |
+| Répertoire racine     | —                                                                    | `/home/COMPTE/signale-mayotte/frontend/dist` |
 
 - L'API écoute sur l'adresse et le port imposés par alwaysdata (variables `IP`/`HOST` et
   `PORT`) : le serveur les lit tout seul ([`src/server.js`](../backend/src/server.js)).
