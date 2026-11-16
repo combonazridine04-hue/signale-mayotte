@@ -1,0 +1,69 @@
+.dialogue-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(10, 6, 5, 0.6);
+  backdrop-filter: blur(2px);
+}
+
+.dialogue-card {
+  width: 100%;
+  max-width: 380px;
+  padding: 1.5rem;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.dialogue-message {
+  margin: 0 0 1.25rem;
+  color: #0f172a;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.dialogue-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.dialogue-btn {
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.dialogue-btn--ghost {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.dialogue-btn--ghost:hover {
+  background: #e2e8f0;
+}
+
+.dialogue-btn--danger {
+  background: #dc3545;
+  color: #ffffff;
+}
+
+.dialogue-btn--danger:hover {
+  background: #c1121f;
+}
+
+.dialogue-btn--primary {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.dialogue-btn--primary:hover {
+  background: #15803d;
+}
