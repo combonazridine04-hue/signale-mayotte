@@ -1,10 +1,10 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { apiFetch } from '../utils/api.js'
+import { apiFetch } from '../services/api.js'
 import PanneauAide from '../components/PanneauAide.vue'
 import CaptchaTurnstile from '../components/CaptchaTurnstile.vue'
-import { SUJETS_CONTACT } from '../../shared/sujetsContact.js'
+import { SUJETS_CONTACT } from '../shared/sujetsContact.js'
 
 // L'adresse contact@signale-mayotte.yt est affichée parce qu'elle va être créée.
 // Le téléphone 02 69 00 00 00 et l'adresse postale, eux, restent retirés : c'étaient

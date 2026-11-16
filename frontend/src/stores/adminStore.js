@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { apiFetch } from '../utils/api.js'
+import { apiFetch } from '../services/api.js'
 
 async function traiterReponse(reponse) {
   if (!reponse.ok) {

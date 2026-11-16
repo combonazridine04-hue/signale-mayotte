@@ -4,10 +4,10 @@ import { RouterLink, useRouter } from 'vue-router'
 import { usePartenaireStore } from '../../stores/partenaireStore.js'
 import { useSignalementStore } from '../../stores/signalementStore.js'
 import { useUiStore } from '../../stores/uiStore.js'
-import { STATUTS } from '../../models/signalement.js'
+import { STATUTS } from '../../data/signalement.js'
 import FilterBar from '../../components/FilterBar.vue'
-import { apiFetch } from '../../utils/api.js'
-import { dansLePerimetre, libellePerimetre } from '../../../shared/perimetrePartenaire.js'
+import { apiFetch } from '../../services/api.js'
+import { dansLePerimetre, libellePerimetre } from '../../shared/perimetrePartenaire.js'
 
 const router = useRouter()
 const partenaireStore = usePartenaireStore()

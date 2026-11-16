@@ -1,8 +1,8 @@
-import { apiFetch } from './api.js'
+import { apiFetch } from '../services/api.js'
 import { useAuthStore } from '../stores/authStore.js'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
 import { usePartenaireStore } from '../stores/partenaireStore.js'
-import { fetchApi } from './adresseApi.js'
+import { fetchApi } from '../services/adresseApi.js'
 
 // Le jeton de session vit dans un cookie HttpOnly que la page ne peut pas lire. On garde
 // seulement un indice d'affichage (type de compte, nom) pour dessiner l'interface sans

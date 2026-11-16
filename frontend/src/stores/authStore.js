@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { appliquerSession, fermerSession, lireIndice } from '../utils/session.js'
-import { fetchApi } from '../utils/adresseApi.js'
+import { fetchApi } from '../services/adresseApi.js'
 
 export const useAuthStore = defineStore('auth', {
   state: () => {

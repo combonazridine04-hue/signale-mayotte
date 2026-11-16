@@ -1,6 +1,6 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { apiFetch } from '../utils/api.js'
+import { apiFetch } from '../services/api.js'
 
 // Widget anti-robot Cloudflare Turnstile. Il remet au formulaire un jeton à usage unique
 // (v-model), que le serveur fait valider par Cloudflare avant de traiter la demande.

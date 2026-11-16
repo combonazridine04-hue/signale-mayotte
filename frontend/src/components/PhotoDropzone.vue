@@ -1,5 +1,5 @@
 <script setup>
-import { urlMedia } from '../utils/adresseApi.js'
+import { urlMedia } from '../services/adresseApi.js'
 import { computed, ref } from 'vue'
 
 const MAX_PHOTOS = 5

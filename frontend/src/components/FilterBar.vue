@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { CATEGORIES, COMMUNES, STATUTS } from '../models/signalement.js'
+import { CATEGORIES, COMMUNES, STATUTS } from '../data/signalement.js'
 
 const filtres = defineModel({
   type: Object,

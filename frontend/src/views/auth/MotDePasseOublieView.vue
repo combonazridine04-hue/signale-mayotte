@@ -1,10 +1,10 @@
 <script setup>
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useCitoyenStore } from '../stores/citoyenStore.js'
-import PanneauAide from '../components/PanneauAide.vue'
-import CaptchaTurnstile from '../components/CaptchaTurnstile.vue'
-import logo from '../assets/img/logo.svg'
+import { useCitoyenStore } from '../../stores/citoyenStore.js'
+import PanneauAide from '../../components/PanneauAide.vue'
+import CaptchaTurnstile from '../../components/CaptchaTurnstile.vue'
+import logo from '../../assets/img/logo.svg'
 
 // C'est la page où les gens se retrouvent bloqués. Chaque point correspond à une
 // cause réelle de non-réception, vérifiée dans le code du serveur.

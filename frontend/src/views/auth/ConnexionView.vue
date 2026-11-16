@@ -1,10 +1,10 @@
 <script setup>
 import { ref } from 'vue'
 import { RouterLink, useRouter, useRoute } from 'vue-router'
-import { useCitoyenStore } from '../stores/citoyenStore.js'
-import ChampMotDePasse from '../components/ChampMotDePasse.vue'
-import PanneauAide from '../components/PanneauAide.vue'
-import logo from '../assets/img/logo.svg'
+import { useCitoyenStore } from '../../stores/citoyenStore.js'
+import ChampMotDePasse from '../../components/ChampMotDePasse.vue'
+import PanneauAide from '../../components/PanneauAide.vue'
+import logo from '../../assets/img/logo.svg'
 
 const espace = [
   { titre: 'Vos signalements', texte: 'Ce que vous avez signalé, et où chaque dossier en est.' },

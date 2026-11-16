@@ -1,12 +1,12 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
-import { useCitoyenStore } from '../stores/citoyenStore.js'
-import ChampMotDePasse from '../components/ChampMotDePasse.vue'
-import JaugeMotDePasse from '../components/JaugeMotDePasse.vue'
-import PanneauAide from '../components/PanneauAide.vue'
-import CaptchaTurnstile from '../components/CaptchaTurnstile.vue'
-import logo from '../assets/img/logo.svg'
+import { useCitoyenStore } from '../../stores/citoyenStore.js'
+import ChampMotDePasse from '../../components/ChampMotDePasse.vue'
+import JaugeMotDePasse from '../../components/JaugeMotDePasse.vue'
+import PanneauAide from '../../components/PanneauAide.vue'
+import CaptchaTurnstile from '../../components/CaptchaTurnstile.vue'
+import logo from '../../assets/img/logo.svg'
 import { erreurTelephone, formaterTelephone, normaliserTelephone, telephoneValide } from '../../shared/telephone.js'
 import { motDePasseInterdit } from '../../shared/motDePasse.js'
 

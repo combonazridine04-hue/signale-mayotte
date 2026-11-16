@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { forceMotDePasse } from '../../shared/motDePasse.js'
+import { forceMotDePasse } from '../shared/motDePasse.js'
 
 const props = defineProps({
   motDePasse: { type: String, default: '' }

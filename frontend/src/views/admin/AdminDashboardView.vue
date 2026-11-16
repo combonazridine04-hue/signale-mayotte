@@ -7,11 +7,11 @@ import { useContactStore } from '../../stores/contactStore.js'
 import { useAdminStore } from '../../stores/adminStore.js'
 import { usePartenairesAdminStore } from '../../stores/partenairesAdminStore.js'
 import { useUiStore } from '../../stores/uiStore.js'
-import { STATUTS, COMMUNES, CATEGORIES } from '../../models/signalement.js'
-import { apiFetch } from '../../utils/api.js'
+import { STATUTS, COMMUNES, CATEGORIES } from '../../data/signalement.js'
+import { apiFetch } from '../../services/api.js'
 import FilterBar from '../../components/FilterBar.vue'
 import ChampMotDePasse from '../../components/ChampMotDePasse.vue'
-import JournalActivite from '../../components/JournalActivite.vue'
+import JournalActivite from '../../components/admin/JournalActivite.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

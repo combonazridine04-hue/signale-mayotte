@@ -1,6 +1,6 @@
 <script setup>
 import { RouterLink } from 'vue-router'
-import { CATEGORIES } from '../models/signalement.js'
+import { CATEGORIES } from '../data/signalement.js'
 import logo from '../assets/img/logo.svg'
 
 const annee = new Date().getFullYear()

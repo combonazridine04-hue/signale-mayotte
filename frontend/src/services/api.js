@@ -2,7 +2,7 @@ import { reactive } from 'vue'
 import { useAuthStore } from '../stores/authStore.js'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
 import { usePartenaireStore } from '../stores/partenaireStore.js'
-import { fermerSession } from './session.js'
+import { fermerSession } from '../utils/session.js'
 import { fetchApi } from './adresseApi.js'
 
 function estConnecte() {

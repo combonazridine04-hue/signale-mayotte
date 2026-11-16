@@ -1,5 +1,5 @@
 <script setup>
-import { urlMedia } from '../utils/adresseApi.js'
+import { urlMedia } from '../services/adresseApi.js'
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import { dateRelative, dateComplete } from '../utils/dates.js'

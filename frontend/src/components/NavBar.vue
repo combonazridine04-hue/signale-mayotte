@@ -1,5 +1,5 @@
 <script setup>
-import { urlMedia } from '../utils/adresseApi.js'
+import { urlMedia } from '../services/adresseApi.js'
 import { computed } from 'vue'
 import { RouterLink } from 'vue-router'
 import { useCitoyenStore } from '../stores/citoyenStore.js'

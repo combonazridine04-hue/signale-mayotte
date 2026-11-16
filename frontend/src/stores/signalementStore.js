@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { apiFetch } from '../utils/api.js'
+import { apiFetch } from '../services/api.js'
 import { enregistrerTokenSuppression } from '../utils/tokensSuppression.js'
 
 async function traiterReponse(reponse) {

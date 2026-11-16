@@ -11,19 +11,32 @@ Vue 3 (`<script setup>`), Vue Router, Pinia, Vite, Bootstrap 5, Leaflet (carte),
 ## Structure
 
 ```
-src/
-├── views/              écrans (accueil, signaler, carte, détail, profil, admin, partenaire…)
-├── components/         composants réutilisables (barre de navigation, carte, dépôt de photos…)
-├── stores/             état partagé (Pinia) : session, signalements, profil…
-├── router/             routes et accès réservés (admin, partenaire, citoyen connecté)
-├── models/             listes de référence (catégories, communes, statuts)
-└── utils/
-    ├── adresseApi.js   adresse de l'API (VITE_API_URL), appels avec cookie, adresse des photos
-    └── api.js          appels à l'API avec reprise automatique des lectures
-shared/                 règles de validation communes avec le back-end (téléphone, mot de passe…)
+frontend/
+├── public/                 copiés tels quels (favicon, robots.txt, _redirects Cloudflare…)
+├── src/
+│   ├── assets/             css/ (un fichier par écran ou composant) et img/ (logo)
+│   ├── components/         composants réutilisables (navigation, carte, dépôt de photos…)
+│   │   └── admin/          composants du tableau de bord admin (journal d'activité)
+│   ├── data/               listes de référence (catégories, communes, statuts)
+│   ├── router/             routes et accès réservés (admin, partenaire, citoyen connecté)
+│   ├── services/
+│   │   ├── adresseApi.js   adresse de l'API (VITE_API_URL), appels avec cookie, photos
+│   │   └── api.js          appels à l'API avec reprise automatique des lectures
+│   ├── shared/             règles de validation communes avec le back-end
+│   ├── stores/             état partagé (Pinia) : session, signalements, profil…
+│   ├── utils/              petites fonctions utiles (dates, session, fonds de carte…)
+│   ├── views/              écrans (accueil, signaler, carte, détail, profil, contact…)
+│   │   ├── admin/          connexion et tableau de bord admin
+│   │   ├── auth/           connexion, inscription, mot de passe oublié, vérification email
+│   │   └── partenaire/     connexion et tableau de bord partenaire
+│   ├── App.vue
+│   └── main.js
+├── index.html
+├── package.json
+└── vite.config.js
 ```
 
-`shared/` et `src/models/signalement.js` existent aussi dans le back-end, qui fait le contrôle final : **toute modification doit être reportée dans les deux projets**.
+`src/shared/` et `src/data/signalement.js` existent aussi dans le back-end (`backend/src/shared/`), qui fait le contrôle final : **toute modification doit être reportée dans les deux dossiers**.
 
 ## Démarrage
 
@@ -53,13 +66,13 @@ Procédure complète d'hébergement chez alwaysdata : [`docs/deploiement.md`](..
 
 ### Hébergement sur Cloudflare Pages
 
-1. Cloudflare → *Workers & Pages* → *Create* → *Pages* → connecter ce dépôt GitHub.
+1. Cloudflare → _Workers & Pages_ → _Create_ → _Pages_ → connecter ce dépôt GitHub.
 2. Réglages du build :
    - Root directory : `frontend`
    - Framework preset : `Vue` (ou aucun)
    - Build command : `npm run build`
    - Build output directory : `dist`
-3. Variables d'environnement (*Settings → Variables*) :
+3. Variables d'environnement (_Settings → Variables_) :
    - `VITE_API_URL` = adresse de l'API, sans `/` final (ex. `https://api.COMPTE.alwaysdata.net`)
    - `VITE_MAPTILER_KEY` = clé des fonds de carte (facultatif)
    - `NODE_VERSION` = `22`

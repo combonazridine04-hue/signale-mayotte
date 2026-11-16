@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { apiFetch } from '../utils/api.js'
+import { apiFetch } from '../../services/api.js'
 
 // Journal d'activité de l'espace admin. Les données viennent de la base NoSQL NeDB (voir
 // server/journal.js) : connexions, actions sur les comptes, changements de statut…

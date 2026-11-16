@@ -11,9 +11,9 @@ export default [
   js.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
 
-  // Code du navigateur (et règles partagées avec le back-end, dans shared/)
+  // Code du navigateur (et règles partagées avec le back-end, dans src/shared/)
   {
-    files: ['src/**/*.{js,vue}', 'shared/**/*.js'],
+    files: ['src/**/*.{js,vue}'],
     languageOptions: {
       globals: { ...globals.browser }
     }

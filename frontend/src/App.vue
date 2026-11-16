@@ -5,7 +5,7 @@ import Footer from './components/Footer.vue'
 import ThemeToggle from './components/ThemeToggle.vue'
 import DialogueGlobal from './components/DialogueGlobal.vue'
 import { RouterView, useRoute } from 'vue-router'
-import { etatReseau } from './utils/api.js'
+import { etatReseau } from './services/api.js'
 import { synchroniserSession } from './utils/session.js'
 
 const GlobeBackground = defineAsyncComponent({

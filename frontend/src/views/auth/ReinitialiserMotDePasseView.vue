@@ -1,11 +1,11 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
-import { useCitoyenStore } from '../stores/citoyenStore.js'
-import ChampMotDePasse from '../components/ChampMotDePasse.vue'
-import JaugeMotDePasse from '../components/JaugeMotDePasse.vue'
-import PanneauAide from '../components/PanneauAide.vue'
-import logo from '../assets/img/logo.svg'
+import { useCitoyenStore } from '../../stores/citoyenStore.js'
+import ChampMotDePasse from '../../components/ChampMotDePasse.vue'
+import JaugeMotDePasse from '../../components/JaugeMotDePasse.vue'
+import PanneauAide from '../../components/PanneauAide.vue'
+import logo from '../../assets/img/logo.svg'
 
 // Décrit exactement ce que fait le serveur : le jeton est effacé après usage et
 // toutes les sessions du compte sont révoquées.

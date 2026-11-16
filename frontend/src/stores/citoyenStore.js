@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { appliquerSession, fermerSession, lireIndice, memoriserIndice } from '../utils/session.js'
-import { fetchApi } from '../utils/adresseApi.js'
+import { fetchApi } from '../services/adresseApi.js'
 
 // Aucun jeton ici : la session voyage dans un cookie HttpOnly que le navigateur joint
 // seul à chaque requête vers le site.

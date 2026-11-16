@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { fetchApi } from '../utils/adresseApi.js'
+import { fetchApi } from '../services/adresseApi.js'
 
 const stats = ref(null)
 const chargement = ref(true)

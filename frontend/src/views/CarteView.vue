@@ -5,7 +5,7 @@ import * as L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { useSignalementStore } from '../stores/signalementStore.js'
 import { ajouterCoucheTuiles } from '../utils/tuiles.js'
-import { CATEGORIES, COMMUNES, STATUTS } from '../models/signalement.js'
+import { CATEGORIES, COMMUNES, STATUTS } from '../data/signalement.js'
 
 const MAYOTTE = [-12.8275, 45.1662]
 

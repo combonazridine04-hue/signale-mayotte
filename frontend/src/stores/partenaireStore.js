@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { appliquerSession, fermerSession, lireIndice } from '../utils/session.js'
-import { fetchApi } from '../utils/adresseApi.js'
+import { fetchApi } from '../services/adresseApi.js'
 
 // Session d'un compte partenaire (agent municipal) : mêmes principes que authStore.js,
 // adaptés à ce troisième type de compte.

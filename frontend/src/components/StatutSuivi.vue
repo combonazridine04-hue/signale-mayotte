@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { STATUTS } from '../models/signalement.js'
+import { STATUTS } from '../data/signalement.js'
 import { dateRelative } from '../utils/dates.js'
 
 const props = defineProps({

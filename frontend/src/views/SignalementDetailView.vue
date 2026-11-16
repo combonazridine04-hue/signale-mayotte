@@ -1,9 +1,9 @@
 <script setup>
-import { urlMedia } from '../utils/adresseApi.js'
+import { urlMedia } from '../services/adresseApi.js'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { TITRE_SITE } from '../router/index.js'
-import { CATEGORIES, COMMUNES, STATUTS, ORGANISME_PAR_CATEGORIE } from '../models/signalement.js'
+import { CATEGORIES, COMMUNES, STATUTS, ORGANISME_PAR_CATEGORIE } from '../data/signalement.js'
 import { useSignalementStore } from '../stores/signalementStore.js'
 import { useAuthStore } from '../stores/authStore.js'
 import { useCitoyenStore } from '../stores/citoyenStore.js'

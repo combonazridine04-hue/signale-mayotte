@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { RouterLink } from 'vue-router'
-import { useCitoyenStore } from '../stores/citoyenStore.js'
+import { useCitoyenStore } from '../../stores/citoyenStore.js'
 
 const citoyenStore = useCitoyenStore()
 
