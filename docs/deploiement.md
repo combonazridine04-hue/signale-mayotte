@@ -48,7 +48,7 @@ l'autre. Les sites ne se mettent jamais en veille.
 | --------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------- |
 | [alwaysdata](https://www.alwaysdata.com)            | Offre gratuite : ~1 Go de disque, 256 Mo de mémoire, MariaDB inclus       | Oui                               |
 | Node.js                                             | **20.19 ou plus** (champ `engines` du `package.json`) ; Node 22 conseillé | Oui                               |
-| Compte GitHub                                       | Dépôts des deux projets (le serveur les clone)                            | Oui                               |
+| Compte GitHub                                       | Dépôt du projet (le serveur le clone)                                     | Oui                               |
 | [Brevo](https://brevo.com)                          | 300 emails/jour gratuits                                                  | Recommandé                        |
 | [Cloudflare Turnstile](https://dash.cloudflare.com) | Gratuit                                                                   | Non, mais conseillé en production |
 | [MapTiler](https://cloud.maptiler.com)              | Clé gratuite                                                              | Non (repli sur OpenStreetMap)     |

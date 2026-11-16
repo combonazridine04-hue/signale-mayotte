@@ -1,3 +1,0 @@
-# Cloudflare Pages : application à page unique. Toute adresse qui n'est pas un fichier
-# réel (ex. /signalements/42) renvoie index.html, et Vue Router affiche le bon écran.
-/*  /index.html  200

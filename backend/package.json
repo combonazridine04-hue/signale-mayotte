@@ -2,7 +2,7 @@
   "name": "signale-mayotte-backend",
   "private": true,
   "version": "1.0.0",
-  "description": "Signale Mayotte — back-end : API Express, MariaDB (SQL) et NeDB (NoSQL). Le front-end est un projet séparé.",
+  "description": "Signale Mayotte — back-end : API Express, MariaDB (SQL) et NeDB (NoSQL). Le front-end est dans ../frontend.",
   "type": "module",
   "engines": {
     "node": ">=20.19.0"

@@ -7,7 +7,7 @@ import { chromium } from 'playwright-chromium'
 import { preparerAdminTest, preparerEnvironnementTest } from '../environnementTest.js'
 
 // Parcours complet dans un vrai navigateur, avec la VRAIE architecture : le front-end
-// (projet séparé) et l'API tournent à deux adresses différentes. Le test vérifie donc
+// (dossier ../frontend) et l'API tournent à deux adresses différentes. Le test vérifie donc
 // aussi le CORS, le cookie de session et la politique de sécurité du front.
 
 // Base, stockage des photos et emails isolés : même garde que les tests d'API, un seul module.

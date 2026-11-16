@@ -22,7 +22,7 @@ signale-mayotte/
 │   │   └── server.js
 │   ├── tests/
 │   └── scripts/
-├── frontend/               Site Vue 3 (Vite) → Cloudflare Pages
+├── frontend/               Site Vue 3 (Vite) → alwaysdata
 │   ├── public/
 │   └── src/
 │       ├── assets/         CSS et images
@@ -70,13 +70,12 @@ npm run dev
 
 - **En local :** le front envoie ses appels `/api` et `/uploads` au back sur `http://localhost:3001` (réglé dans [`frontend/vite.config.js`](frontend/vite.config.js)). Rien à configurer.
 - **En ligne :**
-  - le front appelle l'adresse de l'API définie dans `VITE_API_URL` (variable du build sur Cloudflare) ;
+  - le front appelle l'adresse de l'API définie dans `VITE_API_URL` (fichier `frontend/.env.production`, lu au build) ;
   - le back n'accepte que l'adresse du front définie dans `FRONTEND_URL` (fichier `backend/.env` sur alwaysdata).
 
 ## Mise en ligne
 
-- **Back-end sur alwaysdata :** [`docs/deploiement.md`](docs/deploiement.md).
-- **Front-end sur Cloudflare Pages :** [`frontend/README.md`](frontend/README.md#hébergement-sur-cloudflare-pages) — dans Cloudflare, choisir **`frontend`** comme _Root directory_.
+Front-end et back-end sont tous les deux hébergés chez alwaysdata : [`docs/deploiement.md`](docs/deploiement.md).
 
 ## Documentation
 

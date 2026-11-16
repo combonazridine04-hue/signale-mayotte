@@ -2,7 +2,7 @@
 
 Interface web de Signale Mayotte : plateforme citoyenne pour signaler les problèmes du quotidien (déchets, voirie, éclairage, eau) dans les communes de Mayotte et suivre leur traitement.
 
-Ce projet contient **uniquement le front-end** (Vue 3). Il appelle l'API du **back-end**, un projet séparé (`signale-mayotte` : Express, MariaDB, NeDB).
+Ce dossier contient le **front-end** (Vue 3). Il appelle l'API du **back-end**, dans le dossier voisin [`../backend`](../backend) (Express, MariaDB, NeDB).
 
 ## Stack
 
@@ -12,7 +12,7 @@ Vue 3 (`<script setup>`), Vue Router, Pinia, Vite, Bootstrap 5, Leaflet (carte),
 
 ```
 frontend/
-├── public/                 copiés tels quels (favicon, robots.txt, _redirects Cloudflare…)
+├── public/                 copiés tels quels (favicon, robots.txt, .htaccess d'Apache…)
 ├── src/
 │   ├── assets/             css/ (un fichier par écran ou composant) et img/ (logo)
 │   ├── components/         composants réutilisables (navigation, carte, dépôt de photos…)
@@ -64,26 +64,6 @@ npm ci && npm run build    # produit dist/, à servir comme site statique
 
 Procédure complète d'hébergement chez alwaysdata : [`docs/deploiement.md`](../docs/deploiement.md).
 
-### Hébergement sur Cloudflare Pages
-
-1. Cloudflare → _Workers & Pages_ → _Create_ → _Pages_ → connecter ce dépôt GitHub.
-2. Réglages du build :
-   - Root directory : `frontend`
-   - Framework preset : `Vue` (ou aucun)
-   - Build command : `npm run build`
-   - Build output directory : `dist`
-3. Variables d'environnement (_Settings → Variables_) :
-   - `VITE_API_URL` = adresse de l'API, sans `/` final (ex. `https://api.COMPTE.alwaysdata.net`)
-   - `VITE_MAPTILER_KEY` = clé des fonds de carte (facultatif)
-   - `NODE_VERSION` = `22`
-4. Côté API (`.env` du back-end sur alwaysdata) :
-   - `FRONTEND_URL=https://<projet>.pages.dev` (l'adresse exacte donnée par Cloudflare)
-   - `COOKIE_SAMESITE=none` : le front et l'API sont sur deux sites différents.
-
-`public/_redirects` (renvoie `index.html` pour toute adresse inconnue) et `public/_headers` (en-têtes de sécurité) remplacent le `.htaccess` d'Apache sur Cloudflare.
-
-> Safari bloque les cookies « tiers » : avec `pages.dev` + `alwaysdata.net`, la connexion peut échouer sur iPhone. La solution est un nom de domaine commun (ex. `signale-mayotte.fr` pour le front, `api.signale-mayotte.fr` pour l'API).
-
 ## Scripts
 
 | Commande               | Rôle                                          |
@@ -97,4 +77,4 @@ Procédure complète d'hébergement chez alwaysdata : [`docs/deploiement.md`](..
 
 ## Tests
 
-Le parcours complet dans un vrai navigateur est lancé depuis le back-end (`npm run test:e2e`) : il compile ce projet, le sert à une adresse et l'API à une autre, puis vérifie inscription, signalement avec photo, carte, administration… ainsi que le CORS, le cookie de session et la CSP.
+Le parcours complet dans un vrai navigateur est lancé depuis le back-end (`npm run test:e2e`) : il compile ce dossier, le sert à une adresse et l'API à une autre, puis vérifie inscription, signalement avec photo, carte, administration… ainsi que le CORS, le cookie de session et la CSP.

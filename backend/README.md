@@ -22,24 +22,24 @@ L'identité des contributeurs n'est jamais affichée : un pseudo, ou à défaut 
 
 ## Stack
 
-|                 | Technologies                                                                                         |
-| --------------- | ---------------------------------------------------------------------------------------------------- |
-| **Front-end**   | Projet séparé : Vue 3 (`<script setup>`), Vue Router, Pinia, Vite, Bootstrap 5, Leaflet, Three.js    |
-| **Back-end**    | Node.js, Express 5, `mysql2`, bcryptjs, helmet, express-rate-limit, multer, sharp                    |
-| **Données**     | MariaDB (données métier, SQL), NeDB (journal d'activité, NoSQL), photos sur le disque du serveur     |
-| **Services**    | Brevo (emails, par API HTTPS), nsfwjs (modération des photos), Cloudflare Turnstile (anti-robot)     |
-| **Qualité**     | ESLint, Prettier, EditorConfig, GitHub Actions, tests `node:test` et Playwright                      |
-| **Hébergement** | alwaysdata (France) : un site pour le front, un site Node.js pour l'API, MariaDB et disque permanent |
+|                 | Technologies                                                                                              |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| **Front-end**   | Dossier `../frontend` : Vue 3 (`<script setup>`), Vue Router, Pinia, Vite, Bootstrap 5, Leaflet, Three.js |
+| **Back-end**    | Node.js, Express 5, `mysql2`, bcryptjs, helmet, express-rate-limit, multer, sharp                         |
+| **Données**     | MariaDB (données métier, SQL), NeDB (journal d'activité, NoSQL), photos sur le disque du serveur          |
+| **Services**    | Brevo (emails, par API HTTPS), nsfwjs (modération des photos), Cloudflare Turnstile (anti-robot)          |
+| **Qualité**     | ESLint, Prettier, EditorConfig, GitHub Actions, tests `node:test` et Playwright                           |
+| **Hébergement** | alwaysdata (France) : un site pour le front, un site Node.js pour l'API, MariaDB et disque permanent      |
 
 ## Architecture
 
 ```
-                 ┌──────────── front-end (projet séparé) ────────────┐
+                 ┌──────────── front-end (../frontend) ──────────────┐
  Navigateur ────▶│ Vue 3 compilé (HTML, CSS, JS)                      │
      │           └────────────────────────────────────────────────────┘
      │ fetch(VITE_API_URL + "/api/…", { credentials: "include" })
      ▼
- ┌──────────── back-end (ce dépôt) ───────────────────────────────────┐
+ ┌──────────── back-end (ce dossier) ─────────────────────────────────┐
  │ Express : CORS (FRONTEND_URL) → anti-CSRF → routes /api/*            │
  │   ├──▶ MariaDB           (données métier, SQL)                       │
  │   ├──▶ NeDB              (journal d'activité, NoSQL, fichier local)  │
