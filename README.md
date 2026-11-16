@@ -8,16 +8,42 @@ Plateforme citoyenne pour signaler les problèmes du quotidien — dépôts sauv
 
 ```
 signale-mayotte/
-├── backend/     API Express + MariaDB (SQL) + NeDB (journal)  → hébergé sur alwaysdata
-├── frontend/    Site Vue 3 (Vite)                              → hébergé sur Cloudflare Pages
-├── docs/        Base de données, maquettes, déploiement, pentest
-└── .github/     Intégration continue (lint, tests, build)
+├── backend/                API Express + MariaDB (SQL) + NeDB (journal) → alwaysdata
+│   ├── database/           schema.sql : création des tables
+│   ├── src/
+│   │   ├── config/         connexion à la base, stockage des photos
+│   │   ├── controllers/    ce que fait chaque route
+│   │   ├── middlewares/    connexion obligatoire, limites, CORS, upload…
+│   │   ├── models/         requêtes SQL (une par table)
+│   │   ├── routes/         chemins de l'API
+│   │   ├── services/       logique métier (emails, sessions, journal…)
+│   │   ├── shared/         règles communes avec le front
+│   │   ├── app.js
+│   │   └── server.js
+│   ├── tests/
+│   └── scripts/
+├── frontend/               Site Vue 3 (Vite) → Cloudflare Pages
+│   ├── public/
+│   └── src/
+│       ├── assets/         CSS et images
+│       ├── components/     composants réutilisables (+ admin/)
+│       ├── data/           listes de référence (catégories, communes…)
+│       ├── router/         routes du site
+│       ├── services/       appels à l'API
+│       ├── shared/         règles communes avec le back
+│       ├── stores/         état partagé (Pinia)
+│       ├── utils/          petites fonctions utiles
+│       ├── views/          écrans (+ admin/, auth/, partenaire/)
+│       ├── App.vue
+│       └── main.js
+├── docs/                   base de données, maquettes, déploiement, pentest
+└── .github/                intégration continue (lint, tests, build)
 ```
 
-| Dossier                    | Rôle                                                   | Détails                                    |
-| -------------------------- | ------------------------------------------------------ | ------------------------------------------ |
-| [`backend/`](backend)      | L'API : comptes, signalements, photos, administration  | [`backend/README.md`](backend/README.md)   |
-| [`frontend/`](frontend)    | Le site affiché dans le navigateur, qui appelle l'API  | [`frontend/README.md`](frontend/README.md) |
+| Dossier                 | Rôle                                                  | Détails                                    |
+| ----------------------- | ----------------------------------------------------- | ------------------------------------------ |
+| [`backend/`](backend)   | L'API : comptes, signalements, photos, administration | [`backend/README.md`](backend/README.md)   |
+| [`frontend/`](frontend) | Le site affiché dans le navigateur, qui appelle l'API | [`frontend/README.md`](frontend/README.md) |
 
 ## Lancer le projet en local
 
@@ -50,7 +76,7 @@ npm run dev
 ## Mise en ligne
 
 - **Back-end sur alwaysdata :** [`docs/deploiement.md`](docs/deploiement.md).
-- **Front-end sur Cloudflare Pages :** [`frontend/README.md`](frontend/README.md#hébergement-sur-cloudflare-pages) — dans Cloudflare, choisir **`frontend`** comme *Root directory*.
+- **Front-end sur Cloudflare Pages :** [`frontend/README.md`](frontend/README.md#hébergement-sur-cloudflare-pages) — dans Cloudflare, choisir **`frontend`** comme _Root directory_.
 
 ## Documentation
 

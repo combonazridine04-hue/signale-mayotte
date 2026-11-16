@@ -2,10 +2,10 @@
 
 Le projet utilise **deux bases**, chacune pour ce qu'elle fait le mieux :
 
-| Base        | Type                | Rôle                                                            | Code d'accès                                                      |
-| ----------- | ------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------- |
-| **MariaDB** | Relationnelle (SQL) | Données métier : signalements, comptes, commentaires, soutiens… | [`src/config/db.js`](../backend/src/config/db.js) + routes, via `mysql2`          |
-| **NeDB**    | Documents (NoSQL)   | Journal d'activité (connexions, actions sensibles)              | [`src/services/journalService.js`](../backend/src/services/journalService.js), via `@seald-io/nedb` |
+| Base        | Type                | Rôle                                                            | Code d'accès                                                                                             |
+| ----------- | ------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| **MariaDB** | Relationnelle (SQL) | Données métier : signalements, comptes, commentaires, soutiens… | [`src/config/db.js`](../backend/src/config/db.js) + [`src/models/`](../backend/src/models), via `mysql2` |
+| **NeDB**    | Documents (NoSQL)   | Journal d'activité (connexions, actions sensibles)              | [`src/services/journalService.js`](../backend/src/services/journalService.js), via `@seald-io/nedb`      |
 
 **Où vit la base :** MariaDB est installé sur le poste du développeur, avec deux bases :
 `signale_mayotte` (développement) et `signale_mayotte_test` (tests automatiques, vidée à
@@ -16,8 +16,14 @@ _Afficher le diagramme_).
 L'application se connecte avec un compte dédié, `signale`, qui n'a de droits que sur ces
 deux bases (**principe du moindre privilège**) : jamais avec le compte administrateur `root`.
 
-Le schéma est créé automatiquement au premier démarrage du serveur (`CREATE TABLE IF NOT
-EXISTS` dans [`src/config/db.js`](../backend/src/config/db.js)) : une base vide arrive seule au bon état.
+Le schéma est écrit en SQL dans [`database/schema.sql`](../backend/database/schema.sql)
+(`CREATE TABLE IF NOT EXISTS`). Le serveur l'exécute à chaque démarrage
+([`src/config/db.js`](../backend/src/config/db.js)) : une base vide arrive seule au bon état.
+On peut aussi l'ouvrir et l'exécuter dans DBeaver.
+
+Les requêtes SQL de l'application sont rangées dans [`src/models/`](../backend/src/models),
+un fichier par table (`signalementModel.js`, `commentaireModel.js`, `adminModel.js`…) : les
+contrôleurs n'écrivent jamais de SQL, ils appellent ces fonctions.
 Toutes les tables sont en **InnoDB** (clés étrangères et transactions) et en **utf8mb4**
 (accents, emojis).
 
@@ -296,7 +302,11 @@ fourre-tout ; en NoSQL, chaque document porte exactement ses propres champs.
   "date": { "$$date": 1763242392512 },
   "type": "signalement.statut",
   "resultat": "succes",
-  "acteur": { "type": "partenaire", "id": 4, "nom": "Services techniques Koungou" },
+  "acteur": {
+    "type": "partenaire",
+    "id": 4,
+    "nom": "Services techniques Koungou"
+  },
   "cible": { "type": "signalement", "id": 128 },
   "details": { "avant": "Signalé", "apres": "En cours" }
 }

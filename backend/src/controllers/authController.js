@@ -20,17 +20,9 @@ import { fermerSession, ouvrirSession, sessionDeLaRequete } from '../services/se
 import { traiterPhoto } from '../middlewares/photoUpload.js'
 import { supprimerPhoto } from '../config/storage.js'
 import { contientContenuExplicite } from '../services/moderationService.js'
-import { db } from '../config/db.js'
+import { noterConnexion } from '../models/utilisateurModel.js'
 import { effacerCompte, exporterDonnees, motDePasseCorrect, mettreAJourNom } from '../services/compteService.js'
 import { journaliser } from '../services/journalService.js'
-
-// Sert à effacer les comptes restés inutilisés trop longtemps (voir retentionService.js).
-function noterConnexion(utilisateurId) {
-  db.query('UPDATE utilisateurs SET derniere_connexion = ? WHERE id = ?', [
-    new Date().toISOString(),
-    utilisateurId
-  ]).catch((e) => console.error('[auth] derniere_connexion :', e.message))
-}
 
 export const connexionAdmin = async (req, res) => {
   const { identifiant, motDePasse } = req.body || {}

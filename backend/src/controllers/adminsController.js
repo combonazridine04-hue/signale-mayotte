@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs'
-import { db } from '../config/db.js'
 import QRCode from 'qrcode'
+import * as Admin from '../models/adminModel.js'
 import { consommerCodeAdmin, revoquerSessionsDe } from '../services/authService.js'
 import { genererSecret, lienOtpauth, verifierCode } from '../services/totpService.js'
 import { jetonDeLaRequete } from '../services/sessionService.js'
@@ -11,48 +11,36 @@ function mapRow(row) {
   return { id: row.id, identifiant: row.identifiant, creeLe: row.cree_le, deuxFacteurs: Boolean(row.deux_facteurs) }
 }
 
-// Le secret n'est jamais renvoyé par l'API, sauf une fois, au moment de l'activation.
-const COLONNES = 'id, identifiant, cree_le, totp_secret IS NOT NULL AS deux_facteurs'
-
-// Limité à /admins : monté sur /api, un router.use() global interceptait toutes les
-// requêtes arrivées jusqu'ici, et une route inconnue répondait 401 au lieu de 404.
-
 export const listerAdmins = async (req, res) => {
-  const { rows } = await db.query(`SELECT ${COLONNES} FROM admins ORDER BY cree_le ASC`)
-  res.json(rows.map(mapRow))
+  const admins = await Admin.lister()
+  res.json(admins.map(mapRow))
 }
 
 // --- Double authentification (code à 6 chiffres d'une application) ---
 
 export const etatDeuxFacteurs = async (req, res) => {
-  const { rows } = await db.query(`SELECT ${COLONNES} FROM admins WHERE id = ?`, [req.admin.id])
-  res.json({ actif: Boolean(rows[0]?.deux_facteurs) })
+  res.json({ actif: await Admin.aDeuxFacteurs(req.admin.id) })
 }
 
 // Étape 1 : un secret est proposé (QR code à scanner). Il ne protège rien tant qu'un
 // premier code n'a pas prouvé que l'application l'a bien enregistré.
 export const preparerDeuxFacteurs = async (req, res) => {
   const secret = genererSecret()
-  await db.query('UPDATE admins SET totp_secret_attente = ? WHERE id = ?', [secret, req.admin.id])
+  await Admin.enregistrerSecretEnAttente(req.admin.id, secret)
   const qr = await QRCode.toDataURL(lienOtpauth(secret, req.admin.identifiant), { margin: 1, width: 220 })
   res.json({ secret, qr })
 }
 
 // Étape 2 : le premier code valide active la protection.
 export const activerDeuxFacteurs = async (req, res) => {
-  const { rows } = await db.query('SELECT totp_secret_attente FROM admins WHERE id = ?', [req.admin.id])
-  const secret = rows[0]?.totp_secret_attente
+  const secret = await Admin.lireSecretEnAttente(req.admin.id)
   if (!secret) return res.status(400).json({ erreur: 'Recommencez la configuration : aucun QR code en attente.' })
 
   const pas = verifierCode(secret, req.body?.code)
   if (pas === null)
     return res.status(400).json({ erreur: 'Code incorrect. Vérifiez l’heure de votre téléphone et réessayez.' })
 
-  await db.query('UPDATE admins SET totp_secret = ?, totp_secret_attente = NULL, totp_dernier_pas = ? WHERE id = ?', [
-    secret,
-    pas,
-    req.admin.id
-  ])
+  await Admin.activerDeuxFacteurs(req.admin.id, secret, pas)
   // Toute autre session ouverte avec le seul mot de passe est fermée.
   revoquerSessionsDe(req.admin.id, jetonDeLaRequete(req) || null)
   journaliser(req, 'admin.2fa_activation')
@@ -63,8 +51,7 @@ export const activerDeuxFacteurs = async (req, res) => {
 // ne suffit pas à la retirer.
 export const desactiverDeuxFacteurs = async (req, res) => {
   const { motDePasse, code } = req.body || {}
-  const { rows } = await db.query('SELECT * FROM admins WHERE id = ?', [req.admin.id])
-  const admin = rows[0]
+  const admin = await Admin.trouverParId(req.admin.id)
   if (!admin?.totp_secret) return res.status(400).json({ erreur: 'La double authentification n’est pas activée.' })
   if (!(await bcrypt.compare(String(motDePasse || ''), admin.mot_de_passe_hash))) {
     return res.status(400).json({ erreur: 'Mot de passe incorrect.' })
@@ -73,7 +60,7 @@ export const desactiverDeuxFacteurs = async (req, res) => {
   if (!(await consommerCodeAdmin(admin.id, admin.totp_secret, dernierPas, code))) {
     return res.status(400).json({ erreur: 'Code incorrect ou expiré.' })
   }
-  await db.query('UPDATE admins SET totp_secret = NULL, totp_dernier_pas = NULL WHERE id = ?', [admin.id])
+  await Admin.desactiverDeuxFacteurs(admin.id)
   journaliser(req, 'admin.2fa_desactivation')
   res.status(204).end()
 }
@@ -85,11 +72,7 @@ export const retirerDeuxFacteursAdmin = async (req, res) => {
   if (id === req.admin.id) {
     return res.status(400).json({ erreur: 'Pour votre propre compte, utilisez « Désactiver ».' })
   }
-  const { rowCount } = await db.query(
-    'UPDATE admins SET totp_secret = NULL, totp_secret_attente = NULL, totp_dernier_pas = NULL WHERE id = ?',
-    [id]
-  )
-  if (!rowCount) return res.status(404).json({ erreur: 'Compte introuvable.' })
+  if (!(await Admin.reinitialiserDeuxFacteurs(id))) return res.status(404).json({ erreur: 'Compte introuvable.' })
   revoquerSessionsDe(id)
   journaliser(req, 'admin.2fa_reinitialisation', { cible: { type: 'admin', id } })
   res.status(204).end()
@@ -107,19 +90,14 @@ export const creerAdmin = async (req, res) => {
   if (refus) return res.status(400).json({ erreur: refus })
 
   const identifiantTrim = identifiant.trim()
-  const { rows: existant } = await db.query('SELECT id FROM admins WHERE identifiant = ?', [identifiantTrim])
-  if (existant.length) {
+  if (await Admin.identifiantExiste(identifiantTrim)) {
     return res.status(409).json({ erreur: 'Cet identifiant existe déjà.' })
   }
 
-  const hash = await bcrypt.hash(motDePasse, 12)
-  const { rows } = await db.query(
-    'INSERT INTO admins (identifiant, mot_de_passe_hash, cree_le) VALUES (?, ?, ?) RETURNING id, identifiant, cree_le',
-    [identifiantTrim, hash, new Date().toISOString()]
-  )
+  const admin = await Admin.creer(identifiantTrim, await bcrypt.hash(motDePasse, 12))
 
-  journaliser(req, 'admin.creation', { cible: { type: 'admin', id: rows[0].id, nom: rows[0].identifiant } })
-  res.status(201).json(mapRow(rows[0]))
+  journaliser(req, 'admin.creation', { cible: { type: 'admin', id: admin.id, nom: admin.identifiant } })
+  res.status(201).json(mapRow(admin))
 }
 
 export const supprimerAdmin = async (req, res) => {
@@ -129,16 +107,15 @@ export const supprimerAdmin = async (req, res) => {
     return res.status(400).json({ erreur: 'Impossible de supprimer votre propre compte.' })
   }
 
-  const { rows: total } = await db.query('SELECT COUNT(*) AS count FROM admins')
-  if (total[0].count <= 1) {
+  if ((await Admin.compter()) <= 1) {
     return res.status(400).json({ erreur: 'Impossible de supprimer le dernier compte admin.' })
   }
 
-  const { rows: supprime } = await db.query('DELETE FROM admins WHERE id = ? RETURNING identifiant', [id])
-  if (!supprime.length) return res.status(404).json({ erreur: 'Compte introuvable.' })
+  const identifiant = await Admin.supprimer(id)
+  if (identifiant === undefined) return res.status(404).json({ erreur: 'Compte introuvable.' })
 
   revoquerSessionsDe(id)
-  journaliser(req, 'admin.suppression', { cible: { type: 'admin', id, nom: supprime[0].identifiant } })
+  journaliser(req, 'admin.suppression', { cible: { type: 'admin', id, nom: identifiant } })
   res.status(204).end()
 }
 
@@ -148,8 +125,7 @@ export const changerMotDePasse = async (req, res) => {
   const refus = motDePasseInterdit(nouveauMotDePasse)
   if (refus) return res.status(400).json({ erreur: refus })
 
-  const { rows } = await db.query('SELECT * FROM admins WHERE id = ?', [req.admin.id])
-  const admin = rows[0]
+  const admin = await Admin.trouverParId(req.admin.id)
   if (!admin) return res.status(404).json({ erreur: 'Compte introuvable.' })
 
   const valide = await bcrypt.compare(String(motDePasseActuel || ''), admin.mot_de_passe_hash)
@@ -159,8 +135,7 @@ export const changerMotDePasse = async (req, res) => {
     return res.status(400).json({ erreur: 'Mot de passe actuel incorrect.' })
   }
 
-  const hash = await bcrypt.hash(nouveauMotDePasse, 12)
-  await db.query('UPDATE admins SET mot_de_passe_hash = ? WHERE id = ?', [hash, req.admin.id])
+  await Admin.changerMotDePasse(req.admin.id, await bcrypt.hash(nouveauMotDePasse, 12))
   // Changer son mot de passe sert souvent à couper l'accès à quelqu'un qui le connaissait :
   // les autres sessions de ce compte sont fermées, seule la session en cours est gardée.
   revoquerSessionsDe(req.admin.id, jetonDeLaRequete(req) || null)

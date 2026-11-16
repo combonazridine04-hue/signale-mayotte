@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs'
-import { db } from '../config/db.js'
+import * as Partenaire from '../models/partenaireModel.js'
+import * as Signalement from '../models/signalementModel.js'
 import { CATEGORIES, COMMUNES } from '../shared/signalement.js'
 import { alertesPartenairesReelles, boiteTestPartenaires } from '../services/emailService.js'
 import {
@@ -7,6 +8,7 @@ import {
   revoquerSessionsPartenaire,
   verifierIdentifiantsPartenaire
 } from '../services/authService.js'
+import { ouvrirSession } from '../services/sessionService.js'
 import { motDePasseInterdit } from '../shared/motDePasse.js'
 import { emailValide } from '../middlewares/validation.js'
 import { journaliser } from '../services/journalService.js'
@@ -16,7 +18,6 @@ function masquerEmail(email) {
   const [nom, domaine] = String(email).split('@')
   return domaine ? `${nom.slice(0, 2)}${'•'.repeat(Math.max(1, nom.length - 2))}@${domaine}` : ''
 }
-import { ouvrirSession } from '../services/sessionService.js'
 
 function mapRow(row) {
   return {
@@ -50,31 +51,21 @@ export const connexionPartenaire = async (req, res) => {
   })
 }
 
-// Déclaré avant router.use('/partenaires', requireAuth) : c'est la seule route de
-// gestion ouverte au partenaire lui-même. Combien de signalements de son périmètre
+// Seule route de gestion ouverte au partenaire lui-même (déclarée avant
+// router.use('/partenaires', requireAuth)) : combien de signalements de son périmètre
 // sont arrivés depuis sa connexion précédente ?
 export const nouveauxSignalementsPartenaire = async (req, res) => {
   if (!req.partenaire) return res.status(400).json({ erreur: 'Réservé aux comptes partenaires.' })
   const { commune, categories, depuis } = req.partenaire
-  // Périmètre : commune NULL = toute l'île ; liste de domaines vide = tous les domaines.
-  const domaines = JSON.stringify(categories || [])
-  const { rows } = await db.query(
-    `SELECT COUNT(*) AS nombre FROM signalements
-     WHERE date_signalement > ?
-       AND (? IS NULL OR commune = ?)
-       AND (JSON_LENGTH(?) = 0 OR JSON_CONTAINS(?, JSON_QUOTE(categorie)))`,
-    [depuis || '', commune || null, commune || null, domaines, domaines]
-  )
-  res.json({ depuis: depuis || '', nombre: rows[0].nombre })
+  const nombre = await Signalement.compterNouveauxDansPerimetre({ commune, categories, depuis })
+  res.json({ depuis: depuis || '', nombre })
 }
 
 // Gestion des comptes partenaires : réservée aux admins, comme pour les comptes admin.
-// Limité à /partenaires (et non un router.use() global) pour la même raison que dans
-// admins.js : une route inconnue montée après doit répondre 404, pas 401.
 
 export const listerPartenaires = async (req, res) => {
-  const { rows } = await db.query('SELECT * FROM partenaires ORDER BY cree_le ASC')
-  res.json(rows.map(mapRow))
+  const partenaires = await Partenaire.lister()
+  res.json(partenaires.map(mapRow))
 }
 
 // Pour que l'admin sache où partent réellement les alertes.
@@ -111,42 +102,34 @@ export const creerPartenaire = async (req, res) => {
   }
 
   const identifiantTrim = identifiant.trim()
-  const { rows: existant } = await db.query('SELECT id FROM partenaires WHERE identifiant = ?', [identifiantTrim])
-  if (existant.length) {
+  if (await Partenaire.identifiantExiste(identifiantTrim)) {
     return res.status(409).json({ erreur: 'Cet identifiant existe déjà.' })
   }
 
-  const hash = await bcrypt.hash(motDePasse, 12)
-  const { rows } = await db.query(
-    `INSERT INTO partenaires (nom, identifiant, mot_de_passe_hash, commune, categories, email, cree_le)
-     VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING *`,
-    [
-      nom.trim(),
-      identifiantTrim,
-      hash,
-      commune || null,
-      // Colonne JSON : la liste est enregistrée sous forme de texte JSON.
-      JSON.stringify(categories),
-      emailPropre || null,
-      new Date().toISOString()
-    ]
-  )
+  const partenaire = await Partenaire.creer({
+    nom: nom.trim(),
+    identifiant: identifiantTrim,
+    motDePasseHash: await bcrypt.hash(motDePasse, 12),
+    commune: commune || null,
+    categories,
+    email: emailPropre || null
+  })
 
   journaliser(req, 'partenaire.creation', {
-    cible: { type: 'partenaire', id: rows[0].id, nom: rows[0].nom },
+    cible: { type: 'partenaire', id: partenaire.id, nom: partenaire.nom },
     // Un document journal peut porter des champs propres à son type : ici le périmètre.
-    details: { commune: rows[0].commune || 'toute l’île', categories: rows[0].categories || [] }
+    details: { commune: partenaire.commune || 'toute l’île', categories: partenaire.categories || [] }
   })
-  res.status(201).json(mapRow(rows[0]))
+  res.status(201).json(mapRow(partenaire))
 }
 
 export const supprimerPartenaire = async (req, res) => {
   const id = Number(req.params.id)
 
-  const { rows: supprime } = await db.query('DELETE FROM partenaires WHERE id = ? RETURNING nom', [id])
-  if (!supprime.length) return res.status(404).json({ erreur: 'Compte introuvable.' })
+  const nom = await Partenaire.supprimer(id)
+  if (nom === undefined) return res.status(404).json({ erreur: 'Compte introuvable.' })
 
   revoquerSessionsPartenaire(id)
-  journaliser(req, 'partenaire.suppression', { cible: { type: 'partenaire', id, nom: supprime[0].nom } })
+  journaliser(req, 'partenaire.suppression', { cible: { type: 'partenaire', id, nom } })
   res.status(204).end()
 }

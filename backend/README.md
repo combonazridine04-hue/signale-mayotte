@@ -53,13 +53,16 @@ Le front et l'API sont à **deux adresses différentes**. L'API n'accepte que l'
 
 ```
 backend/
+├── database/
+│   └── schema.sql      création des tables MariaDB (exécuté à chaque démarrage)
 ├── src/
 │   ├── server.js       point d'entrée : démarre le serveur (port, purge automatique)
 │   ├── app.js          application Express : sécurité (helmet, CORS, anti-CSRF), routes, erreurs
-│   ├── config/         connexion MariaDB et schéma (db.js), stockage des photos (storage.js)
+│   ├── config/         connexion MariaDB (db.js), stockage des photos (storage.js)
 │   ├── middlewares/    authentification, CORS, anti-CSRF, limites de débit, upload, validation
 │   ├── routes/         chemins de l'API + middlewares, par ressource (signalements.routes.js…)
 │   ├── controllers/    ce que fait chaque route : lit la requête, répond (signalementsController.js…)
+│   ├── models/         requêtes SQL, un fichier par table (signalementModel.js, adminModel.js…)
 │   ├── services/       logique métier : authService, emailService, journalService (NeDB)…
 │   │   ├── signalements/   contrôles d'accès, conversion des données, photos
 │   │   └── partenaires/    alertes envoyées aux partenaires

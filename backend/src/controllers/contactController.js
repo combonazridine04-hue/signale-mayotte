@@ -1,5 +1,5 @@
 import { envoyerMessageContact, mailerActif } from '../services/emailService.js'
-import { db } from '../config/db.js'
+import * as Contact from '../models/contactModel.js'
 import { SUJETS_CONTACT } from '../shared/sujetsContact.js'
 import { texte, emailValide } from '../middlewares/validation.js'
 
@@ -48,13 +48,14 @@ export const envoyerMessage = async (req, res) => {
 
   const nomTrim = nom.trim()
   const messageTrim = message.trim()
-  const dateEnvoi = new Date().toISOString()
 
-  await db.query(
-    `INSERT INTO messages_contact (nom, email, sujet, message, date_envoi, lu)
-     VALUES (?, ?, ?, ?, ?, false)`,
-    [nomTrim, email, sujet, messageTrim, dateEnvoi]
-  )
+  await Contact.creerMessage({
+    nom: nomTrim,
+    email,
+    sujet,
+    message: messageTrim,
+    dateEnvoi: new Date().toISOString()
+  })
 
   if (mailerActif) {
     try {
@@ -68,23 +69,18 @@ export const envoyerMessage = async (req, res) => {
 }
 
 export const listerMessages = async (req, res) => {
-  const { rows } = await db.query('SELECT * FROM messages_contact ORDER BY date_envoi DESC')
-  res.json(rows.map(mapRow))
+  const messages = await Contact.listerMessages()
+  res.json(messages.map(mapRow))
 }
 
 export const modifierMessage = async (req, res) => {
-  const id = Number(req.params.id)
-  const { lu } = req.body || {}
-  // MariaDB ne sait pas renvoyer la ligne modifiée (pas de UPDATE … RETURNING) : on la relit.
-  await db.query('UPDATE messages_contact SET lu = ? WHERE id = ?', [Boolean(lu), id])
-  const { rows } = await db.query('SELECT * FROM messages_contact WHERE id = ?', [id])
-  if (!rows[0]) return res.status(404).json({ erreur: 'Message introuvable.' })
-  res.json(mapRow(rows[0]))
+  const message = await Contact.marquerLu(Number(req.params.id), Boolean(req.body?.lu))
+  if (!message) return res.status(404).json({ erreur: 'Message introuvable.' })
+  res.json(mapRow(message))
 }
 
 export const supprimerMessage = async (req, res) => {
-  const id = Number(req.params.id)
-  const { rowCount } = await db.query('DELETE FROM messages_contact WHERE id = ?', [id])
-  if (!rowCount) return res.status(404).json({ erreur: 'Message introuvable.' })
+  const supprime = await Contact.supprimerMessage(Number(req.params.id))
+  if (!supprime) return res.status(404).json({ erreur: 'Message introuvable.' })
   res.status(204).end()
 }

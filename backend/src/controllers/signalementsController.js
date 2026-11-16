@@ -1,5 +1,9 @@
 import crypto from 'node:crypto'
-import { db } from '../config/db.js'
+import * as Signalement from '../models/signalementModel.js'
+import * as Soutien from '../models/soutienModel.js'
+import * as Commentaire from '../models/commentaireModel.js'
+import * as MiseAJour from '../models/miseAJourModel.js'
+import * as Utilisateur from '../models/utilisateurModel.js'
 import { CATEGORIES, COMMUNES, STATUTS } from '../shared/signalement.js'
 import {
   envoyerNotificationSignalement,
@@ -25,9 +29,10 @@ import { dansLePerimetre } from '../shared/perimetrePartenaire.js'
 import { alerterPartenaires } from '../services/partenaires/alerte.js'
 import { journaliser, acteurDeSession } from '../services/journalService.js'
 
-// Routes des signalements eux-mêmes. Les commentaires et les mises à jour, qui sont
-// des sous-ressources, ont leurs propres fichiers ; les contrôles d'accès, la conversion
-// des données et le traitement des photos vivent dans src/services/signalements/.
+// Signalements eux-mêmes. Les commentaires et les mises à jour, qui sont des
+// sous-ressources, ont leurs propres contrôleurs ; les requêtes SQL sont dans
+// src/models/, les contrôles d'accès, la conversion des données et le traitement des
+// photos dans src/services/signalements/.
 
 // Contrôles communs à la création et à la correction d'un signalement.
 function erreurDeContenu({ categorie, commune, description }) {
@@ -43,67 +48,29 @@ function erreurDeContenu({ categorie, commune, description }) {
 const lireUrgent = (valeur) => valeur === 'true' || valeur === '1' || valeur === true
 
 export const compter = async (req, res) => {
-  const { rows } = await db.query('SELECT COUNT(*) AS count FROM signalements')
-  res.json({ count: rows[0].count })
+  res.json({ count: await Signalement.compterTout() })
 }
 
 export const statistiques = async (req, res) => {
-  const { rows } = await db.query('SELECT statut, COUNT(*) AS count FROM signalements GROUP BY statut')
-  const stats = { total: 0, signale: 0, enCours: 0, resolu: 0 }
-  for (const row of rows) {
-    stats.total += row.count
-    if (row.statut === 'Signalé') stats.signale = row.count
-    else if (row.statut === 'En cours') stats.enCours = row.count
-    else if (row.statut === 'Résolu') stats.resolu = row.count
-  }
-  res.json(stats)
+  res.json(await Signalement.compterParStatut())
 }
 
 export const statistiquesPubliques = async (req, res) => {
-  const { rows: parStatutRows } = await db.query('SELECT statut, COUNT(*) AS count FROM signalements GROUP BY statut')
-  const parStatut = { total: 0, signale: 0, enCours: 0, resolu: 0 }
-  for (const row of parStatutRows) {
-    parStatut.total += row.count
-    if (row.statut === 'Signalé') parStatut.signale = row.count
-    else if (row.statut === 'En cours') parStatut.enCours = row.count
-    else if (row.statut === 'Résolu') parStatut.resolu = row.count
-  }
-
-  const { rows: parCommuneRows } = await db.query(
-    'SELECT commune, COUNT(*) AS count FROM signalements GROUP BY commune ORDER BY count DESC'
-  )
-
-  const { rows: parCategorieRows } = await db.query(
-    'SELECT categorie, COUNT(*) AS count FROM signalements GROUP BY categorie ORDER BY count DESC'
-  )
-
-  const { rows: delaiRows } = await db.query(`
-    SELECT AVG(
-             TIMESTAMPDIFF(
-               SECOND,
-               STR_TO_DATE(LEFT(date_signalement, 19), '%Y-%m-%dT%H:%i:%s'),
-               STR_TO_DATE(LEFT(date_resolution, 19), '%Y-%m-%dT%H:%i:%s')
-             ) / 86400
-           ) AS jours
-    FROM signalements
-    WHERE date_resolution IS NOT NULL AND date_resolution <> ''
-  `)
+  const parStatut = await Signalement.compterParStatut()
+  const parCommune = await Signalement.compterParCommune()
+  const parCategorie = await Signalement.compterParCategorie()
+  const jours = await Signalement.delaiMoyenResolutionJours()
 
   res.json({
     parStatut,
-    parCommune: parCommuneRows.map((r) => ({ commune: r.commune, count: r.count })),
-    parCategorie: parCategorieRows.map((r) => ({ categorie: r.categorie, count: r.count })),
-    delaiMoyenResolutionJours: delaiRows[0].jours !== null ? Math.round(delaiRows[0].jours * 10) / 10 : null
+    parCommune: parCommune.map((r) => ({ commune: r.commune, count: r.count })),
+    parCategorie: parCategorie.map((r) => ({ categorie: r.categorie, count: r.count })),
+    delaiMoyenResolutionJours: jours !== null ? Math.round(jours * 10) / 10 : null
   })
 }
 
 export const exporterCsv = async (req, res) => {
-  const { rows } = await db.query(
-    `SELECT s.*, u.nom AS auteur_nom, u.email AS auteur_email, u.telephone AS auteur_telephone
-     FROM signalements s
-     LEFT JOIN utilisateurs u ON u.id = s.utilisateur_id
-     ORDER BY s.date_signalement DESC`
-  )
+  const signalements = await Signalement.listerPourExport()
 
   const entetes = [
     'id',
@@ -122,7 +89,7 @@ export const exporterCsv = async (req, res) => {
     'auteur_telephone'
   ]
   const lignes = [entetes.join(',')]
-  for (const row of rows) {
+  for (const row of signalements) {
     lignes.push(
       [
         row.id,
@@ -162,50 +129,19 @@ export const similaires = async (req, res) => {
   const aDesCoordonnees = Number.isFinite(latitude) && Number.isFinite(longitude)
 
   if (!CATEGORIES.includes(categorie)) return res.json({ signalements: [] })
+  if (!aDesCoordonnees && !COMMUNES.includes(commune)) return res.json({ signalements: [] })
 
-  // ~400 m : au-delà, il s'agit le plus souvent d'un autre problème dans la même rue.
-  const RAYON_DEGRES = 0.0036
-
-  let requete
-  let params
-  if (aDesCoordonnees) {
-    // Carré de ±400 m autour du point, puis tri du plus proche au plus éloigné.
-    requete = `SELECT * FROM signalements
-       WHERE statut <> 'Résolu' AND categorie = ?
-         AND latitude BETWEEN ? AND ?
-         AND longitude BETWEEN ? AND ?
-       ORDER BY (POWER(latitude - ?, 2) + POWER(longitude - ?, 2)) ASC
-       LIMIT 3`
-    params = [
-      categorie,
-      latitude - RAYON_DEGRES,
-      latitude + RAYON_DEGRES,
-      longitude - RAYON_DEGRES,
-      longitude + RAYON_DEGRES,
-      latitude,
-      longitude
-    ]
-  } else {
-    if (!COMMUNES.includes(commune)) return res.json({ signalements: [] })
-    requete = `SELECT * FROM signalements
-       WHERE statut <> 'Résolu' AND categorie = ? AND commune = ?
-       ORDER BY date_signalement DESC
-       LIMIT 3`
-    params = [categorie, commune]
-  }
-
-  const { rows } = await db.query(requete, params)
-  res.json({ signalements: rows.map((r) => mapRow(r)) })
+  const proches = await Signalement.trouverSimilaires(
+    aDesCoordonnees ? { categorie, latitude, longitude } : { categorie, commune }
+  )
+  res.json({ signalements: proches.map((r) => mapRow(r)) })
 }
 
 export const mesSignalements = async (req, res) => {
   if (!req.utilisateur) return res.json({ signalements: [] })
 
-  const { rows } = await db.query(
-    'SELECT * FROM signalements WHERE utilisateur_id = ? ORDER BY date_signalement DESC',
-    [req.utilisateur.id]
-  )
-  res.json({ signalements: rows.map((r) => mapRow(r, false, req.utilisateur.id)) })
+  const signalements = await Signalement.listerParAuteur(req.utilisateur.id)
+  res.json({ signalements: signalements.map((r) => mapRow(r, false, req.utilisateur.id)) })
 }
 
 export const lireSignalement = async (req, res) => {
@@ -213,40 +149,17 @@ export const lireSignalement = async (req, res) => {
   const session = sessionDeLaRequete(req)
   const estAdmin = session?.type === 'admin'
 
-  const { rows } = await db.query(
-    `SELECT s.*, u.nom AS auteur_nom, u.email AS auteur_email, u.telephone AS auteur_telephone
-     FROM signalements s
-     LEFT JOIN utilisateurs u ON u.id = s.utilisateur_id
-     WHERE s.id = ?`,
-    [id]
-  )
-  if (!rows[0]) return res.status(404).json({ erreur: 'Signalement introuvable.' })
+  const signalement = await Signalement.trouverAvecAuteur(id)
+  if (!signalement) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
-  const { rows: misesAJour } = await db.query(
-    'SELECT * FROM mises_a_jour WHERE signalement_id = ? ORDER BY date_creation DESC',
-    [id]
-  )
-  const { rows: commentaires } = await db.query(
-    `SELECT c.*, u.pseudo AS auteur_pseudo_actuel, u.nom AS auteur_nom_actuel, u.avatar_url AS auteur_avatar_actuel
-     FROM commentaires c
-     LEFT JOIN utilisateurs u ON u.id = c.utilisateur_id
-     WHERE c.signalement_id = ?
-     ORDER BY c.date_creation ASC`,
-    [id]
-  )
+  const misesAJour = await MiseAJour.listerMisesAJour(id)
+  const commentaires = await Commentaire.listerParSignalement(id)
 
   // Soutenir exige un compte : seul un citoyen connecté peut avoir déjà soutenu.
-  let dejaSoutenu = false
-  if (session?.type === 'utilisateur') {
-    const { rows: soutienExistant } = await db.query(
-      'SELECT 1 FROM soutiens WHERE signalement_id = ? AND utilisateur_id = ?',
-      [id, session.utilisateurId]
-    )
-    dejaSoutenu = soutienExistant.length > 0
-  }
+  const dejaSoutenu = session?.type === 'utilisateur' ? await Soutien.aDejaSoutenu(id, session.utilisateurId) : false
 
   res.json({
-    ...mapRow(rows[0], estAdmin, session?.utilisateurId || null),
+    ...mapRow(signalement, estAdmin, session?.utilisateurId || null),
     misesAJour: misesAJour.map(mapMiseAJour),
     commentaires: commentaires.map((c) => mapCommentaire(c, session?.utilisateurId || null)),
     dejaSoutenu
@@ -258,61 +171,21 @@ export const listerSignalements = async (req, res) => {
   const page = Math.max(1, Number(req.query.page) || 1)
   const parPage = Math.min(50, Math.max(1, Number(req.query.parPage) || 12))
 
-  const conditions = []
-  const params = []
+  const { total, rows } = await Signalement.rechercher({
+    commune,
+    categorie,
+    statut,
+    recherche: recherche.trim(),
+    urgent: urgent === '1' || urgent === 'true',
+    tri,
+    page,
+    parPage
+  })
 
-  // Chaque filtre ajoute sa condition avec un « ? » ET sa valeur dans params, dans le
-  // même ordre : la valeur ne passe jamais dans le texte SQL.
-  if (commune) {
-    conditions.push('commune = ?')
-    params.push(commune)
-  }
-  if (categorie) {
-    conditions.push('categorie = ?')
-    params.push(categorie)
-  }
-  if (statut) {
-    conditions.push('statut = ?')
-    params.push(statut)
-  }
-  if (recherche.trim()) {
-    // LIKE ignore déjà les majuscules et les accents (collation utf8mb4_unicode_ci).
-    const motif = `%${recherche.trim()}%`
-    conditions.push('(description LIKE ? OR commune LIKE ? OR categorie LIKE ?)')
-    params.push(motif, motif, motif)
-  }
-  if (urgent === '1' || urgent === 'true') {
-    conditions.push('urgent = TRUE')
-  }
-
-  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : ''
-  // Liste blanche : `tri` vient de l'URL, il ne doit jamais arriver tel quel dans le SQL.
-  const TRIS = {
-    recent: 'date_signalement DESC',
-    ancien: 'date_signalement ASC',
-    populaire: 'nb_soutiens DESC, date_signalement DESC'
-  }
-  // Les urgences passent devant quel que soit le tri choisi : un danger immédiat n'a pas
-  // à attendre la deuxième page parce qu'il a été signalé hier.
-  const ordre = `urgent DESC, ${TRIS[tri] || TRIS.recent}`
-
-  const { rows: rowsCompte } = await db.query(`SELECT COUNT(*) AS count FROM signalements ${where}`, params)
-  const total = rowsCompte[0].count
-
-  const paramsPage = [...params, parPage, (page - 1) * parPage]
-  const { rows } = await db.query(
-    `SELECT s.*, u.nom AS auteur_nom, u.email AS auteur_email, u.telephone AS auteur_telephone
-     FROM signalements s
-     LEFT JOIN utilisateurs u ON u.id = s.utilisateur_id
-     ${where}
-     ORDER BY ${ordre} LIMIT ? OFFSET ?`,
-    paramsPage
-  )
-
-  const sessionListe = sessionDeLaRequete(req)
-  const estAdmin = sessionListe?.type === 'admin'
+  const session = sessionDeLaRequete(req)
+  const estAdmin = session?.type === 'admin'
   res.json({
-    signalements: rows.map((r) => mapRow(r, estAdmin, sessionListe?.utilisateurId || null)),
+    signalements: rows.map((r) => mapRow(r, estAdmin, session?.utilisateurId || null)),
     total,
     page,
     parPage
@@ -322,8 +195,7 @@ export const listerSignalements = async (req, res) => {
 export const soutenir = async (req, res) => {
   const id = Number(req.params.id)
 
-  const { rows: existant } = await db.query('SELECT id FROM signalements WHERE id = ?', [id])
-  if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
+  if (!(await Signalement.existe(id))) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
   // Un soutien est rattaché à un compte citoyen. Un administrateur n'a pas de compte
   // citoyen : sans ce refus, ses soutiens n'étaient dédoublonnés par rien.
@@ -332,12 +204,7 @@ export const soutenir = async (req, res) => {
   }
 
   try {
-    await db.query(
-      'INSERT INTO soutiens (signalement_id, ip_hash, utilisateur_id, date_soutien) VALUES (?, ?, ?, ?)',
-      // ip_hash vide : soutenir exige un compte, l'empreinte d'IP ne servait plus à rien
-      // et n'est donc plus collectée (minimisation des données, RGPD art. 5).
-      [id, '', req.utilisateur.id, new Date().toISOString()]
-    )
+    await Soutien.ajouter(id, req.utilisateur.id)
   } catch (e) {
     // Seul le conflit d'unicité signifie « déjà soutenu » ; toute autre erreur est une
     // panne, qui ne doit pas être présentée à l'utilisateur comme un doublon.
@@ -345,11 +212,7 @@ export const soutenir = async (req, res) => {
     throw e
   }
 
-  // L'incrément se fait dans la base (nb_soutiens + 1), sans risque de perdre un soutien
-  // si deux personnes soutiennent au même instant ; on relit ensuite le total.
-  await db.query('UPDATE signalements SET nb_soutiens = nb_soutiens + 1 WHERE id = ?', [id])
-  const { rows } = await db.query('SELECT nb_soutiens FROM signalements WHERE id = ?', [id])
-  res.json({ nbSoutiens: rows[0].nb_soutiens })
+  res.json({ nbSoutiens: await Signalement.incrementerSoutiens(id) })
 }
 
 export const creerSignalement = async (req, res) => {
@@ -358,8 +221,7 @@ export const creerSignalement = async (req, res) => {
   }
 
   if (req.utilisateur) {
-    const { rows } = await db.query('SELECT email, email_verifie FROM utilisateurs WHERE id = ?', [req.utilisateur.id])
-    const compte = rows[0]
+    const compte = await Utilisateur.trouverEtatEmail(req.utilisateur.id)
     if (compte?.email && !compte.email_verifie) {
       return res.status(403).json({
         erreur: "Confirmez votre email avant d'envoyer un signalement (lien envoyé à l'inscription).",
@@ -381,32 +243,23 @@ export const creerSignalement = async (req, res) => {
   }
 
   const emailContact = emailValide(texte(email).trim()) ? texte(email).trim() : null
-  const photos = req.files?.length ? await traiterPhotos(req.files) : []
-  const dateSignalement = new Date().toISOString()
   const tokenSuppression = crypto.randomBytes(24).toString('hex')
-  const estUrgent = lireUrgent(urgent)
 
-  const { rows } = await db.query(
-    `INSERT INTO signalements (categorie, commune, description, photos, statut, date_signalement, latitude, longitude, email_contact, token_suppression, utilisateur_id, urgent)
-     VALUES (?, ?, ?, ?, 'Signalé', ?, ?, ?, ?, ?, ?, ?)
-     RETURNING *`,
-    [
-      categorie,
-      commune,
-      description.trim(),
-      // Colonne JSON : la liste des photos est enregistrée sous forme de texte JSON.
-      JSON.stringify(photos),
-      dateSignalement,
-      position.latitude,
-      position.longitude,
-      emailContact,
-      tokenSuppression,
-      req.utilisateur?.id || null,
-      estUrgent
-    ]
-  )
+  const cree = await Signalement.creer({
+    categorie,
+    commune,
+    description: description.trim(),
+    photos: req.files?.length ? await traiterPhotos(req.files) : [],
+    dateSignalement: new Date().toISOString(),
+    latitude: position.latitude,
+    longitude: position.longitude,
+    emailContact,
+    tokenSuppression,
+    utilisateurId: req.utilisateur?.id || null,
+    urgent: lireUrgent(urgent)
+  })
 
-  const signalementCree = mapRow(rows[0], false, req.utilisateur?.id || null)
+  const signalementCree = mapRow(cree, false, req.utilisateur?.id || null)
   envoyerNotificationSignalement(signalementCree)
   alerterPartenaires(signalementCree)
   if (emailContact) {
@@ -427,8 +280,7 @@ export const modifierStatut = async (req, res) => {
     return res.status(400).json({ erreur: 'Statut invalide.' })
   }
 
-  const { rows: rowsExistant } = await db.query('SELECT * FROM signalements WHERE id = ?', [id])
-  const existant = rowsExistant[0]
+  const existant = await Signalement.trouverParId(id)
   if (!existant) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
   // Un partenaire n'agit que dans son périmètre : sa commune (ex. « Mairie de Mamoudzou »)
@@ -448,16 +300,9 @@ export const modifierStatut = async (req, res) => {
 
   const dateResolution = statut === 'Résolu' ? existant.date_resolution || new Date().toISOString() : null
 
-  // MariaDB ne sait pas renvoyer la ligne modifiée (pas de UPDATE … RETURNING) : on la relit.
-  await db.query('UPDATE signalements SET statut = ?, photo_resolution = ?, date_resolution = ? WHERE id = ?', [
-    statut,
-    photoResolution,
-    dateResolution,
-    id
-  ])
-  const { rows } = await db.query('SELECT * FROM signalements WHERE id = ?', [id])
+  const modifie = await Signalement.modifierStatut(id, { statut, photoResolution, dateResolution })
 
-  const signalementMisAJour = mapRow(rows[0])
+  const signalementMisAJour = mapRow(modifie)
   if (existant.statut !== statut) {
     journaliser(req, 'signalement.statut', {
       cible: { type: 'signalement', id },
@@ -479,8 +324,7 @@ export const modifierSignalement = async (req, res) => {
   const id = Number(req.params.id)
   const { categorie, commune, description, latitude, longitude, urgent } = req.body
 
-  const { rows: rowsExistant } = await db.query('SELECT * FROM signalements WHERE id = ?', [id])
-  const existant = rowsExistant[0]
+  const existant = await Signalement.trouverParId(id)
   if (!existant) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
   if (!estAutoriseAModifier(req, existant)) {
@@ -498,8 +342,6 @@ export const modifierSignalement = async (req, res) => {
   // Position non renvoyée : on garde l'ancienne.
   const nouvellePosition = lirePosition(latitude, longitude)
   if (nouvellePosition.erreur) return res.status(400).json({ erreur: nouvellePosition.erreur })
-  const lat = nouvellePosition.latitude ?? existant.latitude
-  const lon = nouvellePosition.longitude ?? existant.longitude
 
   if (req.files?.length && (await contientUnePhotoInterdite(req.files))) {
     return res.status(400).json({ erreur: 'Une des photos envoyées a été refusée (contenu inapproprié détecté).' })
@@ -520,27 +362,16 @@ export const modifierSignalement = async (req, res) => {
   const nouvellesPhotos = req.files?.length
     ? await traiterPhotos(req.files.slice(0, MAX_PHOTOS - photosConservees.length))
     : []
-  const photos = [...photosConservees, ...nouvellesPhotos]
 
-  // Trace la correction : sur un registre public, le contenu ne doit pas pouvoir
-  // changer en silence après coup.
-  await db.query(
-    `UPDATE signalements SET categorie = ?, commune = ?, description = ?, photos = ?, latitude = ?, longitude = ?,
-            urgent = ?, date_modification = ?
-     WHERE id = ?`,
-    [
-      categorie,
-      commune,
-      description.trim(),
-      JSON.stringify(photos),
-      lat,
-      lon,
-      lireUrgent(urgent),
-      new Date().toISOString(),
-      id
-    ]
-  )
-  const { rows } = await db.query('SELECT * FROM signalements WHERE id = ?', [id])
+  const modifie = await Signalement.modifierContenu(id, {
+    categorie,
+    commune,
+    description: description.trim(),
+    photos: [...photosConservees, ...nouvellesPhotos],
+    latitude: nouvellePosition.latitude ?? existant.latitude,
+    longitude: nouvellePosition.longitude ?? existant.longitude,
+    urgent: lireUrgent(urgent)
+  })
 
   // Les photos retirées ne sont effacées du stockage qu'une fois la correction
   // enregistrée : si l'enregistrement échouait, la base pointerait sinon vers des
@@ -549,20 +380,19 @@ export const modifierSignalement = async (req, res) => {
   await Promise.all(photosSupprimees.map(supprimerPhoto))
 
   const session = sessionDeLaRequete(req)
-  res.json(mapRow(rows[0], false, session?.utilisateurId || null))
+  res.json(mapRow(modifie, false, session?.utilisateurId || null))
 }
 
 export const supprimerSignalement = async (req, res) => {
   const id = Number(req.params.id)
-  const { rows } = await db.query('SELECT * FROM signalements WHERE id = ?', [id])
-  const existant = rows[0]
+  const existant = await Signalement.trouverParId(id)
   if (!existant) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
   if (!estAutoriseASupprimer(req, existant)) {
     return res.status(401).json({ erreur: 'Non autorisé.' })
   }
 
-  await db.query('DELETE FROM signalements WHERE id = ?', [id])
+  await Signalement.supprimer(id)
   await Promise.all([...(existant.photos || []), existant.photo_resolution].filter(Boolean).map(supprimerPhoto))
   journaliser(req, 'signalement.suppression', {
     // Pas de middleware d'authentification sur cette route (le créateur sans compte

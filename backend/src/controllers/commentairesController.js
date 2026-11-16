@@ -1,4 +1,6 @@
-import { db } from '../config/db.js'
+import * as Signalement from '../models/signalementModel.js'
+import * as Commentaire from '../models/commentaireModel.js'
+import * as Utilisateur from '../models/utilisateurModel.js'
 import { envoyerNouveauCommentaire } from '../services/emailService.js'
 import { creerNotification } from '../services/notificationService.js'
 import { nomPublic } from '../shared/nomPublic.js'
@@ -18,11 +20,9 @@ export const ajouterCommentaire = async (req, res) => {
   let auteur = `Admin (${req.admin?.identifiant})`
   let auteurAvatarUrl = null
   if (req.utilisateur) {
-    const { rows } = await db.query('SELECT nom, pseudo, avatar_url FROM utilisateurs WHERE id = ?', [
-      req.utilisateur.id
-    ])
-    auteur = rows[0]?.pseudo || nomPublic(rows[0]?.nom || req.utilisateur.nom)
-    auteurAvatarUrl = rows[0]?.avatar_url || null
+    const identite = await Utilisateur.trouverIdentitePublique(req.utilisateur.id)
+    auteur = identite?.pseudo || nomPublic(identite?.nom || req.utilisateur.nom)
+    auteurAvatarUrl = identite?.avatar_url || null
   }
 
   if (texte.trim().length < 3) {
@@ -32,37 +32,29 @@ export const ajouterCommentaire = async (req, res) => {
     return res.status(400).json({ erreur: 'Le commentaire ne doit pas dépasser 1000 caractères.' })
   }
 
-  const { rows: existant } = await db.query(
-    'SELECT id, categorie, commune, utilisateur_id FROM signalements WHERE id = ?',
-    [id]
-  )
-  if (!existant.length) return res.status(404).json({ erreur: 'Signalement introuvable.' })
-  const signalement = existant[0]
+  const signalement = await Signalement.trouverResume(id)
+  if (!signalement) return res.status(404).json({ erreur: 'Signalement introuvable.' })
 
   // Réponse à un commentaire : on vérifie qu'il appartient bien à CE signalement, sinon
   // on pourrait rattacher une réponse au fil d'un autre signalement.
   let parent = null
   if (parentId !== null && parentId !== '') {
     if (idValide(parentId) === null) return res.status(400).json({ erreur: 'Commentaire introuvable.' })
-    const { rows: parents } = await db.query(
-      `SELECT c.id, c.parent_id, c.utilisateur_id, u.email AS email_auteur, u.email_verifie
-       FROM commentaires c
-       LEFT JOIN utilisateurs u ON u.id = c.utilisateur_id
-       WHERE c.id = ? AND c.signalement_id = ?`,
-      [Number(parentId), id]
-    )
-    if (!parents.length) return res.status(400).json({ erreur: 'Commentaire introuvable.' })
-    parent = parents[0]
+    parent = await Commentaire.trouverParent(Number(parentId), id)
+    if (!parent) return res.status(400).json({ erreur: 'Commentaire introuvable.' })
   }
 
   // Un seul niveau d'imbrication : répondre à une réponse rattache au commentaire
   // d'origine, sinon les fils deviennent illisibles sur téléphone.
   const parentFinal = parent ? parent.parent_id || parent.id : null
 
-  const { rows } = await db.query(
-    'INSERT INTO commentaires (signalement_id, auteur, texte, date_creation, utilisateur_id, parent_id) VALUES (?, ?, ?, ?, ?, ?) RETURNING *',
-    [id, auteur, texte.trim(), new Date().toISOString(), req.utilisateur?.id || null, parentFinal]
-  )
+  const commentaire = await Commentaire.creer({
+    signalementId: id,
+    auteur,
+    texte: texte.trim(),
+    utilisateurId: req.utilisateur?.id || null,
+    parentId: parentFinal
+  })
 
   // Personne n'est notifié de son propre message.
   const commenteSonPropreSignalement = req.utilisateur && signalement.utilisateur_id === req.utilisateur.id
@@ -95,26 +87,22 @@ export const ajouterCommentaire = async (req, res) => {
     }
   }
 
-  res.status(201).json({ ...mapCommentaire(rows[0]), auteurAvatarUrl })
+  res.status(201).json({ ...mapCommentaire(commentaire), auteurAvatarUrl })
 }
 
 // Un citoyen doit pouvoir retirer son propre commentaire : sans ça, publier une
 // information personnelle par erreur oblige à écrire à un administrateur.
 export const supprimerCommentaire = async (req, res) => {
   const commentaireId = Number(req.params.commentaireId)
-  const signalementId = Number(req.params.id)
 
-  const { rows } = await db.query('SELECT utilisateur_id FROM commentaires WHERE id = ? AND signalement_id = ?', [
-    commentaireId,
-    signalementId
-  ])
-  if (!rows.length) return res.status(404).json({ erreur: 'Commentaire introuvable.' })
+  const commentaire = await Commentaire.trouverAuteur(commentaireId, Number(req.params.id))
+  if (!commentaire) return res.status(404).json({ erreur: 'Commentaire introuvable.' })
 
-  const estAuteur = req.utilisateur && rows[0].utilisateur_id === req.utilisateur.id
+  const estAuteur = req.utilisateur && commentaire.utilisateur_id === req.utilisateur.id
   if (!req.admin && !estAuteur) {
     return res.status(403).json({ erreur: 'Vous ne pouvez supprimer que vos propres commentaires.' })
   }
 
-  await db.query('DELETE FROM commentaires WHERE id = ?', [commentaireId])
+  await Commentaire.supprimer(commentaireId)
   res.status(204).end()
 }
