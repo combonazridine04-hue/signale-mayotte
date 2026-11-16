@@ -1,0 +1,107 @@
+/* Suivi visuel du statut : montre d'un coup d'œil où en est le signalement,
+   plutôt qu'un simple mot. C'est ce qui rend la promesse de suivi crédible. */
+.statut-suivi {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 4px;
+}
+
+.statut-suivi-etape {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  padding-top: 22px;
+  text-align: center;
+}
+
+/* Trait de liaison entre deux étapes */
+.statut-suivi-etape::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.statut-suivi-etape:first-child::before {
+  display: none;
+}
+
+.statut-suivi-etape.franchie::before {
+  background: var(--accent);
+}
+
+.statut-suivi-point {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid transparent;
+}
+
+.statut-suivi-etape.franchie .statut-suivi-point {
+  background: var(--accent);
+}
+
+.statut-suivi-etape.courante .statut-suivi-point {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.18);
+}
+
+.statut-suivi-libelle {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--app-muted);
+}
+
+.statut-suivi-etape.franchie .statut-suivi-libelle {
+  color: var(--app-text);
+}
+
+.statut-suivi-date {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.72rem;
+  color: var(--app-muted);
+}
+
+/* Comparaison avant / après : la preuve la plus parlante que signaler a servi. */
+.avant-apres {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.avant-apres figure {
+  margin: 0;
+}
+
+.avant-apres img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+}
+
+.avant-apres figcaption {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--app-muted);
+}
+
+.avant-apres figcaption.apres {
+  color: #4ade80;
+}
