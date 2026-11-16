@@ -4,8 +4,8 @@ Le projet utilise **deux bases**, chacune pour ce qu'elle fait le mieux :
 
 | Base        | Type                | Rôle                                                            | Code d'accès                                                      |
 | ----------- | ------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------- |
-| **MariaDB** | Relationnelle (SQL) | Données métier : signalements, comptes, commentaires, soutiens… | [`server/db.js`](../backend/server/db.js) + routes, via `mysql2`          |
-| **NeDB**    | Documents (NoSQL)   | Journal d'activité (connexions, actions sensibles)              | [`server/journal.js`](../backend/server/journal.js), via `@seald-io/nedb` |
+| **MariaDB** | Relationnelle (SQL) | Données métier : signalements, comptes, commentaires, soutiens… | [`src/config/db.js`](../backend/src/config/db.js) + routes, via `mysql2`          |
+| **NeDB**    | Documents (NoSQL)   | Journal d'activité (connexions, actions sensibles)              | [`src/services/journalService.js`](../backend/src/services/journalService.js), via `@seald-io/nedb` |
 
 **Où vit la base :** MariaDB est installé sur le poste du développeur, avec deux bases :
 `signale_mayotte` (développement) et `signale_mayotte_test` (tests automatiques, vidée à
@@ -17,7 +17,7 @@ L'application se connecte avec un compte dédié, `signale`, qui n'a de droits q
 deux bases (**principe du moindre privilège**) : jamais avec le compte administrateur `root`.
 
 Le schéma est créé automatiquement au premier démarrage du serveur (`CREATE TABLE IF NOT
-EXISTS` dans [`server/db.js`](../backend/server/db.js)) : une base vide arrive seule au bon état.
+EXISTS` dans [`src/config/db.js`](../backend/src/config/db.js)) : une base vide arrive seule au bon état.
 Toutes les tables sont en **InnoDB** (clés étrangères et transactions) et en **utf8mb4**
 (accents, emojis).
 
@@ -221,7 +221,7 @@ reconvertit en `true` / `false` pour que l'API renvoie de vrais booléens.
 
 ---
 
-## 4. Le composant d'accès aux données SQL ([`server/db.js`](../backend/server/db.js))
+## 4. Le composant d'accès aux données SQL ([`src/config/db.js`](../backend/src/config/db.js))
 
 Tout le code passe par un seul objet `db` :
 
@@ -231,7 +231,7 @@ Tout le code passe par un seul objet `db` :
 | `db.connect()`              | Ouvre une connexion dédiée pour une **transaction** (`BEGIN` … `COMMIT` / `ROLLBACK`) |
 | `db.end()`                  | Ferme le groupe de connexions (pool) : arrêt du serveur, fin des tests                |
 
-Exemple de transaction : la suppression d'un compte ([`server/compte.js`](../backend/server/compte.js))
+Exemple de transaction : la suppression d'un compte ([`src/services/compteService.js`](../backend/src/services/compteService.js))
 efface ou anonymise tous ses contenus d'un seul bloc ; si une étape échoue, `ROLLBACK`
 annule tout, et aucune donnée personnelle ne reste à moitié effacée.
 
@@ -274,7 +274,7 @@ WHERE email IS NOT NULL
 
 **NeDB** est une base de données NoSQL **orientée documents**, embarquée dans
 l'application : pas de serveur à installer, la base vit dans un fichier,
-`server/data/journal/journal-activite.db` (ignoré par git). Chaque ligne du fichier est un
+`data/journal/journal-activite.db` (ignoré par git). Chaque ligne du fichier est un
 document JSON : on peut l'ouvrir dans VS Code et voir exactement ce qui est enregistré.
 Son langage de requête reprend celui de MongoDB (`$gte`, `sort`, `skip`, `limit`…).
 
@@ -312,7 +312,7 @@ simplement pas écrits. C'est ce qu'on appelle un **schéma flexible**.
 | `date` avec `expireAfterSeconds` (365 j) | **Index TTL** : la base efface seule les événements de plus d'un an (RGPD), sans tâche planifiée |
 | `type`                                   | Filtre rapide par type d'événement                                                               |
 
-### Opérations du composant d'accès ([`server/journal.js`](../backend/server/journal.js))
+### Opérations du composant d'accès ([`src/services/journalService.js`](../backend/src/services/journalService.js))
 
 | Fonction                            | Opération NoSQL                                                                     |
 | ----------------------------------- | ----------------------------------------------------------------------------------- |
@@ -322,7 +322,7 @@ simplement pas écrits. C'est ce qu'on appelle un **schéma flexible**.
 | `viderJournal()`, `fermerJournal()` | Tests et arrêt propre                                                               |
 
 Ces opérations sont vérifiées par des tests automatiques
-([`server/tests/unitaires/journal.test.js`](../backend/server/tests/unitaires/journal.test.js)) :
+([`tests/unitaires/journal.test.js`](../backend/tests/unitaires/journal.test.js)) :
 documents à champs libres, filtres, pagination, statistiques.
 
 **Sécurité :** les filtres de lecture viennent d'une liste fermée (`TYPES_EVENEMENTS`,

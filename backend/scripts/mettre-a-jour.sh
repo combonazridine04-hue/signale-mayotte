@@ -6,8 +6,8 @@
 # 2. installe les dépendances ;
 # 3. retire les outils de développement pour économiser le disque ;
 # 4. rappelle de redémarrer le site.
-# Les données ne sont pas touchées : base MariaDB, photos (server/data/uploads) et journal
-# (server/data/journal) restent en place. En cas d'erreur, le script s'arrête aussitôt.
+# Les données ne sont pas touchées : base MariaDB, photos (data/uploads) et journal
+# (data/journal) restent en place. En cas d'erreur, le script s'arrête aussitôt.
 set -eu
 
 cd "$(dirname "$0")/.."

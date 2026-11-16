@@ -11,7 +11,7 @@ export default [
 
   // Code du serveur, des tests, des outils et des règles partagées avec le front-end
   {
-    files: ['server/**/*.js', 'tests/**/*.js', 'shared/**/*.js', '*.config.js'],
+    files: ['src/**/*.js', 'tests/**/*.js', '*.config.js'],
     languageOptions: {
       globals: { ...globals.node }
     }

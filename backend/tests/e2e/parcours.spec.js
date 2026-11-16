@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import express from 'express'
 import { chromium } from 'playwright-chromium'
-import { preparerAdminTest, preparerEnvironnementTest } from '../../server/tests/environnementTest.js'
+import { preparerAdminTest, preparerEnvironnementTest } from '../environnementTest.js'
 
 // Parcours complet dans un vrai navigateur, avec la VRAIE architecture : le front-end
 // (projet séparé) et l'API tournent à deux adresses différentes. Le test vérifie donc
@@ -31,8 +31,8 @@ const BASE = `http://localhost:${serveurSite.address().port}/`
 process.env.FRONTEND_URL = BASE.slice(0, -1)
 
 // 2. L'API, à une autre adresse.
-const { app } = await import('../../server/index.js')
-const { db, reinitialiserDonneesDemo } = await import('../../server/db.js')
+const { app } = await import('../../src/app.js')
+const { db, reinitialiserDonneesDemo } = await import('../../src/config/db.js')
 await reinitialiserDonneesDemo({ viderStockage: true })
 await preparerAdminTest(db)
 const serveur = app.listen(0)

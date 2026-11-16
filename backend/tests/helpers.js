@@ -1,0 +1,50 @@
+import { preparerAdminTest, preparerEnvironnementTest } from './environnementTest.js'
+
+export async function demarrerServeurTest() {
+  preparerEnvironnementTest()
+
+  const { app } = await import('../src/app.js')
+  const { db, reinitialiserDonneesDemo } = await import('../src/config/db.js')
+  const { fermerJournal, viderJournal } = await import('../src/services/journalService.js')
+  await reinitialiserDonneesDemo({ viderStockage: true })
+  await preparerAdminTest(db)
+  await viderJournal()
+
+  const serveur = app.listen(0)
+  await new Promise((resolve) => serveur.once('listening', resolve))
+  const port = serveur.address().port
+
+  return {
+    baseUrl: `http://localhost:${port}`,
+    // Fermer aussi les connexions à la base : sinon le fichier de test reste ouvert
+    // longtemps après ses tests, jusqu'à ce que la base coupe elle-même la connexion.
+    fermer: async () => {
+      serveur.closeAllConnections?.()
+      await new Promise((resolve) => serveur.close(resolve))
+      await db.end()
+      await fermerJournal()
+    }
+  }
+}
+
+// Les tests parlent au serveur en HTTP : le cookie porte donc son nom sans préfixe __Host-.
+export function cookieDeSession(reponse) {
+  const cookie = reponse.headers.getSetCookie().find((c) => c.startsWith('sm_session='))
+  return cookie ? cookie.split(';')[0] : ''
+}
+
+export function authHeader(cookie) {
+  return { Cookie: cookie }
+}
+
+export async function connecterAdmin(baseUrl) {
+  const reponse = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      identifiant: process.env.ADMIN_IDENTIFIANT,
+      motDePasse: process.env.ADMIN_MOT_DE_PASSE
+    })
+  })
+  return cookieDeSession(reponse)
+}

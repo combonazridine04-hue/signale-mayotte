@@ -22,8 +22,8 @@ L'application tient dans **un seul dépôt** (`signale-mayotte`), en deux dossie
      │             │                                                                       │
      └─────HTTPS───┼─▶ api.COMPTE.alwaysdata.net    site Node.js : API Express             │
                    │        ├─ CORS : n'accepte que https://COMPTE.alwaysdata.net          │
-                   │        ├─ photos sur disque (server/data/uploads), servies /uploads  │
-                   │        ├─ journal NoSQL NeDB (server/data/journal)                   │
+                   │        ├─ photos sur disque (data/uploads), servies /uploads  │
+                   │        ├─ journal NoSQL NeDB (data/journal)                   │
                    │        └─▶ MariaDB (réseau interne)                                   │
                    └───────────────────────────────────────────────────────────────────────┘
                              │                         │
@@ -57,8 +57,8 @@ Mesures faites **sur le serveur alwaysdata** (offre gratuite, 256 Mo de mémoire
 
 | Commande de l'API                                                      | Au repos | Pic (analyse de 3 photos)    |
 | ---------------------------------------------------------------------- | -------- | ---------------------------- |
-| `node server/index.js`                                                 | 217 Mo   | 230 Mo : trop juste          |
-| `node --max-old-space-size=96 --max-semi-space-size=2 server/index.js` | 151 Mo   | **183 Mo** : ~70 Mo de marge |
+| `node src/server.js`                                                 | 217 Mo   | 230 Mo : trop juste          |
+| `node --max-old-space-size=96 --max-semi-space-size=2 src/server.js` | 151 Mo   | **183 Mo** : ~70 Mo de marge |
 
 La seconde commande limite la mémoire de JavaScript et force un nettoyage plus fréquent :
 c'est elle qu'on utilise. L'analyse d'une photo par le modèle d'IA de modération prend
@@ -82,7 +82,7 @@ Dans la suite, `COMPTE` désigne le nom du compte alwaysdata.
    réseau interne d'alwaysdata.
 
 Rien d'autre à créer : au premier démarrage, l'API crée ses tables
-([`server/db.js`](../backend/server/db.js)) et le premier compte admin.
+([`src/config/db.js`](../backend/src/config/db.js)) et le premier compte admin.
 
 ### 3.2 Accès SSH
 
@@ -124,12 +124,12 @@ pour le front, et **Ajouter un site** pour l'API :
 | --------------------- | ---------------------------------------------------------------------- | -------------------------------------------- |
 | Adresses              | `api.COMPTE.alwaysdata.net`                                            | `COMPTE.alwaysdata.net`                      |
 | Type                  | **Node.js**                                                            | **PHP** (serveur Apache, garde le type)      |
-| Commande              | `node --max-old-space-size=96 --max-semi-space-size=2 server/index.js` | —                                            |
+| Commande              | `node --max-old-space-size=96 --max-semi-space-size=2 src/server.js` | —                                            |
 | Répertoire de travail | `/home/COMPTE/signale-mayotte/backend`                                 | —                                            |
 | Répertoire racine     | —                                                                      | `/home/COMPTE/signale-mayotte/frontend/dist` |
 
 - L'API écoute sur l'adresse et le port imposés par alwaysdata (variables `IP`/`HOST` et
-  `PORT`) : le serveur les lit tout seul ([`server/index.js`](../backend/server/index.js)).
+  `PORT`) : le serveur les lit tout seul ([`src/server.js`](../backend/src/server.js)).
 - Le front est servi par Apache, qui lit le fichier `.htaccess` du front (copié dans
   `dist/` au build) : toute adresse qui n'est pas un fichier (ex. `/signalements/42`)
   renvoie `index.html`, et les en-têtes de sécurité du site sont posés (HSTS, interdiction
@@ -182,10 +182,10 @@ publiques, jamais de secret ici. Après toute modification, relancer `npm run bu
 
 ### 4.3 Sécurité déjà gérée dans le code
 
-- **CORS** ([`server/middleware/cors.js`](../backend/server/middleware/cors.js)) : seule l'adresse
+- **CORS** ([`src/middlewares/cors.js`](../backend/src/middlewares/cors.js)) : seule l'adresse
   exacte de `FRONTEND_URL` reçoit l'autorisation de lire les réponses et d'envoyer le
   cookie. Jamais de `*`.
-- **Anti-CSRF** ([`server/middleware/verifierOrigine.js`](../backend/server/middleware/verifierOrigine.js)) :
+- **Anti-CSRF** ([`src/middlewares/verifierOrigine.js`](../backend/src/middlewares/verifierOrigine.js)) :
   toute requête de modification venue d'une autre origine est refusée (403).
 - **Cookie de session** : `HttpOnly`, `Secure`, préfixe `__Host-`, `SameSite=Strict`.
 - `app.set('trust proxy', 1)` : derrière le proxy d'alwaysdata, l'API lit la vraie IP du
@@ -247,7 +247,7 @@ npm test   # unitaires + API + parcours dans un navigateur (front et API sépar�
   et **redémarrer le site de l'API** (panneau → _Web → Sites → Redémarrer_).
 - **Front :** en SSH, `cd ~/signale-mayotte/frontend && git pull && npm ci && npm run build`.
   Le site statique sert aussitôt les nouveaux fichiers (aucun redémarrage).
-- **Évolution du schéma :** on ajoute la colonne dans [`server/db.js`](../backend/server/db.js) avec
+- **Évolution du schéma :** on ajoute la colonne dans [`src/config/db.js`](../backend/src/config/db.js) avec
   `ALTER TABLE … ADD COLUMN IF NOT EXISTS` (syntaxe MariaDB). La migration s'applique au
   démarrage suivant, sans script manuel, et peut être rejouée sans risque.
 - **Retour arrière :** en SSH, revenir au commit précédent puis relancer l'installation :
@@ -261,10 +261,26 @@ npm test   # unitaires + API + parcours dans un navigateur (front et API sépar�
 - **Sauvegardes :** avant toute opération risquée, copier la base et les fichiers de l'API :
   ```bash
   mariadb-dump -h mysql-COMPTE.alwaysdata.net -u COMPTE_signale -p COMPTE_signale > sauvegarde.sql
-  tar czf donnees.tar.gz -C ~/signale-mayotte/backend/server data
+  tar czf donnees.tar.gz -C ~/signale-mayotte/backend data
   ```
   (ou, dans DBeaver : clic droit sur la base → _Outils_ → _Sauvegarder_). Restauration :
   `mariadb -h … -u … -p COMPTE_signale < sauvegarde.sql`.
+
+### Passage à l'organisation backend/ + frontend/ (une seule fois)
+
+Si le serveur a été installé avec l'ancienne organisation (code de l'API à la racine du
+dépôt, données dans `server/data`), après le premier `git pull` de la nouvelle version :
+
+```bash
+cd ~/signale-mayotte
+mv .env backend/.env          # configuration de l'API
+mv server/data backend/data   # photos et journal
+sh backend/scripts/mettre-a-jour.sh
+```
+
+Puis, dans le panneau (_Web → Sites_) : site de l'API → répertoire de travail
+`/home/COMPTE/signale-mayotte/backend` et commande terminant par `src/server.js` ;
+site du front → répertoire racine `/home/COMPTE/signale-mayotte/frontend/dist`.
 
 ## 8. Pannes fréquentes
 

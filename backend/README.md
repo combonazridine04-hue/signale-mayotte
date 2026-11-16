@@ -52,19 +52,23 @@ L'identité des contributeurs n'est jamais affichée : un pseudo, ou à défaut 
 Le front et l'API sont à **deux adresses différentes**. L'API n'accepte que l'adresse du front déclarée dans `FRONTEND_URL` : en-têtes CORS pour lui seul, et refus (403) de toute requête de modification venue d'ailleurs (anti-CSRF). Le cookie de session reste `HttpOnly`, illisible par le JavaScript.
 
 ```
-server/
-├── index.js            middlewares globaux (helmet, CORS, anti-CSRF), routeurs, erreurs
-├── routes/             un routeur par ressource (signalements, commentaires, auth…)
-├── signalements/       contrôles d'accès, conversion des données, photos
-├── middleware/         authentification, CORS, anti-CSRF, limites de débit
-├── db.js               connexion MariaDB et schéma (composant d'accès SQL)
-├── journal.js          journal d'activité (NeDB, composant d'accès NoSQL)
-└── auth.js, captcha.js, mailer.js, storage.js, moderation.js…
-shared/                 règles communes avec le front (téléphone, mot de passe, listes…)
-tests/e2e/              parcours complet : front + API à deux adresses, dans un navigateur
+backend/
+├── src/
+│   ├── server.js       point d'entrée : démarre le serveur (port, purge automatique)
+│   ├── app.js          application Express : sécurité (helmet, CORS, anti-CSRF), routes, erreurs
+│   ├── config/         connexion MariaDB et schéma (db.js), stockage des photos (storage.js)
+│   ├── middlewares/    authentification, CORS, anti-CSRF, limites de débit, upload, validation
+│   ├── routes/         un fichier par ressource (signalements.routes.js, auth.routes.js…)
+│   ├── services/       logique métier : authService, emailService, journalService (NeDB)…
+│   │   ├── signalements/   contrôles d'accès, conversion des données, photos
+│   │   └── partenaires/    alertes envoyées aux partenaires
+│   └── shared/         règles communes avec le front (téléphone, mot de passe, listes…)
+├── tests/              tests d'API, tests unitaires (unitaires/) et parcours complet (e2e/)
+├── scripts/            mise à jour du serveur alwaysdata
+└── data/               photos et journal (créé au démarrage, ignoré par git)
 ```
 
-Le dossier `shared/` contient les règles de validation contrôlées des deux côtés (retour immédiat dans le navigateur, contrôle final sur le serveur). Le front en garde une copie dans son propre dossier `shared/` : **toute modification doit être reportée dans les deux projets**.
+Le dossier `src/shared/` contient les règles de validation contrôlées des deux côtés (retour immédiat dans le navigateur, contrôle final sur le serveur). Le front en garde une copie dans son propre dossier `shared/` : **toute modification doit être reportée dans les deux dossiers**.
 
 ## Démarrage
 
