@@ -1,6 +1,6 @@
 #!/bin/sh
 # Met à jour l'API de Signale Mayotte (back-end) sur le serveur alwaysdata, en une commande :
-#   sh ~/signale-mayotte/scripts/mettre-a-jour.sh
+#   sh ~/signale-mayotte/backend/scripts/mettre-a-jour.sh
 #
 # 1. récupère la dernière version du code (branche main) ;
 # 2. installe les dépendances ;

@@ -14,7 +14,7 @@ dist-ssr
 .env
 
 # Données locales du serveur
-server/data
+backend/server/data
 *.db
 
 # Editor directories and files

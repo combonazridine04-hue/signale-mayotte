@@ -4,12 +4,12 @@ Ce document explique comment mettre l'application en production chez **alwaysdat
 vérifier, la mettre à jour et revenir en arrière. Il s'adresse à un développeur qui reprend
 le projet sans l'avoir écrit.
 
-L'application est en **deux projets séparés** :
+L'application tient dans **un seul dépôt** (`signale-mayotte`), en deux dossiers :
 
-| Projet                     | Contenu                                       | Hébergé comme                |
-| -------------------------- | --------------------------------------------- | ---------------------------- |
-| `signale-mayotte` (ici)    | Back-end : API Express, MariaDB, NeDB, photos | Site **Node.js**             |
-| `signale-mayotte-frontend` | Front-end : Vue 3 compilé (HTML, CSS, JS)     | Site **statique** (fichiers) |
+| Dossier     | Contenu                                       | Hébergé comme                |
+| ----------- | --------------------------------------------- | ---------------------------- |
+| `backend/`  | Back-end : API Express, MariaDB, NeDB, photos | Site **Node.js**             |
+| `frontend/` | Front-end : Vue 3 compilé (HTML, CSS, JS)     | Site **statique** (fichiers) |
 
 ---
 
@@ -82,32 +82,31 @@ Dans la suite, `COMPTE` désigne le nom du compte alwaysdata.
    réseau interne d'alwaysdata.
 
 Rien d'autre à créer : au premier démarrage, l'API crée ses tables
-([`server/db.js`](../server/db.js)) et le premier compte admin.
+([`server/db.js`](../backend/server/db.js)) et le premier compte admin.
 
 ### 3.2 Accès SSH
 
 **Accès distant → SSH** : sur l'utilisateur du compte, cocher **« Activer la connexion par
 mot de passe »** et choisir un mot de passe. Connexion : `ssh COMPTE@ssh-COMPTE.alwaysdata.net`.
 
-### 3.3 Installer les deux projets (en SSH)
+### 3.3 Installer le projet (en SSH)
 
 ```bash
 cd ~
-# Back-end (API)
 git clone https://github.com/combonazridine04-hue/signale-mayotte.git
-cd signale-mayotte
+
+# Back-end (API)
+cd ~/signale-mayotte/backend
 cp .env.example .env      # puis remplir les variables (section 4)
 sh scripts/mettre-a-jour.sh
 
 # Front-end
-cd ~
-git clone https://github.com/combonazridine04-hue/signale-mayotte-frontend.git
-cd signale-mayotte-frontend
+cd ~/signale-mayotte/frontend
 echo "VITE_API_URL=https://api.COMPTE.alwaysdata.net" > .env.production
 npm ci && npm run build   # produit dist/ : les fichiers du site
 ```
 
-[`scripts/mettre-a-jour.sh`](../scripts/mettre-a-jour.sh) installe **uniquement** les
+[`backend/scripts/mettre-a-jour.sh`](../backend/scripts/mettre-a-jour.sh) installe **uniquement** les
 dépendances de production de l'API. Installer aussi les outils de développement (tests,
 lint) dépasse la mémoire de l'offre gratuite : le serveur arrête alors l'installation
 (« Killed »).
@@ -126,11 +125,11 @@ pour le front, et **Ajouter un site** pour l'API :
 | Adresses              | `api.COMPTE.alwaysdata.net`                                            | `COMPTE.alwaysdata.net`                      |
 | Type                  | **Node.js**                                                            | **PHP** (serveur Apache, garde le type)      |
 | Commande              | `node --max-old-space-size=96 --max-semi-space-size=2 server/index.js` | —                                            |
-| Répertoire de travail | `/home/COMPTE/signale-mayotte`                                         | —                                            |
-| Répertoire racine     | —                                                                      | `/home/COMPTE/signale-mayotte-frontend/dist` |
+| Répertoire de travail | `/home/COMPTE/signale-mayotte/backend`                                 | —                                            |
+| Répertoire racine     | —                                                                      | `/home/COMPTE/signale-mayotte/frontend/dist` |
 
 - L'API écoute sur l'adresse et le port imposés par alwaysdata (variables `IP`/`HOST` et
-  `PORT`) : le serveur les lit tout seul ([`server/index.js`](../server/index.js)).
+  `PORT`) : le serveur les lit tout seul ([`server/index.js`](../backend/server/index.js)).
 - Le front est servi par Apache, qui lit le fichier `.htaccess` du front (copié dans
   `dist/` au build) : toute adresse qui n'est pas un fichier (ex. `/signalements/42`)
   renvoie `index.html`, et les en-têtes de sécurité du site sont posés (HSTS, interdiction
@@ -151,10 +150,10 @@ pour le front, et **Ajouter un site** pour l'API :
 
 ## 4. Variables d'environnement
 
-### 4.1 API — fichier `~/signale-mayotte/.env`
+### 4.1 API — fichier `~/signale-mayotte/backend/.env`
 
 Jamais dans le dépôt : `.env` est dans `.gitignore`, seul le modèle
-[`.env.example`](../.env.example) est versionné.
+[`.env.example`](../backend/.env.example) est versionné.
 
 | Variable                                     | Obligatoire | Valeur en production                                                                |
 | -------------------------------------------- | ----------- | ----------------------------------------------------------------------------------- |
@@ -171,7 +170,7 @@ Jamais dans le dépôt : `.env` est dans `.gitignore`, seul le modèle
 `IP`, `HOST` et `PORT` sont fournis par alwaysdata. `TEST_DATABASE_URL` et `FRONTEND_DIR`
 ne servent qu'aux tests : on ne les définit pas en production.
 
-### 4.2 Front — fichier `~/signale-mayotte-frontend/.env.production`
+### 4.2 Front — fichier `~/signale-mayotte/frontend/.env.production`
 
 Lu **au build** et copié dans le JavaScript envoyé au navigateur : ces valeurs sont
 publiques, jamais de secret ici. Après toute modification, relancer `npm run build`.
@@ -183,10 +182,10 @@ publiques, jamais de secret ici. Après toute modification, relancer `npm run bu
 
 ### 4.3 Sécurité déjà gérée dans le code
 
-- **CORS** ([`server/middleware/cors.js`](../server/middleware/cors.js)) : seule l'adresse
+- **CORS** ([`server/middleware/cors.js`](../backend/server/middleware/cors.js)) : seule l'adresse
   exacte de `FRONTEND_URL` reçoit l'autorisation de lire les réponses et d'envoyer le
   cookie. Jamais de `*`.
-- **Anti-CSRF** ([`server/middleware/verifierOrigine.js`](../server/middleware/verifierOrigine.js)) :
+- **Anti-CSRF** ([`server/middleware/verifierOrigine.js`](../backend/server/middleware/verifierOrigine.js)) :
   toute requête de modification venue d'une autre origine est refusée (403).
 - **Cookie de session** : `HttpOnly`, `Secure`, préfixe `__Host-`, `SameSite=Strict`.
 - `app.set('trust proxy', 1)` : derrière le proxy d'alwaysdata, l'API lit la vraie IP du
@@ -243,17 +242,17 @@ npm test   # unitaires + API + parcours dans un navigateur (front et API sépar�
 
 - **API :** pousser sur `main` (la CI vérifie le code), puis en SSH :
   ```bash
-  sh ~/signale-mayotte/scripts/mettre-a-jour.sh
+  sh ~/signale-mayotte/backend/scripts/mettre-a-jour.sh
   ```
   et **redémarrer le site de l'API** (panneau → _Web → Sites → Redémarrer_).
-- **Front :** en SSH, `cd ~/signale-mayotte-frontend && git pull && npm ci && npm run build`.
+- **Front :** en SSH, `cd ~/signale-mayotte/frontend && git pull && npm ci && npm run build`.
   Le site statique sert aussitôt les nouveaux fichiers (aucun redémarrage).
-- **Évolution du schéma :** on ajoute la colonne dans [`server/db.js`](../server/db.js) avec
+- **Évolution du schéma :** on ajoute la colonne dans [`server/db.js`](../backend/server/db.js) avec
   `ALTER TABLE … ADD COLUMN IF NOT EXISTS` (syntaxe MariaDB). La migration s'applique au
   démarrage suivant, sans script manuel, et peut être rejouée sans risque.
 - **Retour arrière :** en SSH, revenir au commit précédent puis relancer l'installation :
   ```bash
-  cd ~/signale-mayotte && git log --oneline -5
+  cd ~/signale-mayotte/backend && git log --oneline -5
   git checkout <commit_précédent> && sh scripts/mettre-a-jour.sh
   ```
   (puis, une fois corrigé, `git checkout main`). Même principe pour le front, suivi d'un
@@ -262,7 +261,7 @@ npm test   # unitaires + API + parcours dans un navigateur (front et API sépar�
 - **Sauvegardes :** avant toute opération risquée, copier la base et les fichiers de l'API :
   ```bash
   mariadb-dump -h mysql-COMPTE.alwaysdata.net -u COMPTE_signale -p COMPTE_signale > sauvegarde.sql
-  tar czf donnees.tar.gz -C ~/signale-mayotte/server data
+  tar czf donnees.tar.gz -C ~/signale-mayotte/backend/server data
   ```
   (ou, dans DBeaver : clic droit sur la base → _Outils_ → _Sauvegarder_). Restauration :
   `mariadb -h … -u … -p COMPTE_signale < sauvegarde.sql`.

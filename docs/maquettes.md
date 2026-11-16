@@ -215,7 +215,7 @@ public : on voit tout de suite qu'on n'est plus sur la partie citoyenne.
 | Police           | **Inter**, puis police système                                   | Lisible sur petit écran         |
 
 Un **thème clair** est proposé (bouton soleil/lune), et le choix est mémorisé.
-Les variables CSS sont centralisées dans `src/assets/css/style.css` du projet front-end (`signale-mayotte-frontend`).
+Les variables CSS sont centralisées dans `src/assets/css/style.css` du front-end (`frontend/`).
 
 ## 5. Accessibilité et ergonomie retenues
 

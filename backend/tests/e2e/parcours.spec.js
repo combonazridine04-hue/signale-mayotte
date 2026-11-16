@@ -1,6 +1,6 @@
 import { writeFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
-import { homedir, tmpdir } from 'node:os'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 import express from 'express'
 import { chromium } from 'playwright-chromium'
@@ -13,7 +13,7 @@ import { preparerAdminTest, preparerEnvironnementTest } from '../../server/tests
 // Base, stockage des photos et emails isolés : même garde que les tests d'API, un seul module.
 preparerEnvironnementTest()
 
-const DOSSIER_FRONT = process.env.FRONTEND_DIR || path.join(homedir(), 'Desktop', 'signale-mayotte-frontend')
+const DOSSIER_FRONT = process.env.FRONTEND_DIR || path.join(import.meta.dirname, '..', '..', '..', 'frontend')
 if (!existsSync(path.join(DOSSIER_FRONT, 'package.json'))) {
   throw new Error(`Front-end introuvable dans ${DOSSIER_FRONT} : renseignez FRONTEND_DIR dans .env.`)
 }

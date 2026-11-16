@@ -6,9 +6,12 @@ on:
   pull_request:
 
 jobs:
-  verifications:
-    name: Lint, formatage et tests unitaires
+  backend:
+    name: Back-end — lint, formatage et tests unitaires
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
 
     steps:
       - uses: actions/checkout@v4
@@ -17,6 +20,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: backend/package-lock.json
 
       - name: Installer les dépendances
         run: npm ci
@@ -28,6 +32,31 @@ jobs:
         run: npm run format:check
 
       # Sans base de données : les tests d'API et de parcours, qui en exigent une,
-      # restent lancés à la main (voir README).
+      # restent lancés à la main (voir backend/README.md).
       - name: Tests unitaires
         run: npm run test:unit
+
+  frontend:
+    name: Front-end — lint et build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
