@@ -93,7 +93,7 @@ mot de passe »** et choisir un mot de passe. Connexion : `ssh COMPTE@ssh-COMPTE
 
 ```bash
 cd ~
-git clone https://github.com/combonazridine04-hue/signale-mayotte.git
+git clone -b passage-mariadb https://github.com/combonazridine04-hue/signale-mayotte.git
 
 # Back-end (API)
 cd ~/signale-mayotte/backend

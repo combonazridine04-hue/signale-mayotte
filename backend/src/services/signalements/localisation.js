@@ -7,8 +7,8 @@ const MAYOTTE = { latMin: -13.1, latMax: -12.55, lonMin: 44.9, lonMax: 45.4 }
 
 // Renvoie { latitude, longitude } (null/null si aucune position n'est fournie), ou
 // { erreur } si la position est incomplète, illisible ou hors de Mayotte.
-// Sans ce contrôle, « abc » devenait NaN, que Postgres accepte dans une colonne
-// DOUBLE PRECISION : le signalement s'enregistrait, puis faisait planter la carte
+// Sans ce contrôle, « abc » devenait NaN, une valeur illisible dans la colonne
+// latitude/longitude : le signalement s'enregistrait, puis faisait planter la carte
 // de tous les visiteurs au moment de placer son marqueur.
 export function lirePosition(latitudeBrute, longitudeBrute) {
   const fournie = (v) => v !== undefined && v !== null && v !== ''

@@ -1,10 +1,10 @@
 // Contrôles de format communs à plusieurs routes.
 
-// Plus grand entier accepté par une colonne SERIAL (INTEGER Postgres).
+// Plus grand entier accepté par une colonne INT (identifiants AUTO_INCREMENT de MariaDB).
 const ID_MAX = 2147483647
 
 // Identifiant lu dans l'URL ou le corps : un entier positif, sinon null. Sans ce
-// contrôle, « /signalements/abc » arrivait jusqu'à Postgres sous la forme NaN, qui la
+// contrôle, « /signalements/abc » arrivait jusqu'à la base sous la forme NaN, qui la
 // refusait : l'utilisateur recevait une erreur 500 au lieu d'un simple « introuvable ».
 export function idValide(valeur) {
   const id = Number(valeur)
