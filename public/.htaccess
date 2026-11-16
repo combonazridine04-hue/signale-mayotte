@@ -1,0 +1,34 @@
+# Configuration Apache du site (hébergement alwaysdata, site de type Apache / PHP).
+# Copié tel quel dans dist/ au build.
+
+# Application à page unique : toute adresse qui n'est pas un fichier réel (ex.
+# /signalements/42, /carte) renvoie index.html, et Vue Router affiche le bon écran.
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.html$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.html [L]
+
+<IfModule mod_headers.c>
+  # Le navigateur refusera d'être contacté en HTTP pendant un an.
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+  # Le site ne peut pas être affiché dans un cadre (anti-clickjacking).
+  Header always set X-Frame-Options "DENY"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  # Seules les fonctions du navigateur utilisées par le site sont permises, et pour lui seul
+  # (position du signalement, appareil photo, partage, copie du lien).
+  Header always set Permissions-Policy "geolocation=(self), camera=(self), web-share=(self), clipboard-write=(self), microphone=(), payment=(), usb=()"
+
+  # index.html n'est jamais gardé en cache : une mise à jour du site est visible tout de
+  # suite. Les fichiers de assets/ ont un nom qui change à chaque build : cache d'un an.
+  <FilesMatch "^index\.html$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType text/css "access plus 1 year"
+</IfModule>
