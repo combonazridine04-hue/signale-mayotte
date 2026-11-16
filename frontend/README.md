@@ -49,12 +49,13 @@ npm ci && npm run build    # produit dist/, à servir comme site statique
 - Le site est une application à page unique : l'hébergeur doit renvoyer `index.html` pour toute adresse inconnue (ex. `/signalements/42`).
 - L'API doit déclarer l'adresse exacte de ce site dans sa variable `FRONTEND_URL` (CORS).
 
-Procédure complète d'hébergement chez alwaysdata : `docs/deploiement.md` du back-end.
+Procédure complète d'hébergement chez alwaysdata : [`docs/deploiement.md`](../docs/deploiement.md).
 
 ### Hébergement sur Cloudflare Pages
 
 1. Cloudflare → *Workers & Pages* → *Create* → *Pages* → connecter ce dépôt GitHub.
 2. Réglages du build :
+   - Root directory : `frontend`
    - Framework preset : `Vue` (ou aucun)
    - Build command : `npm run build`
    - Build output directory : `dist`
