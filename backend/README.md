@@ -147,8 +147,8 @@ Hébergé chez **alwaysdata** (France) : un site Node.js pour l'API (avec sa bas
 
 ## Documentation
 
-| Document                                             | Contenu                                                     |
-| ---------------------------------------------------- | ----------------------------------------------------------- |
+| Document                                                | Contenu                                                     |
+| ------------------------------------------------------- | ----------------------------------------------------------- |
 | [`docs/maquettes.md`](../docs/maquettes.md)             | Arborescence, parcours, zonage des écrans, charte graphique |
 | [`docs/base-de-donnees.md`](../docs/base-de-donnees.md) | MCD, MLD, diagramme des tables, base NoSQL du journal       |
 | [`docs/deploiement.md`](../docs/deploiement.md)         | Mise en production sur alwaysdata, pas à pas                |
