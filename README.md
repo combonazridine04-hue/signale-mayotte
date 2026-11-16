@@ -1,8 +1,10 @@
-# Signale Mayotte
+# Signale Mayotte — back-end (API)
 
 [![Intégration continue](https://github.com/combonazridine04-hue/signale-mayotte/actions/workflows/ci.yml/badge.svg)](https://github.com/combonazridine04-hue/signale-mayotte/actions/workflows/ci.yml)
 
 Plateforme citoyenne pour signaler les problèmes du quotidien — dépôts sauvages, voirie, éclairage public, eau — dans les communes de Mayotte, et suivre publiquement leur traitement.
+
+Ce dépôt contient le **back-end** : l'API Express, la base MariaDB (SQL) et le journal NeDB (NoSQL). Le **front-end** (Vue 3) est un projet séparé, `signale-mayotte-frontend`, qui appelle cette API.
 
 **En ligne :** hébergé chez [alwaysdata](https://www.alwaysdata.com) (France).
 
@@ -14,56 +16,59 @@ Plateforme citoyenne pour signaler les problèmes du quotidien — dépôts sauv
 - **Participer** : soutenir un signalement, le commenter, répondre à un commentaire.
 - **Marquer une urgence** : un signalement présentant un danger immédiat passe en tête de liste.
 - **Consulter** sans compte : liste filtrable, carte, statistiques publiques de transparence.
-- **Administrer** : modération, changement de statut avec photo de résolution, suivi officiel, export CSV.
+- **Administrer** : modération, changement de statut avec photo de résolution, suivi officiel, export CSV, journal d'activité.
 
 L'identité des contributeurs n'est jamais affichée : un pseudo, ou à défaut le prénom suivi de l'initiale du nom.
 
 ## Stack
 
-|                 | Technologies                                                                                                                |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **Front**       | Vue 3 (`<script setup>`), Vue Router, Pinia, Vite, Bootstrap 5, Leaflet, Three.js                                           |
-| **Back**        | Node.js, Express 5, `mysql2`, bcryptjs, helmet, express-rate-limit, multer, sharp                                           |
-| **Données**     | MariaDB (données métier, SQL), NeDB (journal d'activité, NoSQL), photos sur le disque du serveur                            |
-| **Services**    | Brevo (emails, par API HTTPS), MapTiler (fonds de carte), nsfwjs (modération des photos), Cloudflare Turnstile (anti-robot) |
-| **Qualité**     | ESLint, Prettier, EditorConfig, GitHub Actions                                                                              |
-| **Hébergement** | alwaysdata (France) : site Node.js, MariaDB et disque permanent                                                             |
+|                 | Technologies                                                                                         |
+| --------------- | ---------------------------------------------------------------------------------------------------- |
+| **Front-end**   | Projet séparé : Vue 3 (`<script setup>`), Vue Router, Pinia, Vite, Bootstrap 5, Leaflet, Three.js    |
+| **Back-end**    | Node.js, Express 5, `mysql2`, bcryptjs, helmet, express-rate-limit, multer, sharp                    |
+| **Données**     | MariaDB (données métier, SQL), NeDB (journal d'activité, NoSQL), photos sur le disque du serveur     |
+| **Services**    | Brevo (emails, par API HTTPS), nsfwjs (modération des photos), Cloudflare Turnstile (anti-robot)     |
+| **Qualité**     | ESLint, Prettier, EditorConfig, GitHub Actions, tests `node:test` et Playwright                      |
+| **Hébergement** | alwaysdata (France) : un site pour le front, un site Node.js pour l'API, MariaDB et disque permanent |
 
 ## Architecture
 
 ```
-Navigateur ──HTTP/JSON──▶ Express ──▶ MariaDB           (données métier, SQL)
-  (Vue 3)                    │
-                             ├──▶ NeDB              (journal d'activité, NoSQL, fichier local)
-                             ├──▶ Disque du serveur (photos, server/data/uploads)
-                             ├──▶ API Brevo         (emails)
-                             └──▶ Turnstile         (anti-robot, optionnel)
+                 ┌──────────── front-end (projet séparé) ────────────┐
+ Navigateur ────▶│ Vue 3 compilé (HTML, CSS, JS)                      │
+     │           └────────────────────────────────────────────────────┘
+     │ fetch(VITE_API_URL + "/api/…", { credentials: "include" })
+     ▼
+ ┌──────────── back-end (ce dépôt) ───────────────────────────────────┐
+ │ Express : CORS (FRONTEND_URL) → anti-CSRF → routes /api/*            │
+ │   ├──▶ MariaDB           (données métier, SQL)                       │
+ │   ├──▶ NeDB              (journal d'activité, NoSQL, fichier local)  │
+ │   ├──▶ disque            (photos, servies sous /uploads)             │
+ │   ├──▶ API Brevo         (emails)                                    │
+ │   └──▶ Turnstile         (anti-robot)                                │
+ └──────────────────────────────────────────────────────────────────────┘
 ```
 
-En production, un seul service Node.js sert l'API **et** le front compilé : même origine, donc aucune configuration CORS.
+Le front et l'API sont à **deux adresses différentes**. L'API n'accepte que l'adresse du front déclarée dans `FRONTEND_URL` : en-têtes CORS pour lui seul, et refus (403) de toute requête de modification venue d'ailleurs (anti-CSRF). Le cookie de session reste `HttpOnly`, illisible par le JavaScript.
 
 ```
 server/
-├── index.js            middlewares globaux, montage des routeurs, gestion des erreurs
+├── index.js            middlewares globaux (helmet, CORS, anti-CSRF), routeurs, erreurs
 ├── routes/             un routeur par ressource (signalements, commentaires, auth…)
 ├── signalements/       contrôles d'accès, conversion des données, photos
-├── middleware/         authentification, limites de débit
-├── db.js               connexion MariaDB et schéma
-├── journal.js          journal d'activité (NeDB, NoSQL)
+├── middleware/         authentification, CORS, anti-CSRF, limites de débit
+├── db.js               connexion MariaDB et schéma (composant d'accès SQL)
+├── journal.js          journal d'activité (NeDB, composant d'accès NoSQL)
 └── auth.js, captcha.js, mailer.js, storage.js, moderation.js…
-src/
-├── views/              écrans
-├── components/         composants réutilisables
-├── stores/             état partagé (Pinia)
-└── utils/api.js        point d'entrée unique des appels HTTP
-shared/                 règles utilisées par le client ET le serveur (téléphone, mot de passe…)
+shared/                 règles communes avec le front (téléphone, mot de passe, listes…)
+tests/e2e/              parcours complet : front + API à deux adresses, dans un navigateur
 ```
 
-Le dossier `shared/` garantit qu'une règle de validation, écrite une seule fois, s'applique à l'identique dans le navigateur (retour immédiat) et sur le serveur (contrôle final).
+Le dossier `shared/` contient les règles de validation contrôlées des deux côtés (retour immédiat dans le navigateur, contrôle final sur le serveur). Le front en garde une copie dans son propre dossier `shared/` : **toute modification doit être reportée dans les deux projets**.
 
 ## Démarrage
 
-**Prérequis :** Node.js 20.19 ou plus récent, MariaDB installé sur le PC. Aucun service en ligne n'est nécessaire en développement : les photos sont enregistrées sur le disque (`server/data/uploads/`).
+**Prérequis :** Node.js 20.19 ou plus récent, MariaDB installé sur le PC, et le projet front `signale-mayotte-frontend`.
 
 Créer les deux bases (développement et tests) et le compte de l'application, en `root` (par exemple dans DBeaver) :
 
@@ -75,73 +80,70 @@ GRANT ALL PRIVILEGES ON signale_mayotte.* TO 'signale'@'localhost';
 GRANT ALL PRIVILEGES ON signale_mayotte_test.* TO 'signale'@'localhost';
 ```
 
-Puis, dans `.env` : `DATABASE_URL=mysql://signale:un-mot-de-passe-long@localhost:3306/signale_mayotte` (et `TEST_DATABASE_URL` vers `signale_mayotte_test`).
+Puis, dans `.env` : `DATABASE_URL=mysql://signale:un-mot-de-passe-long@localhost:3306/signale_mayotte` (et `TEST_DATABASE_URL` vers `signale_mayotte_test`). Les tables se créent seules au premier démarrage. Pour consulter la base : dans DBeaver, connexion MariaDB `localhost:3306`, base `signale_mayotte`, utilisateur `signale`.
 
-Les tables se créent seules au premier démarrage. Pour consulter la base : dans DBeaver, connexion MariaDB `localhost:3306`, base `signale_mayotte`, utilisateur `signale`.
+Deux terminaux :
 
 ```bash
+# 1. le back-end (ce dossier) — API sur http://localhost:3001
 npm install
 cp .env.example .env    # puis renseigner les valeurs
 npm run dev
+
+# 2. le front-end (dossier signale-mayotte-frontend) — site sur http://localhost:5173
+npm install
+npm run dev
 ```
 
-`npm run dev` lance le front (Vite, port 5173) et l'API (Express, port 3001) ensemble ; Vite redirige `/api` vers Express. Le site est sur `http://localhost:5173`.
-
-Au premier démarrage, le schéma de la base est créé automatiquement, ainsi que le bucket de photos et le premier compte administrateur.
+En développement, le serveur Vite du front relaie `/api` et `/uploads` vers l'API : le navigateur voit une seule adresse, sans CORS. Au premier démarrage de l'API, le schéma de la base et le premier compte administrateur sont créés.
 
 ## Configuration
 
 Toutes les variables sont décrites dans [`.env.example`](.env.example). Les principales :
 
-| Variable                                  | Rôle                                                              |
-| ----------------------------------------- | ----------------------------------------------------------------- |
-| `DATABASE_URL`                            | Connexion MariaDB (`mysql://…`) — **obligatoire**                 |
-| `ADMIN_IDENTIFIANT`, `ADMIN_MOT_DE_PASSE` | Premier compte administrateur, créé au tout premier démarrage     |
-| `BREVO_API_KEY`, `BREVO_EXPEDITEUR`       | Envoi des emails. Sans eux, le site fonctionne mais n'envoie rien |
-| `VITE_MAPTILER_KEY`                       | Fonds de carte. Sans elle, repli sur OpenStreetMap France         |
-| `TEST_DATABASE_URL`                       | Base **distincte** pour les tests (voir plus bas)                 |
+| Variable                                  | Rôle                                                                    |
+| ----------------------------------------- | ----------------------------------------------------------------------- |
+| `DATABASE_URL`                            | Connexion MariaDB (`mysql://…`) — **obligatoire**                       |
+| `ADMIN_IDENTIFIANT`, `ADMIN_MOT_DE_PASSE` | Premier compte administrateur, créé au tout premier démarrage           |
+| `FRONTEND_URL`                            | Adresse exacte du front autorisée à appeler l'API (production)          |
+| `COOKIE_SAMESITE`                         | `strict` (même site) ou `none` (front et API sur deux sites différents) |
+| `SITE_URL`                                | Adresse publique du front, pour les liens des emails                    |
+| `BREVO_API_KEY`, `BREVO_EXPEDITEUR`       | Envoi des emails. Sans eux, le site fonctionne mais n'envoie rien       |
+| `TEST_DATABASE_URL`                       | Base **distincte** pour les tests (voir plus bas)                       |
 
 > Les emails passent par l'API HTTPS de Brevo et non par SMTP : beaucoup d'hébergeurs bloquent les connexions SMTP sortantes, et un envoi SMTP y échouerait en silence.
 
 ## Scripts
 
-| Commande               | Rôle                                                |
-| ---------------------- | --------------------------------------------------- |
-| `npm run dev`          | Front et API en développement                       |
-| `npm run build`        | Compile le front dans `dist/`                       |
-| `npm start`            | Lance le serveur de production (sert aussi `dist/`) |
-| `npm run lint`         | Analyse statique (ESLint)                           |
-| `npm run lint:fix`     | Corrige automatiquement ce qui peut l'être          |
-| `npm run format`       | Met le code en forme (Prettier)                     |
-| `npm run format:check` | Vérifie la mise en forme sans rien modifier         |
-| `npm run test:api`     | Tests de l'API (`node:test`)                        |
-| `npm run test:e2e`     | Parcours utilisateur dans un vrai navigateur        |
+| Commande               | Rôle                                                              |
+| ---------------------- | ----------------------------------------------------------------- |
+| `npm run dev`          | API en développement (redémarre à chaque modification)            |
+| `npm start`            | API en production                                                 |
+| `npm run lint`         | Analyse statique (ESLint)                                         |
+| `npm run format`       | Met le code en forme (Prettier)                                   |
+| `npm run format:check` | Vérifie la mise en forme sans rien modifier                       |
+| `npm run test:unit`    | Tests unitaires (sans base de données)                            |
+| `npm run test:api`     | Tests de l'API (`node:test`)                                      |
+| `npm run test:e2e`     | Parcours utilisateur dans un vrai navigateur, front + API séparés |
+| `npm test`             | Tous les tests                                                    |
 
 ## Tests
 
 Les tests remettent la base à zéro à chaque exécution. Ils exigent donc une base de données **séparée**, désignée par `TEST_DATABASE_URL` (la base MariaDB `signale_mayotte_test`), et **refusent de démarrer** si cette variable est absente ou identique à `DATABASE_URL`.
 
-Le test de parcours (`tests/e2e/parcours.spec.js`) pilote un vrai navigateur : inscription, signalement avec photo et position, carte, modification et suppression par l'auteur, puis connexion admin, suppression depuis le tableau de bord et déconnexion. Avant chaque série, les tests réalignent le compte admin de la base de test sur les identifiants du `.env`.
+Le test de parcours ([`tests/e2e/parcours.spec.js`](tests/e2e/parcours.spec.js)) compile le front (dossier `FRONTEND_DIR`, par défaut sur le Bureau), le sert à une adresse et l'API à une autre, puis pilote un vrai navigateur : inscription, signalement avec photo et position, carte, modification et suppression par l'auteur, connexion admin, suppression depuis le tableau de bord, déconnexion. Il vérifie ainsi le CORS, le cookie de session et la politique de sécurité du front.
 
 ## Qualité du code
 
-À chaque `push`, GitHub Actions vérifie le lint, la mise en forme et la compilation ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). Avant de pousser :
+À chaque `push`, GitHub Actions vérifie le lint, la mise en forme et les tests unitaires ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)). Avant de pousser :
 
 ```bash
-npm run lint && npm run format:check && npm run build
+npm run lint && npm run format:check && npm test
 ```
 
 ## Déploiement
 
-Hébergé chez **alwaysdata** (France), en site Node.js, avec sa base MariaDB et un disque permanent (photos et journal y restent d'une mise à jour à l'autre) :
-
-- **Installation des dépendances et build :** `npm ci && npm run build`
-- **Démarrage :** `node server/index.js` (commande du site dans le panneau alwaysdata)
-- **Variables :** dans le fichier `.env` du serveur, jamais dans le dépôt
-
-Le site ne se met pas en veille : aucun « réveil » planifié n'est nécessaire.
-
-Procédure complète (services externes, variables, vérifications, retour arrière) : [`docs/deploiement.md`](docs/deploiement.md).
+Hébergé chez **alwaysdata** (France) : un site Node.js pour l'API (avec sa base MariaDB et un disque permanent pour les photos et le journal), et un site statique pour le front. Procédure complète : [`docs/deploiement.md`](docs/deploiement.md). Mise à jour de l'API en une commande : [`scripts/mettre-a-jour.sh`](scripts/mettre-a-jour.sh).
 
 ## Documentation
 
@@ -156,9 +158,11 @@ Procédure complète (services externes, variables, vérifications, retour arri�
 
 - Mots de passe hachés avec bcrypt ; comparaison factice quand un compte n'existe pas, pour ne pas révéler son existence par le temps de réponse.
 - Requêtes SQL toujours paramétrées ; tri choisi dans une liste blanche.
-- En-têtes HTTP via helmet, dont une politique de sécurité du contenu n'autorisant qu'un seul script tiers : le widget anti-robot de Cloudflare.
+- CORS limité à l'adresse exacte du front ; toute requête de modification venue d'une autre origine est refusée (anti-CSRF).
+- Cookie de session `HttpOnly` et `Secure` (préfixe `__Host-` en HTTPS) : jamais lisible par le JavaScript.
+- En-têtes HTTP via helmet ; le front porte sa propre politique de sécurité du contenu, qui n'autorise que l'API, le widget anti-robot de Cloudflare et les fonds de carte.
 - Limites de débit sur toutes les routes sensibles, champ piège et captcha Turnstile contre les robots.
 - Double authentification (TOTP) des administrateurs, avec protection contre le rejeu d'un code.
 - Journal des actions sensibles (connexions, comptes, statuts) dans une base NoSQL (NeDB), effacé automatiquement après un an.
-- Photos : liste blanche de formats (SVG exclu), réencodage systématique, suppression des métadonnées dont la position GPS, analyse automatique du contenu avant publication.
+- Photos : liste blanche de formats (SVG exclu), réencodage systématique, suppression des métadonnées dont la position GPS, analyse automatique du contenu avant publication ; servies avec une politique qui interdit tout contenu actif.
 - Données d'identité des contributeurs exposées uniquement aux administrateurs.

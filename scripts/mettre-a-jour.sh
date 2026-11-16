@@ -1,9 +1,9 @@
 #!/bin/sh
-# Met à jour Signale Mayotte sur le serveur (alwaysdata), en une commande :
+# Met à jour l'API de Signale Mayotte (back-end) sur le serveur alwaysdata, en une commande :
 #   sh ~/signale-mayotte/scripts/mettre-a-jour.sh
 #
 # 1. récupère la dernière version du code (branche main) ;
-# 2. installe les dépendances et compile le front (dist/) ;
+# 2. installe les dépendances ;
 # 3. retire les outils de développement pour économiser le disque ;
 # 4. rappelle de redémarrer le site.
 # Les données ne sont pas touchées : base MariaDB, photos (server/data/uploads) et journal
@@ -17,9 +17,6 @@ git pull --ff-only
 
 echo "→ Installation des dépendances (sans le navigateur des tests)"
 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm ci --no-audit --no-fund
-
-echo "→ Compilation du front"
-npm run build
 
 echo "→ Retrait des outils de développement"
 npm prune --omit=dev --no-audit --no-fund

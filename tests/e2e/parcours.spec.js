@@ -1,26 +1,57 @@
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { writeFileSync, mkdtempSync, rmSync, existsSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { homedir, tmpdir } from 'node:os'
 import path from 'node:path'
+import express from 'express'
 import { chromium } from 'playwright-chromium'
 import { preparerAdminTest, preparerEnvironnementTest } from '../../server/tests/environnementTest.js'
+
+// Parcours complet dans un vrai navigateur, avec la VRAIE architecture : le front-end
+// (projet séparé) et l'API tournent à deux adresses différentes. Le test vérifie donc
+// aussi le CORS, le cookie de session et la politique de sécurité du front.
 
 // Base, stockage des photos et emails isolés : même garde que les tests d'API, un seul module.
 preparerEnvironnementTest()
 
+const DOSSIER_FRONT = process.env.FRONTEND_DIR || path.join(homedir(), 'Desktop', 'signale-mayotte-frontend')
+if (!existsSync(path.join(DOSSIER_FRONT, 'package.json'))) {
+  throw new Error(`Front-end introuvable dans ${DOSSIER_FRONT} : renseignez FRONTEND_DIR dans .env.`)
+}
+const dossierTemp = mkdtempSync(path.join(tmpdir(), 'signale-mayotte-e2e-'))
+const distFront = path.join(dossierTemp, 'front')
+
+// 1. Le site (front compilé), à sa propre adresse.
+const site = express()
+site.use(express.static(distFront))
+site.get('/*splat', (req, res) => res.sendFile(path.join(distFront, 'index.html')))
+const serveurSite = site.listen(0)
+await new Promise((resolve) => serveurSite.once('listening', resolve))
+const BASE = `http://localhost:${serveurSite.address().port}/`
+// L'API n'accepte que cette adresse-là (CORS et anti-CSRF).
+process.env.FRONTEND_URL = BASE.slice(0, -1)
+
+// 2. L'API, à une autre adresse.
 const { app } = await import('../../server/index.js')
 const { db, reinitialiserDonneesDemo } = await import('../../server/db.js')
 await reinitialiserDonneesDemo({ viderStockage: true })
 await preparerAdminTest(db)
 const serveur = app.listen(0)
 await new Promise((resolve) => serveur.once('listening', resolve))
-const port = serveur.address().port
-const BASE = `http://localhost:${port}/`
+const API = `http://localhost:${serveur.address().port}`
+
+// 3. Compilation du front, pointé vers cette API.
+const build = spawnSync('npm', ['run', 'build', '--', '--outDir', distFront, '--emptyOutDir'], {
+  cwd: DOSSIER_FRONT,
+  env: { ...process.env, VITE_API_URL: API },
+  shell: true,
+  encoding: 'utf8'
+})
+if (build.status !== 0) throw new Error(`Compilation du front impossible :\n${build.stdout}${build.stderr}`)
 
 const PNG_1PX = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
   'base64'
 )
-const dossierTemp = mkdtempSync(path.join(tmpdir(), 'signale-mayotte-e2e-'))
 const cheminPhoto = path.join(dossierTemp, 'photo-test.png')
 writeFileSync(cheminPhoto, PNG_1PX)
 
@@ -59,14 +90,18 @@ try {
   verifier(/\/connexion/.test(page.url()), 'signaler sans compte renvoie vers la connexion')
   // Numéro différent à chaque passage : la base de test garde les comptes d'une fois sur l'autre.
   const telephone = '0639' + String(Date.now()).slice(-6)
-  const inscription = await page.evaluate(async (tel) => {
-    const r = await fetch('/api/auth/inscription', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nom: 'Habitant Test', telephone: tel, motDePasse: 'MotDePasseE2e2026!' })
-    })
-    return r.status
-  }, telephone)
+  const inscription = await page.evaluate(
+    async ([api, tel]) => {
+      const r = await fetch(api + '/api/auth/inscription', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nom: 'Habitant Test', telephone: tel, motDePasse: 'MotDePasseE2e2026!' })
+      })
+      return r.status
+    },
+    [API, telephone]
+  )
   verifier(inscription === 201, `inscription d'un citoyen par téléphone (statut ${inscription})`)
 
   await page.goto(BASE + 'signaler', { waitUntil: 'networkidle' })
@@ -162,13 +197,16 @@ try {
 
   // Créé depuis la page, avec la session admin : signaler exige d'être connecté.
   const texteJetable = 'Signalement jetable créé uniquement pour tester la suppression depuis le tableau admin.'
-  const statutJetable = await page.evaluate(async (description) => {
-    const f = new FormData()
-    f.set('categorie', 'Eau')
-    f.set('commune', 'Sada')
-    f.set('description', description)
-    return (await fetch('/api/signalements', { method: 'POST', body: f })).status
-  }, texteJetable)
+  const statutJetable = await page.evaluate(
+    async ([api, description]) => {
+      const f = new FormData()
+      f.set('categorie', 'Eau')
+      f.set('commune', 'Sada')
+      f.set('description', description)
+      return (await fetch(api + '/api/signalements', { method: 'POST', body: f, credentials: 'include' })).status
+    },
+    [API, texteJetable]
+  )
   verifier(statutJetable === 201, `signalement jetable créé pour le tableau admin (statut ${statutJetable})`)
 
   // Le tableau de bord admin ne charge les données qu'au montage : on recharge la page
@@ -256,6 +294,8 @@ try {
   await browser.close()
   serveur.closeAllConnections?.()
   await new Promise((resolve) => serveur.close(resolve))
+  serveurSite.closeAllConnections?.()
+  await new Promise((resolve) => serveurSite.close(resolve))
   await db.end()
   rmSync(dossierTemp, { recursive: true, force: true })
 }

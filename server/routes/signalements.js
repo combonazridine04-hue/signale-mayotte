@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import crypto from 'node:crypto'
 import { db } from '../db.js'
-import { CATEGORIES, COMMUNES, STATUTS } from '../../src/models/signalement.js'
+import { CATEGORIES, COMMUNES, STATUTS } from '../../shared/signalement.js'
 import { envoyerNotificationSignalement, envoyerConfirmationSignalement, envoyerChangementStatut } from '../mailer.js'
 import { requireAuth, requireAuthUtilisateur, requirePartenaireOuAdmin } from '../middleware/requireAuth.js'
 import { limiteurCreation, limiteurSoutien } from '../middleware/limiteurs.js'

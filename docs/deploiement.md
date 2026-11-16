@@ -4,30 +4,43 @@ Ce document explique comment mettre l'application en production chez **alwaysdat
 vérifier, la mettre à jour et revenir en arrière. Il s'adresse à un développeur qui reprend
 le projet sans l'avoir écrit.
 
+L'application est en **deux projets séparés** :
+
+| Projet                     | Contenu                                       | Hébergé comme                |
+| -------------------------- | --------------------------------------------- | ---------------------------- |
+| `signale-mayotte` (ici)    | Back-end : API Express, MariaDB, NeDB, photos | Site **Node.js**             |
+| `signale-mayotte-frontend` | Front-end : Vue 3 compilé (HTML, CSS, JS)     | Site **statique** (fichiers) |
+
 ---
 
 ## 1. Architecture de production
 
 ```
-                      ┌──────────────── alwaysdata (France) ────────────────────────┐
- Navigateur ──HTTPS──▶│ Proxy HTTPS ──▶ Site Node.js : Express                      │
-                      │                  ├─ API /api/*  +  front Vue compilé (dist/)  │
-                      │                  ├─ photos : disque (server/data/uploads)     │
-                      │                  └─ journal NoSQL NeDB (server/data/journal)  │
-                      │                         │                                    │
-                      │                         ▼                                    │
-                      │                  MariaDB (réseau interne)                    │
-                      └──────────────────────────────────────────────────────────────┘
-                               │                         │
-                         Brevo (emails)        Cloudflare Turnstile (anti-robot)
+                   ┌──────────────────────── alwaysdata (France) ─────────────────────────┐
+                   │                                                                       │
+ Navigateur ─HTTPS─┼─▶ COMPTE.alwaysdata.net        site statique : front Vue compilé       │
+     │             │                                                                       │
+     └─────HTTPS───┼─▶ api.COMPTE.alwaysdata.net    site Node.js : API Express             │
+                   │        ├─ CORS : n'accepte que https://COMPTE.alwaysdata.net          │
+                   │        ├─ photos sur disque (server/data/uploads), servies /uploads  │
+                   │        ├─ journal NoSQL NeDB (server/data/journal)                   │
+                   │        └─▶ MariaDB (réseau interne)                                   │
+                   └───────────────────────────────────────────────────────────────────────┘
+                             │                         │
+                       Brevo (emails)        Cloudflare Turnstile (anti-robot)
 ```
 
-Un **seul hébergeur** pour tout : le site, la base MariaDB et le disque. Le disque
-d'alwaysdata est **permanent** : photos et journal restent d'une mise à jour à l'autre.
-Le site ne se met jamais en veille.
+**Pourquoi `api.COMPTE.alwaysdata.net` et pas une adresse totalement différente ?**
+`alwaysdata.net` figure dans la liste officielle des suffixes publics
+(publicsuffix.org) : `COMPTE.alwaysdata.net` et `api.COMPTE.alwaysdata.net` sont donc
+deux _origines_ différentes (d'où le CORS), mais **un seul _site_** pour le navigateur.
+Le cookie de session reste en `SameSite=Strict`, sans être un cookie « tiers ». Avec deux
+comptes ou deux noms distincts (`signale.alwaysdata.net` et `signale-api.alwaysdata.net`),
+ce seraient deux sites : il faudrait `COOKIE_SAMESITE=none`, et **Safari (iPhone)
+bloquerait la connexion**, car il refuse les cookies tiers.
 
-Un **seul processus** sert l'API et le front compilé : même origine, donc pas de CORS à
-configurer, et le cookie de session reste `SameSite=Strict`.
+Le disque d'alwaysdata est **permanent** : photos et journal restent d'une mise à jour à
+l'autre. Les sites ne se mettent jamais en veille.
 
 ## 2. Prérequis
 
@@ -35,14 +48,14 @@ configurer, et le cookie de session reste `SameSite=Strict`.
 | --------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------- |
 | [alwaysdata](https://www.alwaysdata.com)            | Offre gratuite : ~1 Go de disque, 256 Mo de mémoire, MariaDB inclus       | Oui                               |
 | Node.js                                             | **20.19 ou plus** (champ `engines` du `package.json`) ; Node 22 conseillé | Oui                               |
-| Compte GitHub                                       | Dépôt du projet (le serveur le clone)                                     | Oui                               |
+| Compte GitHub                                       | Dépôts des deux projets (le serveur les clone)                            | Oui                               |
 | [Brevo](https://brevo.com)                          | 300 emails/jour gratuits                                                  | Recommandé                        |
 | [Cloudflare Turnstile](https://dash.cloudflare.com) | Gratuit                                                                   | Non, mais conseillé en production |
 | [MapTiler](https://cloud.maptiler.com)              | Clé gratuite                                                              | Non (repli sur OpenStreetMap)     |
 
-Mesures de l'application, pour vérifier qu'elle tient dans l'offre gratuite : ~100 Mo de
-mémoire au repos, ~180 Mo au plus fort de l'analyse des photos (modèle d'IA de
-modération), ~480 Mo de dépendances de production.
+Mesures de l'API, pour vérifier qu'elle tient dans l'offre gratuite : ~100 Mo de mémoire
+au repos, ~180 Mo au plus fort de l'analyse des photos (modèle d'IA de modération),
+~480 Mo de dépendances de production. Le front compilé pèse quelques Mo.
 
 ---
 
@@ -57,10 +70,10 @@ Dans la suite, `COMPTE` désigne le nom du compte alwaysdata.
 2. Onglet **Utilisateurs → Ajouter un utilisateur** : `COMPTE_signale`, mot de passe long,
    droits **uniquement** sur cette base (principe du moindre privilège, jamais d'accès
    global).
-3. Le serveur MariaDB s'appelle `mysql-COMPTE.alwaysdata.net`. Le site et la base étant
-   tous deux chez alwaysdata, la connexion passe par leur réseau interne.
+3. Le serveur MariaDB s'appelle `mysql-COMPTE.alwaysdata.net` ; l'API le joint par le
+   réseau interne d'alwaysdata.
 
-Rien d'autre à créer : au premier démarrage, l'application crée ses tables
+Rien d'autre à créer : au premier démarrage, l'API crée ses tables
 ([`server/db.js`](../server/db.js)) et le premier compte admin.
 
 ### 3.2 Accès SSH
@@ -68,90 +81,124 @@ Rien d'autre à créer : au premier démarrage, l'application crée ses tables
 **Accès distant → SSH** : sur l'utilisateur du compte, cocher **« Activer la connexion par
 mot de passe »** et choisir un mot de passe. Connexion : `ssh COMPTE@ssh-COMPTE.alwaysdata.net`.
 
-### 3.3 Installer le code (en SSH)
+### 3.3 Installer les deux projets (en SSH)
 
 ```bash
 cd ~
+# Back-end (API)
 git clone https://github.com/combonazridine04-hue/signale-mayotte.git
 cd signale-mayotte
 cp .env.example .env      # puis remplir les variables (section 4)
 sh scripts/mettre-a-jour.sh
+
+# Front-end
+cd ~
+git clone <adresse du dépôt signale-mayotte-frontend> signale-mayotte-frontend
+cd signale-mayotte-frontend
+echo "VITE_API_URL=https://api.COMPTE.alwaysdata.net" > .env.production
+npm ci && npm run build   # produit dist/ : les fichiers du site
 ```
 
-[`scripts/mettre-a-jour.sh`](../scripts/mettre-a-jour.sh) installe les dépendances,
-compile le front dans `dist/` et retire les outils de développement (pour économiser le
-disque). Le navigateur des tests automatiques n'est pas téléchargé sur le serveur.
+[`scripts/mettre-a-jour.sh`](../scripts/mettre-a-jour.sh) installe les dépendances de
+l'API et retire les outils de développement (pour économiser le disque).
 
-### 3.4 Créer le site
+### 3.4 Créer les deux sites
 
-**Web → Sites → Ajouter un site** :
+**Web → Sites → Ajouter un site**, deux fois :
 
-| Champ                 | Valeur                  |
-| --------------------- | ----------------------- |
-| Adresses              | `COMPTE.alwaysdata.net` |
-| Type                  | **Node.js**             |
-| Commande              | `node server/index.js`  |
-| Répertoire de travail | `signale-mayotte`       |
-| Version de Node.js    | 22                      |
+| Champ              | Site de l'API               | Site du front                   |
+| ------------------ | --------------------------- | ------------------------------- |
+| Adresses           | `api.COMPTE.alwaysdata.net` | `COMPTE.alwaysdata.net`         |
+| Type               | **Node.js**                 | **Fichiers statiques**          |
+| Commande           | `node server/index.js`      | —                               |
+| Répertoire         | `signale-mayotte`           | `signale-mayotte-frontend/dist` |
+| Version de Node.js | 22                          | —                               |
 
-alwaysdata impose l'adresse et le port d'écoute (variables `IP`/`HOST` et `PORT`) : le
-serveur les lit tout seul ([`server/index.js`](../server/index.js)). HTTPS est fourni par
-alwaysdata (certificat automatique).
+- L'API écoute sur l'adresse et le port imposés par alwaysdata (variables `IP`/`HOST` et
+  `PORT`) : le serveur les lit tout seul ([`server/index.js`](../server/index.js)).
+- Le front est une application à page unique : pour que les adresses comme
+  `/signalements/42` fonctionnent quand on recharge la page, toute adresse inconnue du
+  site statique doit renvoyer `index.html` (réglage de réécriture / page d'erreur 404 du
+  site statique dans le panneau).
+- HTTPS est fourni par alwaysdata (certificat automatique) sur les deux adresses.
 
 ### 3.5 Services externes
 
 - **Brevo** : _Senders & IP → Add a sender_ (valider l'adresse reçue), puis _SMTP & API →
   API Keys_ → `BREVO_API_KEY` et `BREVO_EXPEDITEUR`. Les emails partent par **API HTTPS**,
   jamais en SMTP (souvent bloqué par les hébergeurs).
-- **Cloudflare Turnstile** : _Add widget_, ajouter le domaine `COMPTE.alwaysdata.net`
-  (et `localhost` pour le développement) → `TURNSTILE_SITE_KEY` et `TURNSTILE_SECRET_KEY`.
+- **Cloudflare Turnstile** : _Add widget_, ajouter le domaine du **front**
+  `COMPTE.alwaysdata.net` (et `localhost` pour le développement) → `TURNSTILE_SITE_KEY` et
+  `TURNSTILE_SECRET_KEY` (dans le `.env` de l'API).
 - **MapTiler** : si la clé est restreinte par domaine, y ajouter `COMPTE.alwaysdata.net`.
 
 ---
 
 ## 4. Variables d'environnement
 
-Dans le fichier **`.env` du serveur** (`~/signale-mayotte/.env`), lu au démarrage. Jamais
-dans le dépôt : `.env` est dans `.gitignore`, seul le modèle
+### 4.1 API — fichier `~/signale-mayotte/.env`
+
+Jamais dans le dépôt : `.env` est dans `.gitignore`, seul le modèle
 [`.env.example`](../.env.example) est versionné.
 
 | Variable                                     | Obligatoire | Valeur en production                                                                |
 | -------------------------------------------- | ----------- | ----------------------------------------------------------------------------------- |
 | `DATABASE_URL`                               | ✅          | `mysql://COMPTE_signale:MOTDEPASSE@mysql-COMPTE.alwaysdata.net:3306/COMPTE_signale` |
 | `DATABASE_TLS`                               | ✅          | `non` : base jointe par le réseau interne d'alwaysdata                              |
-| `ADMIN_IDENTIFIANT`, `ADMIN_MOT_DE_PASSE`    | ✅          | Premier compte admin (mot de passe long et aléatoire)                               |
+| `FRONTEND_URL`                               | ✅          | `https://COMPTE.alwaysdata.net` : seule origine autorisée (CORS, anti-CSRF)         |
+| `COOKIE_SAMESITE`                            | ✅          | `strict` (front et API sur le même site, voir section 1)                            |
 | `SITE_URL`                                   | ✅          | `https://COMPTE.alwaysdata.net` (liens des emails, export RGPD)                     |
+| `ADMIN_IDENTIFIANT`, `ADMIN_MOT_DE_PASSE`    | ✅          | Premier compte admin (mot de passe long et aléatoire)                               |
 | `BREVO_API_KEY`, `BREVO_EXPEDITEUR`          | Recommandé  | Envoi des emails                                                                    |
 | `EMAIL_DESTINATAIRE`                         | Optionnel   | Boîte qui reçoit les nouveaux signalements                                          |
 | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Conseillé   | Captcha sur inscription, contact et mot de passe oublié                             |
-| `VITE_MAPTILER_KEY`                          | Optionnel   | Fonds de carte. Lue **au build** par Vite : relancer le build si elle change        |
 
-`IP`, `HOST` et `PORT` sont fournis par alwaysdata. `TEST_DATABASE_URL` ne sert qu'aux
-tests : on ne la définit pas en production.
+`IP`, `HOST` et `PORT` sont fournis par alwaysdata. `TEST_DATABASE_URL` et `FRONTEND_DIR`
+ne servent qu'aux tests : on ne les définit pas en production.
 
-Points de sécurité déjà gérés dans le code :
+### 4.2 Front — fichier `~/signale-mayotte-frontend/.env.production`
 
-- `app.set('trust proxy', 1)` : derrière le proxy d'alwaysdata, Express lit la vraie IP du
+Lu **au build** et copié dans le JavaScript envoyé au navigateur : ces valeurs sont
+publiques, jamais de secret ici. Après toute modification, relancer `npm run build`.
+
+| Variable            | Valeur                                                 |
+| ------------------- | ------------------------------------------------------ |
+| `VITE_API_URL`      | `https://api.COMPTE.alwaysdata.net` (sans « / » final) |
+| `VITE_MAPTILER_KEY` | Clé des fonds de carte (optionnelle)                   |
+
+### 4.3 Sécurité déjà gérée dans le code
+
+- **CORS** ([`server/middleware/cors.js`](../server/middleware/cors.js)) : seule l'adresse
+  exacte de `FRONTEND_URL` reçoit l'autorisation de lire les réponses et d'envoyer le
+  cookie. Jamais de `*`.
+- **Anti-CSRF** ([`server/middleware/verifierOrigine.js`](../server/middleware/verifierOrigine.js)) :
+  toute requête de modification venue d'une autre origine est refusée (403).
+- **Cookie de session** : `HttpOnly`, `Secure`, préfixe `__Host-`, `SameSite=Strict`.
+- `app.set('trust proxy', 1)` : derrière le proxy d'alwaysdata, l'API lit la vraie IP du
   client (limites de débit) et sait que la connexion est en HTTPS.
-- Le cookie de session passe en `Secure` dès que la requête est en HTTPS.
-- **helmet** ajoute les en-têtes de sécurité (CSP, HSTS, `X-Content-Type-Options`…).
+- **helmet** sur l'API ; le front inscrit sa propre politique de sécurité du contenu (CSP)
+  dans `index.html` au build : seuls l'API, le widget Cloudflare et les fonds de carte sont
+  autorisés.
+- Les photos sont servies avec `default-src 'none'; sandbox` (aucun contenu actif possible)
+  et `Cross-Origin-Resource-Policy: cross-origin` (affichables par le front seulement en
+  tant qu'images).
 - Les erreurs 500 renvoient un message générique ; le détail ne va que dans les journaux.
-- Les photos sont servies avec une politique `default-src 'none'; sandbox` : un fichier
-  piégé ne peut jamais s'exécuter comme une page.
 
 ---
 
 ## 5. Intégration continue
 
-[`ci.yml`](../.github/workflows/ci.yml) (GitHub Actions) s'exécute à chaque push sur `main`
-et sur chaque pull request : `npm ci` → lint → vérification du formatage → tests unitaires
-→ build.
+[`ci.yml`](../.github/workflows/ci.yml) (GitHub Actions) s'exécute sur l'API à chaque push
+sur `main` et sur chaque pull request : `npm ci` → lint → vérification du formatage →
+tests unitaires.
 
-Les tests d'API et de parcours (`npm run test:api`, `npm run test:e2e`) ont besoin d'une
-base MariaDB de test. On les lance sur le poste de développement avant de pousser :
+Les tests d'API et le parcours complet (`npm run test:api`, `npm run test:e2e`) ont besoin
+d'une base MariaDB de test ; le parcours compile aussi le front et le sert à une autre
+adresse que l'API, comme en production. On les lance sur le poste de développement avant
+de pousser :
 
 ```bash
-npm test   # unitaires + build + API + parcours dans un navigateur
+npm test   # unitaires + API + parcours dans un navigateur (front et API séparés)
 ```
 
 ---
@@ -160,14 +207,18 @@ npm test   # unitaires + build + API + parcours dans un navigateur
 
 1. **Journaux** (panneau → _Web → Sites → Journaux_, ou `~/admin/logs/` en SSH) : la ligne
    `API Signale Mayotte disponible sur …` apparaît, sans erreur.
-2. **Page d'accueil** : la liste des signalements se charge.
-3. **API** :
+2. **API** :
    ```bash
-   curl -s https://COMPTE.alwaysdata.net/api/signalements/count     # {"count":…}
-   curl -sI https://COMPTE.alwaysdata.net/ | grep -i "strict-transport\|content-security"
+   curl -s https://api.COMPTE.alwaysdata.net/api/signalements/count     # {"count":…}
+   curl -s -D - -o /dev/null -X OPTIONS https://api.COMPTE.alwaysdata.net/api/auth/connexion \
+     -H "Origin: https://COMPTE.alwaysdata.net" -H "Access-Control-Request-Method: POST"
+   # → Access-Control-Allow-Origin: https://COMPTE.alwaysdata.net
    ```
-4. **Parcours** : créer un signalement avec une photo, vérifier qu'elle s'affiche, puis se
-   connecter en admin (avec le code 2FA s'il est activé).
+3. **Site** : `https://COMPTE.alwaysdata.net` affiche la liste des signalements ; recharger
+   une page profonde (ex. `/carte`) fonctionne.
+4. **Parcours** : créer un compte, un signalement avec une photo (elle s'affiche), puis se
+   connecter en admin (avec le code 2FA s'il est activé). **Tester aussi sur un iPhone**
+   (Safari) pour confirmer que la connexion tient.
 5. **Emails** : une inscription avec email doit envoyer le code de vérification.
 6. **Journal** : la connexion admin apparaît dans l'onglet _Journal_.
 
@@ -175,23 +226,25 @@ npm test   # unitaires + build + API + parcours dans un navigateur
 
 ## 7. Mettre à jour et revenir en arrière
 
-- **Mise à jour :** pousser sur `main` (la CI vérifie le code), puis en SSH :
+- **API :** pousser sur `main` (la CI vérifie le code), puis en SSH :
   ```bash
   sh ~/signale-mayotte/scripts/mettre-a-jour.sh
   ```
-  et **redémarrer le site** (panneau → _Web → Sites → Redémarrer_).
+  et **redémarrer le site de l'API** (panneau → _Web → Sites → Redémarrer_).
+- **Front :** en SSH, `cd ~/signale-mayotte-frontend && git pull && npm ci && npm run build`.
+  Le site statique sert aussitôt les nouveaux fichiers (aucun redémarrage).
 - **Évolution du schéma :** on ajoute la colonne dans [`server/db.js`](../server/db.js) avec
   `ALTER TABLE … ADD COLUMN IF NOT EXISTS` (syntaxe MariaDB). La migration s'applique au
   démarrage suivant, sans script manuel, et peut être rejouée sans risque.
-- **Retour arrière :** en SSH, revenir au commit précédent puis relancer le build :
+- **Retour arrière :** en SSH, revenir au commit précédent puis relancer l'installation :
   ```bash
   cd ~/signale-mayotte && git log --oneline -5
   git checkout <commit_précédent> && sh scripts/mettre-a-jour.sh
   ```
-  (puis, une fois corrigé, `git checkout main`). Un retour arrière ne retire pas une
-  colonne déjà ajoutée : les migrations n'ajoutent que des colonnes, ce qui reste
-  compatible avec l'ancien code.
-- **Sauvegardes :** avant toute opération risquée, copier la base et les fichiers :
+  (puis, une fois corrigé, `git checkout main`). Même principe pour le front, suivi d'un
+  `npm run build`. Un retour arrière ne retire pas une colonne déjà ajoutée : les migrations
+  n'ajoutent que des colonnes, ce qui reste compatible avec l'ancien code.
+- **Sauvegardes :** avant toute opération risquée, copier la base et les fichiers de l'API :
   ```bash
   mariadb-dump -h mysql-COMPTE.alwaysdata.net -u COMPTE_signale -p COMPTE_signale > sauvegarde.sql
   tar czf donnees.tar.gz -C ~/signale-mayotte/server data
@@ -201,14 +254,18 @@ npm test   # unitaires + build + API + parcours dans un navigateur
 
 ## 8. Pannes fréquentes
 
-| Symptôme                                                          | Cause probable                                             | Solution                                               |
-| ----------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------ |
-| Le site ne démarre pas, erreur `DATABASE_URL manquant`            | `.env` absent ou incomplet sur le serveur                  | Le compléter, puis redémarrer le site                  |
-| Erreur de connexion à MariaDB (`ECONNREFUSED`, accès refusé)      | Mauvais hôte, mot de passe ou droits                       | Vérifier `DATABASE_URL` et les droits de l'utilisateur |
-| Erreur TLS vers MariaDB                                           | `DATABASE_TLS=non` oublié                                  | L'ajouter dans `.env`                                  |
-| Page blanche ou « Cannot GET / »                                  | Front non compilé (`dist/` absent)                         | Relancer `scripts/mettre-a-jour.sh`                    |
-| Erreur 502 du site                                                | Le serveur n'écoute pas sur l'adresse imposée, ou a planté | Lire les journaux ; vérifier la commande du site       |
-| Mémoire dépassée au moment d'analyser des photos                  | Offre gratuite (256 Mo) et envois simultanés               | Réessayer ; offre supérieure si cela se répète         |
-| Aucun email reçu                                                  | `BREVO_EXPEDITEUR` non validé, ou clé absente              | Valider l'expéditeur dans Brevo                        |
-| La case anti-robot ne s'affiche pas ou échoue toujours            | Domaine absent du widget Turnstile                         | Ajouter `COMPTE.alwaysdata.net` dans Cloudflare        |
-| Erreur 503 « Vérification anti-robot momentanément indisponible » | Cloudflare injoignable depuis le serveur                   | Réessayer ; vérifier `TURNSTILE_SECRET_KEY`            |
+| Symptôme                                                            | Cause probable                                           | Solution                                                       |
+| ------------------------------------------------------------------- | -------------------------------------------------------- | -------------------------------------------------------------- |
+| L'API ne démarre pas, erreur `DATABASE_URL manquant`                | `.env` absent ou incomplet sur le serveur                | Le compléter, puis redémarrer le site de l'API                 |
+| Erreur de connexion à MariaDB (`ECONNREFUSED`, accès refusé)        | Mauvais hôte, mot de passe ou droits                     | Vérifier `DATABASE_URL` et les droits de l'utilisateur         |
+| Erreur TLS vers MariaDB                                             | `DATABASE_TLS=non` oublié                                | L'ajouter dans `.env`                                          |
+| Le site affiche « Le serveur ne répond pas », console : erreur CORS | `FRONTEND_URL` absent ou différent de l'adresse du front | Mettre l'adresse exacte du front (https, sans « / » final)     |
+| Requêtes refusées : « elle ne provient pas du site » (403)          | Même cause : origine du front non déclarée               | Corriger `FRONTEND_URL`, redémarrer l'API                      |
+| Connexion qui ne tient pas (déconnecté à chaque page)               | Front et API sur deux sites différents, cookie bloqué    | Mettre l'API en `api.COMPTE.alwaysdata.net` (section 1)        |
+| Le front appelle `localhost` ou une mauvaise adresse                | `VITE_API_URL` absent ou faux au moment du build         | Corriger `.env.production`, relancer `npm run build`           |
+| Page blanche en rechargeant `/carte` ou `/signalements/42`          | Pas de renvoi vers `index.html` sur le site statique     | Régler la réécriture / page 404 du site statique (section 3.4) |
+| Photos absentes, console : erreur CSP                               | `VITE_API_URL` absent au build (CSP du front sans l'API) | Le renseigner et relancer `npm run build`                      |
+| Erreur 502 sur l'API                                                | Elle n'écoute pas sur l'adresse imposée, ou a planté     | Lire les journaux ; vérifier la commande du site               |
+| Mémoire dépassée au moment d'analyser des photos                    | Offre gratuite (256 Mo) et envois simultanés             | Réessayer ; offre supérieure si cela se répète                 |
+| Aucun email reçu                                                    | `BREVO_EXPEDITEUR` non validé, ou clé absente            | Valider l'expéditeur dans Brevo                                |
+| La case anti-robot ne s'affiche pas ou échoue toujours              | Domaine du front absent du widget Turnstile              | Ajouter `COMPTE.alwaysdata.net` dans Cloudflare                |

@@ -1,19 +1,16 @@
 {
-  "name": "signale-mayotte",
+  "name": "signale-mayotte-backend",
   "private": true,
   "version": "1.0.0",
-  "description": "Plateforme citoyenne de signalement des problèmes du quotidien dans les communes de Mayotte.",
+  "description": "Signale Mayotte — back-end : API Express, MariaDB (SQL) et NeDB (NoSQL). Le front-end est un projet séparé.",
   "type": "module",
   "engines": {
     "node": ">=20.19.0"
   },
   "scripts": {
-    "dev": "concurrently \"npm:dev:client\" \"npm:server\"",
-    "dev:client": "vite",
+    "dev": "node --watch server/index.js",
     "server": "node server/index.js",
     "start": "node server/index.js",
-    "build": "vite build",
-    "preview": "vite preview",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
@@ -21,41 +18,28 @@
     "test:unit": "node --test \"server/tests/unitaires/*.test.js\"",
     "test:api": "node --test --test-concurrency=1 server/tests/*.test.js",
     "test:e2e": "node tests/e2e/parcours.spec.js",
-    "test": "npm run test:unit && npm run build && npm run test:api && npm run test:e2e"
+    "test": "npm run test:unit && npm run test:api && npm run test:e2e"
   },
   "dependencies": {
-    "@fontsource/inter": "^5.3.0",
     "@seald-io/nedb": "^4.1.2",
     "@tensorflow/tfjs": "^4.22.0",
     "@tensorflow/tfjs-backend-cpu": "^4.22.0",
     "bcryptjs": "^3.0.3",
-    "bootstrap": "^5.3.8",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.2",
     "helmet": "^8.3.0",
-    "leaflet": "^1.9.4",
     "multer": "^2.2.0",
     "mysql2": "^3.24.6",
     "nsfwjs": "^4.3.0",
-    "pinia": "^3.0.4",
     "qrcode": "^1.5.4",
-    "sharp": "^0.35.3",
-    "three": "^0.185.1",
-    "topojson-client": "^3.1.0",
-    "vue": "^3.5.34",
-    "vue-router": "^5.1.0",
-    "world-atlas": "^2.0.2"
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@vitejs/plugin-vue": "^6.0.6",
-    "concurrently": "^10.0.4",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-vue": "^10.11.1",
     "globals": "^17.12.0",
     "playwright-chromium": "^1.61.0",
-    "prettier": "^3.9.9",
-    "vite": "^8.0.12"
+    "prettier": "^3.9.9"
   }
 }

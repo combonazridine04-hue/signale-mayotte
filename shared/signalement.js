@@ -1,3 +1,7 @@
+// Listes de référence (catégories, communes, statuts), partagées par le back-end et le
+// front-end : une même valeur est contrôlée à l'identique des deux côtés. Le front en garde
+// une copie (src/models/signalement.js) : toute modification doit être faite dans les deux.
+
 export const CATEGORIES = ['Dépôt sauvage / déchets', 'Voirie', 'Éclairage public', 'Eau', 'Autre']
 
 export const COMMUNES = [

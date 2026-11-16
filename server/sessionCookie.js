@@ -5,6 +5,10 @@ import { revoquerSession, sessionValide } from './auth.js'
 // rangé dans sessionStorage, accessible à n'importe quel script.
 // - Secure : jamais envoyé en clair (HTTP). Omis en local, où le site tourne en HTTP.
 // - SameSite=Strict : jamais joint à une requête partie d'un autre site (anti-CSRF).
+//   Exception : si le front-end est hébergé sur un AUTRE site que l'API
+//   (COOKIE_SAMESITE=none), le cookie doit pouvoir accompagner ses requêtes : SameSite=None,
+//   possible seulement en HTTPS. La protection anti-CSRF repose alors sur la vérification
+//   de l'origine (middleware/verifierOrigine.js), limitée à l'adresse du front.
 // - Préfixe __Host- (en HTTPS) : le navigateur refuse qu'un sous-domaine le pose ou
 //   l'écrase, et impose Secure + Path=/ sans Domain.
 // - Pas de date d'expiration : il disparaît à la fermeture du navigateur (important sur
@@ -17,7 +21,9 @@ function nomCookie(req) {
 }
 
 function options(req) {
-  return { httpOnly: true, secure: req.secure, sameSite: 'strict', path: '/' }
+  // SameSite=None exige Secure : hors HTTPS (développement), on reste en Strict.
+  const sameSite = process.env.COOKIE_SAMESITE === 'none' && req.secure ? 'none' : 'strict'
+  return { httpOnly: true, secure: req.secure, sameSite, path: '/' }
 }
 
 export function jetonDeLaRequete(req) {

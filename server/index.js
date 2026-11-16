@@ -1,5 +1,4 @@
 import path from 'node:path'
-import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
 try {
@@ -23,11 +22,11 @@ const notificationsRouter = (await import('./routes/notifications.js')).default
 const journalRouter = (await import('./routes/journal.js')).default
 const { configurationPublique: configurationCaptcha } = await import('./captcha.js')
 const { verifierOrigine } = await import('./middleware/verifierOrigine.js')
+const { cors } = await import('./middleware/cors.js')
 const { DOSSIER_UPLOADS } = await import('./storage.js')
 const { precharger: prechargerModerationPhotos } = await import('./moderation.js')
 prechargerModerationPhotos()
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3001
 
 const app = express()
@@ -35,44 +34,23 @@ const app = express()
 // Nécessaire pour que express-rate-limit identifie les IP réelles derrière un proxy/hébergeur.
 app.set('trust proxy', 1)
 
+// Ce serveur est une API : il ne sert ni pages ni scripts, seulement du JSON et des photos.
+// Sa politique de sécurité peut donc tout interdire. Celle des pages du site est inscrite
+// par le front-end dans son index.html (voir son vite.config.js).
 app.use(
   helmet({
-    // Par défaut Helmet envoie "no-referrer", ce qui empêche MapTiler de vérifier
-    // l'origine des requêtes de tuiles (clé API restreinte par domaine).
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
     // Le navigateur refusera d'être contacté en HTTP pendant un an (au lieu de 180 jours).
     strictTransportSecurity: { maxAge: 365 * 24 * 60 * 60, includeSubDomains: true },
     contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        // Bootstrap est servi par le site. Seule exception : le widget anti-robot de
-        // Cloudflare (Turnstile), qui doit être chargé depuis Cloudflare pour être fiable.
-        scriptSrc: ["'self'", 'https://challenges.cloudflare.com'],
-        // Le widget s'affiche dans un cadre (iframe) servi par Cloudflare.
-        frameSrc: ['https://challenges.cloudflare.com'],
-        // Plus aucune police chargée chez Google : tout vient du site.
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        fontSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:', 'blob:', 'https://api.maptiler.com', 'https://*.tile.openstreetmap.fr'],
-        connectSrc: ["'self'"],
-        objectSrc: ["'none'"],
-        baseUri: ["'self'"],
-        frameAncestors: ["'self'"]
-      }
+      directives: { defaultSrc: ["'none'"], frameAncestors: ["'none'"] }
     }
   })
 )
 
-// Fonctions du navigateur : seules celles dont le site se sert sont permises, et
-// uniquement pour lui (position du signalement, appareil photo, partage, copie du lien).
-// Un script injecté ne pourrait ni écouter le micro, ni demander un paiement, etc.
-app.use((req, res, next) => {
-  res.set(
-    'Permissions-Policy',
-    'geolocation=(self), camera=(self), web-share=(self), clipboard-write=(self), microphone=(), payment=(), usb=(), serial=(), bluetooth=(), hid=(), midi=(), magnetometer=(), gyroscope=(), accelerometer=(), display-capture=(), interest-cohort=(), browsing-topics=()'
-  )
-  next()
-})
+// Le front-end est à une autre adresse : il n'a le droit d'appeler l'API que si elle
+// l'autorise (CORS), et seulement pour l'adresse déclarée dans FRONTEND_URL.
+app.use('/api', cors)
 
 const limiteurLogin = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -103,8 +81,7 @@ app.use('/api', partenairesRouter)
 app.use('/api', journalRouter)
 // Publique : le formulaire doit savoir s'il affiche le widget anti-robot, et avec quelle clé.
 app.get('/api/captcha', (req, res) => res.json(configurationCaptcha()))
-// Route d'API inconnue : une réponse JSON explicite, plutôt que la page d'accueil du
-// site renvoyée par le filet ci-dessous avec un statut 200 trompeur.
+// Route d'API inconnue : une réponse JSON explicite.
 app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue.' }))
 
 // Photos rangées sur le disque du serveur (voir storage.js). Ce sont
@@ -116,16 +93,13 @@ app.use(
     dotfiles: 'deny',
     index: false,
     fallthrough: false,
-    setHeaders: (res) => res.set('Content-Security-Policy', "default-src 'none'; sandbox")
+    setHeaders: (res) => {
+      res.set('Content-Security-Policy', "default-src 'none'; sandbox")
+      // Le front, hébergé à une autre adresse, doit pouvoir afficher ces images.
+      res.set('Cross-Origin-Resource-Policy', 'cross-origin')
+    }
   })
 )
-
-const distDir = path.join(__dirname, '..', 'dist')
-
-if (existsSync(distDir)) {
-  app.use(express.static(distDir))
-  app.get('/*splat', (req, res) => res.sendFile(path.join(distDir, 'index.html')))
-}
 
 // Gestionnaire d'erreurs global. Express le reconnaît au nombre de ses paramètres :
 // il en faut exactement quatre, d'où `_next`, inutilisé mais indispensable. Sans lui,
