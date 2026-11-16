@@ -24,6 +24,7 @@ const { configurationPublique: configurationCaptcha } = await import('./services
 const { verifierOrigine } = await import('./middlewares/verifierOrigine.js')
 const { cors } = await import('./middlewares/cors.js')
 const { DOSSIER_UPLOADS } = await import('./config/storage.js')
+const { db } = await import('./config/db.js')
 const { precharger: prechargerModerationPhotos } = await import('./services/moderationService.js')
 prechargerModerationPhotos()
 
@@ -79,8 +80,33 @@ app.use('/api', partenairesRouter)
 app.use('/api', journalRouter)
 // Publique : le formulaire doit savoir s'il affiche le widget anti-robot, et avec quelle clé.
 app.get('/api/captcha', (req, res) => res.json(configurationCaptcha()))
+
+// État de santé : l'API répond ET la base de données aussi. Sert à l'hébergeur ou à un
+// outil de surveillance, qui l'appelle régulièrement pour détecter une panne. 503 si la
+// base ne répond pas. Aucun détail technique n'est renvoyé (pas de message d'erreur).
+app.get('/api/sante', async (req, res) => {
+  try {
+    await db.query('SELECT 1')
+    res.json({ statut: 'ok', baseDeDonnees: 'ok', date: new Date().toISOString() })
+  } catch (e) {
+    console.error('[sante] Base de données injoignable :', e.message)
+    res.status(503).json({ statut: 'erreur', baseDeDonnees: 'indisponible', date: new Date().toISOString() })
+  }
+})
+
 // Route d'API inconnue : une réponse JSON explicite.
 app.use('/api', (req, res) => res.status(404).json({ erreur: 'Route inconnue.' }))
+
+// Accueil de l'API : quelqu'un qui ouvre son adresse dans un navigateur voit à quoi elle
+// sert, au lieu d'une page d'erreur d'Express. Le site lui-même est servi par le front-end.
+app.get('/', (req, res) => {
+  res.json({
+    nom: 'API Signale Mayotte',
+    description: 'API de la plateforme citoyenne de signalement des problèmes du quotidien à Mayotte.',
+    statut: 'en ligne',
+    sante: '/api/sante'
+  })
+})
 
 // Photos rangées sur le disque du serveur (voir storage.js). Ce sont
 // des images réencodées par sharp, aux noms générés par le serveur. Par précaution, le
@@ -98,6 +124,9 @@ app.use(
     }
   })
 )
+
+// Toute autre adresse : une réponse JSON claire, plutôt que la page « Cannot GET » d'Express.
+app.use((req, res) => res.status(404).json({ erreur: 'Adresse inconnue.' }))
 
 // Gestionnaire d'erreurs global. Express le reconnaît au nombre de ses paramètres :
 // il en faut exactement quatre, d'où `_next`, inutilisé mais indispensable. Sans lui,

@@ -105,6 +105,14 @@ npm run dev
 
 En développement, le serveur Vite du front relaie `/api` et `/uploads` vers l'API : le navigateur voit une seule adresse, sans CORS. Au premier démarrage de l'API, le schéma de la base et le premier compte administrateur sont créés.
 
+Le site s'ouvre sur **http://localhost:5173**. L'API, elle, ne sert que du JSON :
+
+| Adresse                                | Réponse                                                        |
+| -------------------------------------- | -------------------------------------------------------------- |
+| http://localhost:3001/                 | présentation de l'API                                          |
+| http://localhost:3001/api/sante        | état de santé : l'API et la base répondent (503 sinon)         |
+| http://localhost:3001/api/signalements | liste des signalements (exemple de route utilisée par le site) |
+
 ## Configuration
 
 Toutes les variables sont décrites dans [`.env.example`](.env.example). Les principales :
