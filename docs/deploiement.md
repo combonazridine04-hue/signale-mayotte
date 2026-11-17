@@ -18,26 +18,30 @@ L'application tient dans **un seul dépôt** (`signale-mayotte`), en deux dossie
 ```
                    ┌──────────────────────── alwaysdata (France) ─────────────────────────┐
                    │                                                                       │
- Navigateur ─HTTPS─┼─▶ COMPTE.alwaysdata.net        site statique : front Vue compilé       │
-     │             │                                                                       │
-     └─────HTTPS───┼─▶ api.COMPTE.alwaysdata.net    site Node.js : API Express             │
-                   │        ├─ CORS : n'accepte que https://COMPTE.alwaysdata.net          │
-                   │        ├─ photos sur disque (data/uploads), servies /uploads  │
-                   │        ├─ journal NoSQL NeDB (data/journal)                   │
+ Navigateur ─HTTPS─┼─▶ COMPTE.alwaysdata.net            site PHP : front Vue compilé        │
+                   │                                                                       │
+                   │   COMPTE.alwaysdata.net/api        site Node.js : API Express          │
+                   │   COMPTE.alwaysdata.net/uploads       (même adresse, autres chemins)   │
+                   │        ├─ photos sur disque (data/uploads), servies sur /uploads      │
+                   │        ├─ journal NoSQL NeDB (data/journal)                           │
                    │        └─▶ MariaDB (réseau interne)                                   │
                    └───────────────────────────────────────────────────────────────────────┘
                              │                         │
                        Brevo (emails)        Cloudflare Turnstile (anti-robot)
 ```
 
-**Pourquoi `api.COMPTE.alwaysdata.net` et pas une adresse totalement différente ?**
-`alwaysdata.net` figure dans la liste officielle des suffixes publics
-(publicsuffix.org) : `COMPTE.alwaysdata.net` et `api.COMPTE.alwaysdata.net` sont donc
-deux _origines_ différentes (d'où le CORS), mais **un seul _site_** pour le navigateur.
-Le cookie de session reste en `SameSite=Strict`, sans être un cookie « tiers ». Avec deux
-comptes ou deux noms distincts (`signale.alwaysdata.net` et `signale-api.alwaysdata.net`),
-ce seraient deux sites : il faudrait `COOKIE_SAMESITE=none`, et **Safari (iPhone)
-bloquerait la connexion**, car il refuse les cookies tiers.
+**Pourquoi le front et l'API à la même adresse ?** L'offre gratuite n'autorise que
+l'adresse `COMPTE.alwaysdata.net` : alwaysdata refuse `api.COMPTE.alwaysdata.net`. On
+déclare donc deux sites sur la même adresse, l'un pour les chemins `/api` et `/uploads`
+(Node.js), l'autre pour tout le reste (PHP/Apache). alwaysdata transmet le chemin complet
+à l'API (`/api/sante` arrive tel quel), donc rien à changer dans son code.
+
+Avantage : pour le navigateur, front et API sont **la même origine**. Le cookie de session
+reste en `SameSite=Strict` (jamais un cookie « tiers », donc Safari sur iPhone garde la
+connexion) et `VITE_API_URL` reste **vide** au build : le front appelle `/api/…` sur sa
+propre adresse. À éviter : deux comptes ou deux noms distincts (`signale.alwaysdata.net`
+et `signale-api.alwaysdata.net`) ; ce seraient deux sites, il faudrait
+`COOKIE_SAMESITE=none`, et Safari bloquerait la connexion.
 
 Le disque d'alwaysdata est **permanent** : photos et journal restent d'une mise à jour à
 l'autre. Les sites ne se mettent jamais en veille.
@@ -102,7 +106,7 @@ sh scripts/mettre-a-jour.sh
 
 # Front-end
 cd ~/signale-mayotte/frontend
-echo "VITE_API_URL=https://api.COMPTE.alwaysdata.net" > .env.production
+echo "VITE_API_URL=" > .env.production   # vide : l'API est à la même adresse (section 1)
 npm ci && npm run build   # produit dist/ : les fichiers du site
 ```
 
@@ -118,11 +122,12 @@ mémoire du serveur.
 ### 3.4 Créer les deux sites
 
 **Web → Sites** : modifier le site existant `COMPTE.alwaysdata.net` (créé avec le compte)
-pour le front, et **Ajouter un site** pour l'API :
+pour le front, et **Ajouter un site** pour l'API. Les deux partagent la même adresse ;
+l'API ne reçoit que les chemins `/api` et `/uploads` :
 
 | Champ                 | Site de l'API (nouveau)                                              | Site du front (existant, modifié)            |
 | --------------------- | -------------------------------------------------------------------- | -------------------------------------------- |
-| Adresses              | `api.COMPTE.alwaysdata.net`                                          | `COMPTE.alwaysdata.net`                      |
+| Adresses              | `COMPTE.alwaysdata.net/api` et `COMPTE.alwaysdata.net/uploads`       | `COMPTE.alwaysdata.net`                      |
 | Type                  | **Node.js**                                                          | **PHP** (serveur Apache, garde le type)      |
 | Commande              | `node --max-old-space-size=96 --max-semi-space-size=2 src/server.js` | —                                            |
 | Répertoire de travail | `/home/COMPTE/signale-mayotte/backend`                               | —                                            |
@@ -134,7 +139,8 @@ pour le front, et **Ajouter un site** pour l'API :
   `dist/` au build) : toute adresse qui n'est pas un fichier (ex. `/signalements/42`)
   renvoie `index.html`, et les en-têtes de sécurité du site sont posés (HSTS, interdiction
   d'affichage dans un cadre, fonctions du navigateur autorisées).
-- HTTPS est fourni par alwaysdata (certificat automatique) sur les deux adresses.
+- HTTPS est fourni par alwaysdata (certificat automatique).
+- Ne pas créer de site `api.COMPTE.alwaysdata.net` : l'offre gratuite le refuse.
 
 ### 3.5 Services externes
 
@@ -160,7 +166,7 @@ Jamais dans le dépôt : `.env` est dans `.gitignore`, seul le modèle
 | `DATABASE_URL`                               | ✅          | `mysql://COMPTE_signale:MOTDEPASSE@mysql-COMPTE.alwaysdata.net:3306/COMPTE_signale` |
 | `DATABASE_TLS`                               | ✅          | `non` : base jointe par le réseau interne d'alwaysdata                              |
 | `FRONTEND_URL`                               | ✅          | `https://COMPTE.alwaysdata.net` : seule origine autorisée (CORS, anti-CSRF)         |
-| `COOKIE_SAMESITE`                            | ✅          | `strict` (front et API sur le même site, voir section 1)                            |
+| `COOKIE_SAMESITE`                            | ✅          | `strict` (front et API à la même adresse, voir section 1)                           |
 | `SITE_URL`                                   | ✅          | `https://COMPTE.alwaysdata.net` (liens des emails, export RGPD)                     |
 | `ADMIN_IDENTIFIANT`, `ADMIN_MOT_DE_PASSE`    | ✅          | Premier compte admin (mot de passe long et aléatoire)                               |
 | `BREVO_API_KEY`, `BREVO_EXPEDITEUR`          | Recommandé  | Envoi des emails                                                                    |
@@ -177,7 +183,7 @@ publiques, jamais de secret ici. Après toute modification, relancer `npm run bu
 
 | Variable            | Valeur                                                 |
 | ------------------- | ------------------------------------------------------ |
-| `VITE_API_URL`      | `https://api.COMPTE.alwaysdata.net` (sans « / » final) |
+| `VITE_API_URL`      | **vide** : l'API est à la même adresse que le site     |
 | `VITE_MAPTILER_KEY` | Clé des fonds de carte (optionnelle)                   |
 
 ### 4.3 Sécurité déjà gérée dans le code
@@ -223,8 +229,9 @@ npm test   # unitaires + API + parcours dans un navigateur (front et API sépar�
    `API Signale Mayotte disponible sur …` apparaît, sans erreur.
 2. **API** :
    ```bash
-   curl -s https://api.COMPTE.alwaysdata.net/api/signalements/count     # {"count":…}
-   curl -s -D - -o /dev/null -X OPTIONS https://api.COMPTE.alwaysdata.net/api/auth/connexion \
+   curl -s https://COMPTE.alwaysdata.net/api/sante                  # {"statut":"ok","baseDeDonnees":"ok",…}
+   curl -s https://COMPTE.alwaysdata.net/api/signalements/count     # {"count":…}
+   curl -s -D - -o /dev/null -X OPTIONS https://COMPTE.alwaysdata.net/api/auth/connexion \
      -H "Origin: https://COMPTE.alwaysdata.net" -H "Access-Control-Request-Method: POST"
    # → Access-Control-Allow-Origin: https://COMPTE.alwaysdata.net
    ```
@@ -291,10 +298,11 @@ site du front → répertoire racine `/home/COMPTE/signale-mayotte/frontend/dist
 | Erreur TLS vers MariaDB                                             | `DATABASE_TLS=non` oublié                                        | L'ajouter dans `.env`                                           |
 | Le site affiche « Le serveur ne répond pas », console : erreur CORS | `FRONTEND_URL` absent ou différent de l'adresse du front         | Mettre l'adresse exacte du front (https, sans « / » final)      |
 | Requêtes refusées : « elle ne provient pas du site » (403)          | Même cause : origine du front non déclarée                       | Corriger `FRONTEND_URL`, redémarrer l'API                       |
-| Connexion qui ne tient pas (déconnecté à chaque page)               | Front et API sur deux sites différents, cookie bloqué            | Mettre l'API en `api.COMPTE.alwaysdata.net` (section 1)         |
-| Le front appelle `localhost` ou une mauvaise adresse                | `VITE_API_URL` absent ou faux au moment du build                 | Corriger `.env.production`, relancer `npm run build`            |
+| Connexion qui ne tient pas (déconnecté à chaque page)               | Front et API sur deux sites différents, cookie bloqué            | Mettre l'API sur `/api` et `/uploads` de la même adresse (§ 1)  |
+| Le front appelle `localhost` ou une mauvaise adresse                | `VITE_API_URL` rempli au moment du build                         | Le vider dans `.env.production`, relancer `npm run build`       |
+| Les appels `/api/…` renvoient la page du site au lieu de JSON       | Site de l'API sans les adresses `…/api` et `…/uploads`           | Les ajouter au site Node.js (section 3.4)                       |
 | Page blanche en rechargeant `/carte` ou `/signalements/42`          | `.htaccess` absent de `dist/`, ou site d'un autre type qu'Apache | Recompiler le front ; site de type PHP (section 3.4)            |
-| Photos absentes, console : erreur CSP                               | `VITE_API_URL` absent au build (CSP du front sans l'API)         | Le renseigner et relancer `npm run build`                       |
+| Photos absentes, console : erreur CSP                               | `VITE_API_URL` pointant ailleurs au build                        | Le vider et relancer `npm run build`                            |
 | Erreur 502 sur l'API                                                | Elle n'écoute pas sur l'adresse imposée, ou a planté             | Lire les journaux ; vérifier la commande du site                |
 | API redémarrée en pleine analyse de photos (mémoire dépassée)       | Commande sans limite de mémoire, ou envois simultanés            | Commande de la section 3.4 ; offre supérieure si cela se répète |
 | Aucun email reçu                                                    | `BREVO_EXPEDITEUR` non validé, ou clé absente                    | Valider l'expéditeur dans Brevo                                 |

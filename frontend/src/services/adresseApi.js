@@ -2,8 +2,10 @@
 //
 // - En développement, elle reste vide : le serveur Vite relaie /api et /uploads vers le
 //   back-end (voir vite.config.js), comme si tout était à la même adresse.
-// - En production, le front et l'API sont hébergés séparément : VITE_API_URL contient
-//   l'adresse de l'API, par ex. https://signale-api.alwaysdata.net (sans « / » final).
+// - En production chez alwaysdata, elle reste vide aussi : le site du front et celui de
+//   l'API partagent la même adresse (l'API répond sur /api et /uploads).
+// - Si un jour l'API est hébergée à une autre adresse, VITE_API_URL la contient,
+//   par ex. https://api.exemple.fr (sans « / » final).
 export const ADRESSE_API = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 
 /**

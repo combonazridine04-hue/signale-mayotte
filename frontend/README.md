@@ -53,7 +53,7 @@ En développement, Vite relaie `/api` et `/uploads` vers l'API (voir `vite.confi
 ## Mise en production
 
 ```bash
-echo "VITE_API_URL=https://api.COMPTE.alwaysdata.net" > .env.production
+echo "VITE_API_URL=" > .env.production   # vide : l'API est servie sur /api, même adresse
 npm ci && npm run build    # produit dist/, à servir comme site statique
 ```
 
