@@ -6,7 +6,7 @@ import PanneauAide from '../components/PanneauAide.vue'
 import CaptchaTurnstile from '../components/CaptchaTurnstile.vue'
 import { SUJETS_CONTACT } from '../shared/sujetsContact.js'
 
-// L'adresse contact@signale-mayotte.yt est affichée parce qu'elle va être créée.
+// L'adresse contact.outilo@gmail.com est celle de l'association (elle existe et reçoit les emails).
 // Le téléphone 02 69 00 00 00 et l'adresse postale, eux, restent retirés : c'étaient
 // des valeurs d'exemple, et un numéro qui ne sonne nulle part fait perdre son temps
 // à celui qui appelle.
@@ -98,7 +98,7 @@ const envoyer = async () => {
             <!-- Sur une seule ligne : Vue supprime les blancs entre deux balises, et
                  l'espace après « Email : » disparaissait. -->
             <p class="mb-1">
-              <strong>Email :</strong> <a href="mailto:contact@signale-mayotte.yt">contact@signale-mayotte.yt</a>
+              <strong>Email :</strong> <a href="mailto:contact.outilo@gmail.com">contact.outilo@gmail.com</a>
             </p>
             <p class="mb-0 text-secondary small">
               Le formulaire ci-contre fait la même chose, sans avoir à ouvrir sa messagerie.

@@ -26,7 +26,7 @@
             <p class="text-secondary">
               Le responsable du traitement est l'équipe de Signale Mayotte, joignable par le
               <RouterLink to="/contact">formulaire de contact</RouterLink> ou à l'adresse
-              <a href="mailto:contact@signale-mayotte.yt">contact@signale-mayotte.yt</a>.
+              <a href="mailto:contact.outilo@gmail.com">contact.outilo@gmail.com</a>.
             </p>
 
             <h2 class="h5 fw-bold mt-4">Quelles données, pourquoi, et sur quelle base</h2>
