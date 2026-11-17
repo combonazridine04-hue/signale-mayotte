@@ -40,6 +40,19 @@ export default defineConfig(({ mode }) => {
             injectTo: 'head-prepend'
           }
         ]
+      },
+      {
+        // Le globe est un fichier à part (three.js, ≈ 630 Ko) : on demande au navigateur
+        // de le télécharger dès la lecture de index.html, en même temps que le reste du
+        // site, pour qu'il apparaisse avec la page et non quelques secondes après.
+        name: 'prechargement-globe',
+        apply: 'build',
+        transformIndexHtml: (html, contexte) => {
+          const globe = Object.keys(contexte.bundle || {}).find((nom) => /GlobeBackground-.*\.js$/.test(nom))
+          return globe
+            ? [{ tag: 'link', attrs: { rel: 'modulepreload', crossorigin: '', href: `/${globe}` }, injectTo: 'head' }]
+            : []
+        }
       }
     ],
     server: {
