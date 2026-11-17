@@ -5,6 +5,7 @@ import { normaliserTelephone as normaliserNumero, telephoneValide } from '../sha
 import { motDePasseInterdit } from '../shared/motDePasse.js'
 import { emailValide } from '../middlewares/validation.js'
 import { verifierCode } from './totpService.js'
+import { mailerActif } from './emailService.js'
 
 const DUREE_SESSION_MS = 12 * 60 * 60 * 1000 // 12h
 // token -> { type: 'admin', adminId, identifiant, expiration }
@@ -235,14 +236,17 @@ export async function inscrireUtilisateur({ nom, email, telephone, motDePasse })
   const creeLe = new Date().toISOString()
   // Un code de vérification à 6 chiffres est généré dès l'inscription si un email est fourni ;
   // le compte reste utilisable normalement, seul l'envoi d'un signalement l'exigera.
-  const codeVerification = emailNormalise ? genererCodeVerification() : null
+  // Sans fournisseur d'emails configuré, le code ne pourrait jamais arriver : le compte
+  // serait bloqué pour toujours. On ne demande alors pas de vérification.
+  const codeVerification = emailNormalise && mailerActif ? genererCodeVerification() : null
   const codeExpiration = codeVerification ? new Date(Date.now() + DUREE_CODE_VERIFICATION_MS) : null
+  const emailVerifie = Boolean(emailNormalise) && !mailerActif
 
   try {
     const { rows } = await db.query(
-      `INSERT INTO utilisateurs (nom, email, telephone, mot_de_passe_hash, cree_le, token_verification, token_verification_expire)
-       VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id, nom, email, telephone, email_verifie`,
-      [nom.trim(), emailNormalise, telephoneNormalise, hash, creeLe, codeVerification, codeExpiration]
+      `INSERT INTO utilisateurs (nom, email, telephone, mot_de_passe_hash, cree_le, token_verification, token_verification_expire, email_verifie)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id, nom, email, telephone, email_verifie`,
+      [nom.trim(), emailNormalise, telephoneNormalise, hash, creeLe, codeVerification, codeExpiration, emailVerifie]
     )
     return { utilisateur: rows[0], codeVerification }
   } catch (e) {
