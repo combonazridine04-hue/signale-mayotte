@@ -39,6 +39,7 @@ export const PARTENAIRES = [
     description: 'Les 17 communes de Mayotte',
     domaine: 'Tous les problèmes',
     site: '',
-    logo: ''
+    // Pas de logo commun aux 17 communes : celui de la Ville de Mamoudzou, chef-lieu.
+    logo: '/partenaires/mamoudzou.png'
   }
 ]

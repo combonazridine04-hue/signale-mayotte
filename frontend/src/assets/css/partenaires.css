@@ -22,9 +22,15 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  /* Flex plutôt que grille : une dernière ligne incomplète reste centrée. */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 16px;
+}
+
+.partenaires-liste > li {
+  flex: 0 0 calc((100% - 32px) / 3);
 }
 
 /* Fond blanc : la plupart des logos sont dessinés pour un fond clair, et le site est
@@ -86,8 +92,11 @@
 
 @media (max-width: 575.98px) {
   .partenaires-liste {
-    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
+  }
+
+  .partenaires-liste > li {
+    flex-basis: calc((100% - 12px) / 2);
   }
 
   .partenaires-carte {
