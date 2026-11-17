@@ -10,7 +10,7 @@ const BREVO_EXPEDITEUR = process.env.BREVO_EXPEDITEUR
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 const RESEND_FROM = process.env.RESEND_FROM || 'Signale Mayotte <onboarding@resend.dev>'
 const NOM_EXPEDITEUR = 'Signale Mayotte'
-const destinataire = process.env.EMAIL_DESTINATAIRE || 'benoblock440@gmail.com'
+const destinataire = process.env.EMAIL_DESTINATAIRE || 'contact.outilo@gmail.com'
 const SITE_URL = (process.env.SITE_URL || 'http://localhost:5173').replace(/\/$/, '')
 
 const fournisseur = BREVO_API_KEY && BREVO_EXPEDITEUR ? 'brevo' : RESEND_API_KEY ? 'resend' : null

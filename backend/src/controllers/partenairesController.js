@@ -18,7 +18,7 @@ import { supprimerPhoto } from '../config/storage.js'
 // Cadre des logos : assez grand pour un écran net, assez petit pour une page légère.
 const CADRE_LOGO = { largeur: 480, hauteur: 240 }
 
-// « benoblock440@gmail.com » → « be•••••••@gmail.com »
+// « contact.outilo@gmail.com » → « co••••••••••••@gmail.com »
 function masquerEmail(email) {
   const [nom, domaine] = String(email).split('@')
   return domaine ? `${nom.slice(0, 2)}${'•'.repeat(Math.max(1, nom.length - 2))}@${domaine}` : ''
