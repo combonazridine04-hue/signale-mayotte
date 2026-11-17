@@ -13,13 +13,7 @@ export const PARTENAIRES = [
     logo: '/partenaires/edm.png'
   },
   {
-    nom: 'SOGEA',
-    description: 'SOGEA Mayotte',
-    domaine: 'Eau',
-    site: '',
-    logo: ''
-  },
-  {
+    // SMAE = l'ancien service eau de SOGEA Mayotte (même entreprise depuis 2014).
     nom: 'SMAE',
     description: 'Société Mahoraise des Eaux',
     domaine: 'Eau',
