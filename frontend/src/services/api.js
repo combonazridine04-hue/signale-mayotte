@@ -1,4 +1,3 @@
-import { reactive } from 'vue'
 import { useAuthStore } from '../stores/authStore.js'
 import { useCitoyenStore } from '../stores/citoyenStore.js'
 import { usePartenaireStore } from '../stores/partenaireStore.js'
@@ -17,24 +16,8 @@ const DELAI_LECTURE_MS = 15000
 const DELAI_ECRITURE_MS = 60000
 const CODES_SERVEUR_ENDORMI = [502, 503, 504]
 
-// Permet à l'interface de dire « le serveur redémarre » au lieu de laisser croire à une panne.
-// Un compteur et non un simple drapeau : plusieurs requêtes partent en même temps au
-// chargement d'une page, et celles qui aboutissent tout de suite effaçaient l'indication
-// pendant qu'une autre était encore en train de réessayer.
-export const etatReseau = reactive({ reveilEnCours: false })
-let reprisesEnCours = 0
-
-function marquerReprise() {
-  reprisesEnCours += 1
-  etatReseau.reveilEnCours = true
-}
-
-function finReprise(aRepris) {
-  if (!aRepris) return
-  reprisesEnCours = Math.max(0, reprisesEnCours - 1)
-  etatReseau.reveilEnCours = reprisesEnCours > 0
-}
-
+// Les reprises se font en silence : aucun bandeau n'est affiché pendant le réveil du
+// serveur, la page attend simplement sa réponse.
 const pause = (ms) => new Promise((r) => setTimeout(r, ms))
 
 function estLecture(methode) {
@@ -68,41 +51,28 @@ export async function apiFetch(url, options = {}) {
   const delai = lecture ? DELAI_LECTURE_MS : DELAI_ECRITURE_MS
 
   let derniereErreur = null
-  let aRepris = false
 
-  try {
-    for (let essai = 0; essai < essaisMax; essai++) {
-      const dernier = essai === essaisMax - 1
-      try {
-        const reponse = await envoyer(url, { ...options, headers }, delai)
+  for (let essai = 0; essai < essaisMax; essai++) {
+    const dernier = essai === essaisMax - 1
+    try {
+      const reponse = await envoyer(url, { ...options, headers }, delai)
 
-        if (CODES_SERVEUR_ENDORMI.includes(reponse.status) && !dernier) {
-          if (!aRepris) {
-            aRepris = true
-            marquerReprise()
-          }
-          await pause(ATTENTES_MS[essai])
-          continue
-        }
-
-        // Session expirée ou effacée par un redéploiement : l'interface ne doit pas
-        // continuer à afficher « connecté ».
-        if (reponse.status === 401 && estConnecte()) fermerSession()
-
-        return reponse
-      } catch (e) {
-        derniereErreur = e
-        if (dernier) break
-        if (!aRepris) {
-          aRepris = true
-          marquerReprise()
-        }
+      if (CODES_SERVEUR_ENDORMI.includes(reponse.status) && !dernier) {
         await pause(ATTENTES_MS[essai])
+        continue
       }
-    }
 
-    throw derniereErreur || new Error('Requête impossible.')
-  } finally {
-    finReprise(aRepris)
+      // Session expirée ou effacée par un redéploiement : l'interface ne doit pas
+      // continuer à afficher « connecté ».
+      if (reponse.status === 401 && estConnecte()) fermerSession()
+
+      return reponse
+    } catch (e) {
+      derniereErreur = e
+      if (dernier) break
+      await pause(ATTENTES_MS[essai])
+    }
   }
+
+  throw derniereErreur || new Error('Requête impossible.')
 }

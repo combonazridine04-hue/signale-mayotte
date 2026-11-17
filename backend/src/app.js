@@ -25,8 +25,10 @@ const { verifierOrigine } = await import('./middlewares/verifierOrigine.js')
 const { cors } = await import('./middlewares/cors.js')
 const { DOSSIER_UPLOADS } = await import('./config/storage.js')
 const { db } = await import('./config/db.js')
-const { precharger: prechargerModerationPhotos } = await import('./services/moderationService.js')
-prechargerModerationPhotos()
+// Le modèle de modération des photos n'est PAS chargé au démarrage : sur le serveur
+// gratuit, il bloque le processeur ~10 s, et l'hébergeur endort l'API dès qu'elle est
+// inactive. Chaque réveil faisait donc attendre tous les visiteurs. Il se charge au
+// premier envoi de photo (voir services/moderationService.js).
 
 const app = express()
 

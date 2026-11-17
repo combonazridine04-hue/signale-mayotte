@@ -5,7 +5,6 @@ import Footer from './components/Footer.vue'
 import ThemeToggle from './components/ThemeToggle.vue'
 import DialogueGlobal from './components/DialogueGlobal.vue'
 import { RouterView, useRoute } from 'vue-router'
-import { etatReseau } from './services/api.js'
 import { synchroniserSession } from './utils/session.js'
 
 const GlobeBackground = defineAsyncComponent({
@@ -51,12 +50,6 @@ onMounted(() => {
 <template>
   <RouterView v-if="route.meta.admin || route.meta.partenaire" />
   <template v-else>
-    <!-- Le serveur gratuit s'éteint après un quart d'heure sans visite. Pendant qu'il
-         redémarre, le site réessaie tout seul : on le dit, sinon la personne croit à
-         une panne et s'en va. -->
-    <p v-if="etatReseau.reveilEnCours" class="bandeau-reveil" role="status">
-      Le serveur redémarre, merci de patienter quelques secondes...
-    </p>
     <GlobeBackground v-if="afficherGlobe" />
     <div class="app-shell">
       <NavBar />

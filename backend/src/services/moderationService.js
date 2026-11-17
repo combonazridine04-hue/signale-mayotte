@@ -19,12 +19,6 @@ function chargerModele() {
   return modelePromesse
 }
 
-// Démarre le chargement du modèle sans attendre : à appeler au démarrage du serveur
-// pour que le premier envoi de photo n'ait pas à attendre le téléchargement du modèle.
-export function precharger() {
-  chargerModele().catch((e) => console.error('[moderation] Échec préchargement du modèle :', e.message))
-}
-
 // Analyse une photo et renvoie true si elle est probablement à caractère explicite
 // (nudité...). En cas d'échec de l'analyse (image corrompue, modèle indisponible...),
 // on autorise par défaut plutôt que de bloquer tous les envois de photos du site.
