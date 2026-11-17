@@ -10,7 +10,7 @@ export const PARTENAIRES = [
     description: 'Électricité de Mayotte',
     domaine: 'Éclairage public',
     site: 'https://www.electricitedemayotte.com',
-    logo: ''
+    logo: '/partenaires/edm.png'
   },
   {
     nom: 'SOGEA',
@@ -24,21 +24,21 @@ export const PARTENAIRES = [
     description: 'Société Mahoraise des Eaux',
     domaine: 'Eau',
     site: 'https://www.mahoraisedeseaux.com',
-    logo: ''
+    logo: '/partenaires/smae.png'
   },
   {
     nom: 'SIDEVAM976',
     description: 'Déchets ménagers de Mayotte',
     domaine: 'Déchets',
     site: 'https://sidevam976.fr',
-    logo: ''
+    logo: '/partenaires/sidevam976.png'
   },
   {
     nom: 'Département',
     description: 'Conseil départemental de Mayotte',
     domaine: 'Voirie',
     site: 'https://www.mayotte.fr',
-    logo: ''
+    logo: '/partenaires/departement.png'
   },
   {
     nom: 'Mairies',
