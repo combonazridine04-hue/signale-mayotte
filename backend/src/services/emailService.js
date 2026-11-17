@@ -37,6 +37,80 @@ function echapperHtml(valeur) {
     .replace(/'/g, '&#39;')
 }
 
+// ---------------------------------------------------------------------------------------
+// Mise en page commune à tous les emails. Les messageries (Gmail, Outlook…) ignorent
+// une grande partie du CSS : tout est en tableaux et en styles « inline », sans image
+// externe, pour un rendu identique partout et lisible même avec les images bloquées.
+// ---------------------------------------------------------------------------------------
+const COULEURS = { vert: '#16a34a', sarcelle: '#0f766e', rouge: '#dc2626', bleu: '#2563eb' }
+const POLICE = "-apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+
+// apercu : la phrase que la messagerie affiche à côté de l'objet, dans la liste des emails.
+function gabarit({ titre, sousTitre = '', couleur = COULEURS.vert, apercu = '', bandeau = '', contenu }) {
+  return `<!doctype html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${echapperHtml(titre)}</title></head>
+<body style="margin:0; padding:0; background:#eef2f6;">
+  <div style="display:none; max-height:0; overflow:hidden; opacity:0;">${echapperHtml(apercu)}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef2f6; font-family:${POLICE};">
+    <tr><td align="center" style="padding:32px 12px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
+        <tr><td align="center" style="padding:0 0 20px;">
+          <a href="${SITE_URL}" style="text-decoration:none; color:#0f172a; font-size:20px; font-weight:800; letter-spacing:-0.3px;">
+            <span style="display:inline-block; width:30px; height:30px; line-height:30px; border-radius:50%; background:${COULEURS.vert}; color:#ffffff; font-size:16px; text-align:center; vertical-align:middle;">&#9679;</span>
+            <span style="vertical-align:middle;">&nbsp;Signale Mayotte</span>
+          </a>
+        </td></tr>
+        <tr><td style="background:#ffffff; border-radius:16px; overflow:hidden; box-shadow:0 4px 18px rgba(15,23,42,0.08);">
+          ${bandeau ? `<div style="background:#fef3c7; color:#92400e; padding:12px 28px; font-size:13px; line-height:1.5;">${echapperHtml(bandeau)}</div>` : ''}
+          <div style="height:6px; background:${couleur};"></div>
+          <div style="padding:32px 28px 8px;">
+            <h1 style="margin:0; font-size:24px; line-height:1.3; color:#0f172a; font-weight:800;">${echapperHtml(titre)}</h1>
+            ${sousTitre ? `<p style="margin:8px 0 0; font-size:14px; color:#64748b;">${echapperHtml(sousTitre)}</p>` : ''}
+          </div>
+          <div style="padding:16px 28px 32px; font-size:15px; line-height:1.6; color:#334155;">
+            ${contenu}
+          </div>
+        </td></tr>
+        <tr><td align="center" style="padding:24px 16px 0; font-size:12px; line-height:1.6; color:#94a3b8;">
+          <strong style="color:#64748b;">Signale Mayotte</strong> — la plateforme citoyenne pour signaler les problèmes du quotidien.<br>
+          <a href="${SITE_URL}" style="color:#64748b;">${SITE_URL.replace(/^https?:\/\//, '')}</a>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
+
+const paragraphe = (html) => `<p style="margin:0 0 16px;">${html}</p>`
+const note = (html) => `<p style="margin:24px 0 0; font-size:13px; line-height:1.5; color:#64748b;">${html}</p>`
+
+function bouton(lien, texte, couleur = COULEURS.vert) {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0;"><tr>
+    <td style="border-radius:10px; background:${couleur};">
+      <a href="${lien}" style="display:inline-block; padding:14px 26px; font-size:15px; font-weight:700; color:#ffffff; text-decoration:none; border-radius:10px;">${texte}</a>
+    </td></tr></table>`
+}
+
+// Fiche « Catégorie / Commune / … » : les valeurs sont échappées ici.
+function fiche(lignes) {
+  const rangees = lignes
+    .filter(([, valeur]) => valeur)
+    .map(
+      ([libelle, valeur]) => `<tr>
+        <td style="padding:10px 14px; width:110px; font-size:13px; color:#64748b; border-bottom:1px solid #e2e8f0; vertical-align:top;">${libelle}</td>
+        <td style="padding:10px 14px; font-size:14px; color:#0f172a; font-weight:600; border-bottom:1px solid #e2e8f0; white-space:pre-wrap;">${echapperHtml(valeur)}</td>
+      </tr>`
+    )
+    .join('')
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 20px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; border-collapse:separate; overflow:hidden;">${rangees}</table>`
+}
+
+function citation(texte, couleur = COULEURS.vert) {
+  return `<div style="margin:0 0 20px; padding:14px 18px; background:#f8fafc; border-left:4px solid ${couleur}; border-radius:6px; color:#0f172a; white-space:pre-wrap;">${echapperHtml(texte)}</div>`
+}
+
 async function envoyerViaBrevo({ to, subject, text, html, replyTo }) {
   const reponse = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
@@ -111,24 +185,21 @@ export async function envoyerNotificationSignalement(signalement) {
     ]
       .filter(Boolean)
       .join('\n'),
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-        <div style="background: #16a34a; color: #ffffff; padding: 16px 20px;">
-          <h2 style="margin: 0; font-size: 18px;">Nouveau signalement</h2>
-        </div>
-        <div style="padding: 20px; color: #0f172a;">
-          <p style="margin: 0 0 8px;"><strong>Catégorie :</strong> ${echapperHtml(signalement.categorie)}</p>
-          <p style="margin: 0 0 8px;"><strong>Commune :</strong> ${echapperHtml(signalement.commune)}</p>
-          <p style="margin: 0 0 8px;"><strong>Description :</strong> ${echapperHtml(signalement.description)}</p>
-          <p style="margin: 0 0 16px; color: #64748b; font-size: 13px;">Signalé le ${dateFormatee}</p>
-          ${lienPhoto ? `<img src="${lienPhoto}" alt="Photo du signalement" style="width: 100%; border-radius: 6px; margin-bottom: 8px;" />` : ''}
-          ${nbAutresPhotos ? `<p style="margin: 0 0 16px; color: #64748b; font-size: 13px;">+ ${nbAutresPhotos} autre${nbAutresPhotos > 1 ? 's' : ''} photo${nbAutresPhotos > 1 ? 's' : ''}</p>` : ''}
-          <a href="${lienDetail}" style="display: inline-block; background: #16a34a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
-            Voir le signalement
-          </a>
-        </div>
-      </div>
-    `
+    html: gabarit({
+      titre: 'Nouveau signalement',
+      sousTitre: `Signalé le ${dateFormatee}`,
+      apercu: `${signalement.categorie} à ${signalement.commune}`,
+      contenu: `
+        ${fiche([
+          ['Catégorie', signalement.categorie],
+          ['Commune', signalement.commune],
+          ['Description', signalement.description]
+        ])}
+        ${lienPhoto ? `<img src="${lienPhoto}" alt="Photo du signalement" width="504" style="display:block; width:100%; max-width:504px; height:auto; border-radius:10px; margin:0 0 8px;">` : ''}
+        ${nbAutresPhotos ? `<p style="margin:0 0 16px; color:#64748b; font-size:13px;">+ ${nbAutresPhotos} autre${nbAutresPhotos > 1 ? 's' : ''} photo${nbAutresPhotos > 1 ? 's' : ''}</p>` : ''}
+        ${bouton(lienDetail, 'Voir le signalement')}
+      `
+    })
   })
 }
 
@@ -169,29 +240,24 @@ export function messageAlertePartenaire(partenaire, signalement) {
     ]
       .filter((ligne) => ligne !== null)
       .join('\n'),
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-        ${test ? `<div style="background: #fef3c7; color: #92400e; padding: 10px 20px; font-size: 13px;">${echapperHtml(bandeauTexte)}</div>` : ''}
-        <div style="background: #0f766e; color: #ffffff; padding: 16px 20px;">
-          <h2 style="margin: 0; font-size: 18px;">${signalement.urgent ? 'URGENT — ' : ''}Nouveau signalement à traiter</h2>
-        </div>
-        <div style="padding: 20px; color: #0f172a;">
-          <p style="margin: 0 0 12px;">Bonjour ${echapperHtml(partenaire.nom)}, un nouveau signalement relève de votre périmètre :</p>
-          <p style="margin: 0 0 8px;"><strong>Catégorie :</strong> ${echapperHtml(signalement.categorie)}</p>
-          <p style="margin: 0 0 8px;"><strong>Commune :</strong> ${echapperHtml(signalement.commune)}</p>
-          <p style="margin: 0 0 8px;"><strong>Description :</strong> ${echapperHtml(signalement.description)}</p>
-          <p style="margin: 0 0 16px; color: #64748b; font-size: 13px;">Signalé le ${dateFormatee}</p>
-          <a href="${lienDetail}" style="display: inline-block; background: #0f766e; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
-            Voir le signalement
-          </a>
-          <p style="margin: 16px 0 0; font-size: 13px;">
-            Une fois sur place, faites évoluer le statut depuis
-            <a href="${lienEspace}" style="color: #0f766e;">votre espace partenaire</a> :
-            « En cours », puis « Résolu ». L'habitant qui a signalé le problème sera prévenu.
-          </p>
-        </div>
-      </div>
-    `
+    html: gabarit({
+      titre: `${signalement.urgent ? 'URGENT — ' : ''}Nouveau signalement à traiter`,
+      sousTitre: `Signalé le ${dateFormatee}`,
+      couleur: signalement.urgent ? COULEURS.rouge : COULEURS.sarcelle,
+      apercu: `${signalement.categorie} à ${signalement.commune}`,
+      bandeau: bandeauTexte,
+      contenu: `
+        ${paragraphe(`Bonjour ${echapperHtml(partenaire.nom)}, un nouveau signalement relève de votre périmètre :`)}
+        ${fiche([
+          ['Catégorie', signalement.categorie],
+          ['Commune', signalement.commune],
+          ['Urgence', signalement.urgent ? 'Danger immédiat' : ''],
+          ['Description', signalement.description]
+        ])}
+        ${bouton(lienDetail, 'Voir le signalement', COULEURS.sarcelle)}
+        ${note(`Une fois sur place, faites évoluer le statut depuis <a href="${lienEspace}" style="color:${COULEURS.sarcelle};">votre espace partenaire</a> : « En cours », puis « Résolu ». L'habitant qui a signalé le problème sera prévenu.`)}
+      `
+    })
   }
 }
 
@@ -218,22 +284,19 @@ export async function envoyerConfirmationSignalement(signalement, emailCitoyen, 
       `Suivre ou supprimer votre signalement : ${lienDetail}`,
       "Gardez ce lien : c'est le seul moyen de supprimer vous-même ce signalement plus tard."
     ].join('\n'),
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-        <div style="background: #16a34a; color: #ffffff; padding: 16px 20px;">
-          <h2 style="margin: 0; font-size: 18px;">Signalement enregistré</h2>
-        </div>
-        <div style="padding: 20px; color: #0f172a;">
-          <p style="margin: 0 0 8px;">Merci, votre signalement a bien été pris en compte.</p>
-          <p style="margin: 0 0 8px;"><strong>Catégorie :</strong> ${echapperHtml(signalement.categorie)}</p>
-          <p style="margin: 0 0 16px;"><strong>Commune :</strong> ${echapperHtml(signalement.commune)}</p>
-          <a href="${lienDetail}" style="display: inline-block; background: #16a34a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
-            Suivre mon signalement
-          </a>
-          <p style="margin: 16px 0 0; color: #64748b; font-size: 12px;">Gardez cet email : ce lien est le seul moyen de supprimer vous-même ce signalement plus tard.</p>
-        </div>
-      </div>
-    `
+    html: gabarit({
+      titre: 'Merci, votre signalement est enregistré',
+      apercu: 'Suivez son avancement depuis ce lien.',
+      contenu: `
+        ${paragraphe('Votre signalement a bien été pris en compte. Vous serez prévenu par email dès que son statut évolue.')}
+        ${fiche([
+          ['Catégorie', signalement.categorie],
+          ['Commune', signalement.commune]
+        ])}
+        ${bouton(lienDetail, 'Suivre mon signalement')}
+        ${note('Gardez cet email : ce lien est le seul moyen de supprimer vous-même ce signalement plus tard.')}
+      `
+    })
   })
 }
 
@@ -251,22 +314,19 @@ export async function envoyerChangementStatut(signalement, emailCitoyen) {
       `Commune : ${signalement.commune}`,
       `Voir le signalement : ${lienDetail}`
     ].join('\n'),
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-        <div style="background: #16a34a; color: #ffffff; padding: 16px 20px;">
-          <h2 style="margin: 0; font-size: 18px;">Mise à jour de votre signalement</h2>
-        </div>
-        <div style="padding: 20px; color: #0f172a;">
-          <p style="margin: 0 0 8px;">Le statut de votre signalement est maintenant :</p>
-          <p style="margin: 0 0 16px; font-size: 20px; font-weight: bold;">${echapperHtml(signalement.statut)}</p>
-          <p style="margin: 0 0 8px;"><strong>Catégorie :</strong> ${echapperHtml(signalement.categorie)}</p>
-          <p style="margin: 0 0 16px;"><strong>Commune :</strong> ${echapperHtml(signalement.commune)}</p>
-          <a href="${lienDetail}" style="display: inline-block; background: #16a34a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
-            Voir le signalement
-          </a>
-        </div>
-      </div>
-    `
+    html: gabarit({
+      titre: 'Votre signalement avance',
+      apercu: `Nouveau statut : ${signalement.statut}`,
+      contenu: `
+        ${paragraphe('Le statut de votre signalement est maintenant :')}
+        <p style="margin:0 0 20px;"><span style="display:inline-block; padding:8px 16px; border-radius:999px; background:#dcfce7; color:#166534; font-size:16px; font-weight:800;">${echapperHtml(signalement.statut)}</span></p>
+        ${fiche([
+          ['Catégorie', signalement.categorie],
+          ['Commune', signalement.commune]
+        ])}
+        ${bouton(lienDetail, 'Voir le signalement')}
+      `
+    })
   })
 }
 
@@ -286,21 +346,16 @@ export async function envoyerMiseAJourSignalement(signalement, emailCitoyen, tex
       '',
       `Voir le signalement : ${lienDetail}`
     ].join('\n'),
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-        <div style="background: #16a34a; color: #ffffff; padding: 16px 20px;">
-          <h2 style="margin: 0; font-size: 18px;">Suivi de votre signalement</h2>
-        </div>
-        <div style="padding: 20px; color: #0f172a;">
-          <p style="margin: 0 0 8px;">Un message de suivi a été publié sur votre signalement :</p>
-          <p style="margin: 0 0 16px; color: #64748b; font-size: 13px;">${echapperHtml(signalement.categorie)} — ${echapperHtml(signalement.commune)}</p>
-          <blockquote style="margin: 0 0 16px; padding: 12px 16px; background: #f1f5f9; border-left: 3px solid #16a34a; border-radius: 4px; white-space: pre-wrap;">${echapperHtml(texte)}</blockquote>
-          <a href="${lienDetail}" style="display: inline-block; background: #16a34a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
-            Voir le signalement
-          </a>
-        </div>
-      </div>
-    `
+    html: gabarit({
+      titre: 'Du nouveau sur votre signalement',
+      sousTitre: `${signalement.categorie} — ${signalement.commune}`,
+      apercu: texte.slice(0, 120),
+      contenu: `
+        ${paragraphe('Un message de suivi a été publié sur votre signalement :')}
+        ${citation(texte)}
+        ${bouton(lienDetail, 'Voir le signalement')}
+      `
+    })
   })
 }
 
@@ -327,21 +382,16 @@ export async function envoyerNouveauCommentaire(signalement, emailAuteur, commen
       '',
       `Répondre ou voir le signalement : ${lienDetail}`
     ].join('\n'),
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-        <div style="background: #16a34a; color: #ffffff; padding: 16px 20px;">
-          <h2 style="margin: 0; font-size: 18px;">${commentaire.estReponse ? 'Nouvelle réponse' : 'Nouveau commentaire'}</h2>
-        </div>
-        <div style="padding: 20px; color: #0f172a;">
-          <p style="margin: 0 0 8px;"><strong>${echapperHtml(commentaire.auteur)}</strong> ${commentaire.estReponse ? 'a répondu à votre commentaire' : 'a réagi à votre signalement'} :</p>
-          <p style="margin: 0 0 16px; color: #64748b; font-size: 13px;">${echapperHtml(signalement.categorie)} — ${echapperHtml(signalement.commune)}</p>
-          <blockquote style="margin: 0 0 16px; padding: 12px 16px; background: #f1f5f9; border-left: 3px solid #16a34a; border-radius: 4px; white-space: pre-wrap;">${echapperHtml(extrait)}</blockquote>
-          <a href="${lienDetail}" style="display: inline-block; background: #16a34a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
-            Voir et répondre
-          </a>
-        </div>
-      </div>
-    `
+    html: gabarit({
+      titre: commentaire.estReponse ? 'Nouvelle réponse' : 'Nouveau commentaire',
+      sousTitre: `${signalement.categorie} — ${signalement.commune}`,
+      apercu: extrait.slice(0, 120),
+      contenu: `
+        ${paragraphe(`<strong style="color:#0f172a;">${echapperHtml(commentaire.auteur)}</strong> ${commentaire.estReponse ? 'a répondu à votre commentaire' : 'a réagi à votre signalement'} :`)}
+        ${citation(extrait)}
+        ${bouton(lienDetail, 'Voir et répondre')}
+      `
+    })
   })
 }
 
@@ -361,19 +411,16 @@ export async function envoyerVerificationEmail(nom, email, code) {
       '',
       "Si vous n'êtes pas à l'origine de cette inscription, ignorez cet email."
     ].join('\n'),
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-        <div style="background: #16a34a; color: #ffffff; padding: 16px 20px;">
-          <h2 style="margin: 0; font-size: 18px;">Confirmez votre email</h2>
-        </div>
-        <div style="padding: 20px; color: #0f172a;">
-          <p style="margin: 0 0 16px;">Bonjour ${echapperHtml(nom)},</p>
-          <p style="margin: 0 0 16px;">Voici votre code de confirmation pour Signale Mayotte :</p>
-          <p style="margin: 0 0 16px; font-size: 32px; font-weight: bold; letter-spacing: 6px; text-align: center; background: #f1f5f9; border-radius: 8px; padding: 16px;">${echapperHtml(code)}</p>
-          <p style="margin: 0; color: #64748b; font-size: 12px;">Ce code expire dans 30 minutes. Si vous n'êtes pas à l'origine de cette inscription, ignorez cet email.</p>
-        </div>
-      </div>
-    `
+    html: gabarit({
+      titre: 'Confirmez votre adresse email',
+      apercu: `Votre code : ${code}`,
+      contenu: `
+        ${paragraphe(`Bonjour ${echapperHtml(nom)},`)}
+        ${paragraphe('Bienvenue sur Signale Mayotte ! Saisissez ce code sur le site pour confirmer votre adresse :')}
+        <div style="margin:0 0 8px; padding:20px; background:#f0fdf4; border:2px dashed #86efac; border-radius:12px; text-align:center; font-size:34px; font-weight:800; letter-spacing:10px; color:#166534; font-family:'Courier New', monospace;">${echapperHtml(code)}</div>
+        ${note("Ce code expire dans 30 minutes. Si vous n'êtes pas à l'origine de cette inscription, ignorez simplement cet email.")}
+      `
+    })
   })
 }
 
@@ -394,21 +441,16 @@ export async function envoyerReinitialisationMotDePasse(nom, email, token) {
       'Ce lien expire dans 1 heure.',
       "Si vous n'êtes pas à l'origine de cette demande, ignorez cet email : votre mot de passe restera inchangé."
     ].join('\n'),
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-        <div style="background: #16a34a; color: #ffffff; padding: 16px 20px;">
-          <h2 style="margin: 0; font-size: 18px;">Réinitialisation du mot de passe</h2>
-        </div>
-        <div style="padding: 20px; color: #0f172a;">
-          <p style="margin: 0 0 16px;">Bonjour ${echapperHtml(nom)},</p>
-          <p style="margin: 0 0 16px;">Vous avez demandé à réinitialiser votre mot de passe sur Signale Mayotte.</p>
-          <a href="${lienReinitialisation}" style="display: inline-block; background: #16a34a; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
-            Choisir un nouveau mot de passe
-          </a>
-          <p style="margin: 16px 0 0; color: #64748b; font-size: 12px;">Ce lien expire dans 1 heure. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email : votre mot de passe restera inchangé.</p>
-        </div>
-      </div>
-    `
+    html: gabarit({
+      titre: 'Choisissez un nouveau mot de passe',
+      apercu: 'Ce lien est valable 1 heure.',
+      contenu: `
+        ${paragraphe(`Bonjour ${echapperHtml(nom)},`)}
+        ${paragraphe('Vous avez demandé à réinitialiser votre mot de passe. Cliquez sur le bouton ci-dessous pour en choisir un nouveau :')}
+        ${bouton(lienReinitialisation, 'Choisir un nouveau mot de passe')}
+        ${note(`Ce lien expire dans 1 heure. Si vous n'êtes pas à l'origine de cette demande, ignorez cet email : votre mot de passe restera inchangé.<br><br>Le bouton ne marche pas ? Copiez cette adresse dans votre navigateur :<br><a href="${lienReinitialisation}" style="color:#64748b; word-break:break-all;">${lienReinitialisation}</a>`)}
+      `
+    })
   })
 }
 
@@ -431,22 +473,20 @@ export async function envoyerAlerteContenuAbusif({ type, signalementId, extrait,
     ]
       .filter(Boolean)
       .join('\n'),
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-        <div style="background: #dc2626; color: #ffffff; padding: 16px 20px;">
-          <h2 style="margin: 0; font-size: 18px;">Contenu signalé comme abusif</h2>
-        </div>
-        <div style="padding: 20px; color: #0f172a;">
-          <p style="margin: 0 0 8px;"><strong>${libelle}</strong> a été signalé par un utilisateur.</p>
-          ${extrait ? `<p style="margin: 0 0 8px;"><strong>Contenu :</strong> ${echapperHtml(extrait)}</p>` : ''}
-          <p style="margin: 0 0 16px;"><strong>Motif :</strong> ${echapperHtml(motif || 'non précisé')}</p>
-          <a href="${lienDetail}" style="display: inline-block; background: #dc2626; color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 999px; font-weight: bold;">
-            Voir le signalement
-          </a>
-          <p style="margin: 16px 0 0; color: #64748b; font-size: 13px;">Décision à prendre dans l'onglet Modération : <a href="${lienModeration}">${lienModeration}</a></p>
-        </div>
-      </div>
-    `
+    html: gabarit({
+      titre: 'Contenu signalé comme abusif',
+      couleur: COULEURS.rouge,
+      apercu: `${libelle} a été signalé par un utilisateur.`,
+      contenu: `
+        ${paragraphe(`<strong style="color:#0f172a;">${libelle}</strong> a été signalé par un utilisateur.`)}
+        ${fiche([
+          ['Contenu', extrait],
+          ['Motif', motif || 'non précisé']
+        ])}
+        ${bouton(lienDetail, 'Voir le signalement', COULEURS.rouge)}
+        ${note(`Décision à prendre dans l'onglet Modération : <a href="${lienModeration}" style="color:#64748b;">${lienModeration}</a>`)}
+      `
+    })
   })
 }
 
@@ -456,17 +496,18 @@ export async function envoyerMessageContact({ nom, email, sujet, message }) {
     replyTo: email,
     subject: `[Contact] ${sujet} — ${nom}`,
     text: [`De : ${nom} <${email}>`, `Sujet : ${sujet}`, '', message].join('\n'),
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-        <div style="background: #2563eb; color: #ffffff; padding: 16px 20px;">
-          <h2 style="margin: 0; font-size: 18px;">Nouveau message de contact</h2>
-        </div>
-        <div style="padding: 20px; color: #0f172a;">
-          <p style="margin: 0 0 8px;"><strong>De :</strong> ${echapperHtml(nom)} (${echapperHtml(email)})</p>
-          <p style="margin: 0 0 8px;"><strong>Sujet :</strong> ${echapperHtml(sujet)}</p>
-          <p style="margin: 16px 0 0; white-space: pre-wrap;">${echapperHtml(message)}</p>
-        </div>
-      </div>
-    `
+    html: gabarit({
+      titre: 'Nouveau message de contact',
+      couleur: COULEURS.bleu,
+      apercu: `${sujet} — ${nom}`,
+      contenu: `
+        ${fiche([
+          ['De', `${nom} (${email})`],
+          ['Sujet', sujet]
+        ])}
+        ${citation(message, COULEURS.bleu)}
+        ${note('Répondez directement à cet email : la réponse partira vers la personne qui vous a écrit.')}
+      `
+    })
   })
 }
