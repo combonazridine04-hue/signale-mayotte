@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import Hero from '../components/Hero.vue'
 import CommentCaMarche from '../components/CommentCaMarche.vue'
+import PartenairesVitrine from '../components/PartenairesVitrine.vue'
 import FilterBar from '../components/FilterBar.vue'
 import SignalementCard from '../components/SignalementCard.vue'
 import SignalementCardSkeleton from '../components/SignalementCardSkeleton.vue'
@@ -108,6 +109,8 @@ onMounted(() => rafraichir(1))
     <Hero />
 
     <CommentCaMarche />
+
+    <PartenairesVitrine />
 
     <section class="signalements-section">
       <div class="container">

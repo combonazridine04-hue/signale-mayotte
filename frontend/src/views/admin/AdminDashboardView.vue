@@ -9,6 +9,7 @@ import { usePartenairesAdminStore } from '../../stores/partenairesAdminStore.js'
 import { useUiStore } from '../../stores/uiStore.js'
 import { STATUTS, COMMUNES, CATEGORIES } from '../../data/signalement.js'
 import { apiFetch } from '../../services/api.js'
+import { urlMedia } from '../../services/adresseApi.js'
 import FilterBar from '../../components/FilterBar.vue'
 import ChampMotDePasse from '../../components/ChampMotDePasse.vue'
 import JournalActivite from '../../components/admin/JournalActivite.vue'
@@ -142,6 +143,31 @@ const supprimerPartenaire = async (compte) => {
   if (!(await uiStore.confirmer(`Supprimer définitivement le compte partenaire "${compte.identifiant}" ?`))) return
   try {
     await partenairesAdminStore.supprimer(compte.id)
+  } catch (e) {
+    uiStore.alerter(e.message)
+  }
+}
+
+const logoEnCours = ref(null)
+
+const choisirLogo = async (compte, evenement) => {
+  const fichier = evenement.target.files?.[0]
+  evenement.target.value = ''
+  if (!fichier) return
+  logoEnCours.value = compte.id
+  try {
+    await partenairesAdminStore.changerLogo(compte.id, fichier)
+  } catch (e) {
+    uiStore.alerter(e.message)
+  } finally {
+    logoEnCours.value = null
+  }
+}
+
+const retirerLogo = async (compte) => {
+  if (!(await uiStore.confirmer(`Retirer le logo de "${compte.nom}" ?`))) return
+  try {
+    await partenairesAdminStore.supprimerLogo(compte.id)
   } catch (e) {
     uiStore.alerter(e.message)
   }
@@ -748,6 +774,7 @@ const changerStatut = async (id, statut) => {
           <table v-else class="admin-table mb-4">
             <thead>
               <tr>
+                <th>Logo</th>
                 <th>Nom</th>
                 <th>Identifiant</th>
                 <th>Domaines</th>
@@ -759,6 +786,25 @@ const changerStatut = async (id, statut) => {
             </thead>
             <tbody>
               <tr v-for="c in partenairesAdminStore.comptes" :key="c.id">
+                <td data-label="Logo">
+                  <div class="admin-logo-partenaire">
+                    <img v-if="c.logoUrl" :src="urlMedia(c.logoUrl)" :alt="`Logo de ${c.nom}`" />
+                    <span v-else class="admin-muted small">Aucun</span>
+                    <label class="admin-btn admin-btn--ghost mb-0" :class="{ disabled: logoEnCours === c.id }">
+                      {{ logoEnCours === c.id ? 'Envoi...' : c.logoUrl ? 'Changer' : 'Ajouter' }}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        class="visually-hidden"
+                        :disabled="logoEnCours === c.id"
+                        @change="choisirLogo(c, $event)"
+                      />
+                    </label>
+                    <button v-if="c.logoUrl" type="button" class="admin-btn admin-btn--ghost" @click="retirerLogo(c)">
+                      Retirer
+                    </button>
+                  </div>
+                </td>
                 <td data-label="Nom">{{ c.nom }}</td>
                 <td data-label="Identifiant">{{ c.identifiant }}</td>
                 <td data-label="Domaines">{{ c.categories.length ? c.categories.join(', ') : 'Tous' }}</td>

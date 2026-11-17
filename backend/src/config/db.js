@@ -146,7 +146,8 @@ export async function reinitialiserDonneesDemo({ viderStockage = false } = {}) {
     // Les photos de profil vivent dans le même espace de stockage que celles des
     // signalements : on les liste pour que la remise à zéro ne les emporte pas avec elle.
     const { rows: avatars } = await db.query('SELECT avatar_url FROM utilisateurs WHERE avatar_url IS NOT NULL')
-    await viderPhotos(avatars.map((r) => r.avatar_url))
+    const { rows: logos } = await db.query('SELECT logo_url FROM partenaires WHERE logo_url IS NOT NULL')
+    await viderPhotos([...avatars.map((r) => r.avatar_url), ...logos.map((r) => r.logo_url)])
   }
   for (const s of donneesDemo) {
     await db.query(

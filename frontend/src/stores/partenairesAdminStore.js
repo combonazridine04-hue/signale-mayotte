@@ -60,6 +60,22 @@ export const usePartenairesAdminStore = defineStore('partenairesAdmin', {
       const reponse = await apiFetch(`/api/partenaires/${id}`, { method: 'DELETE' })
       await traiterReponse(reponse)
       this.comptes = this.comptes.filter((c) => c.id !== id)
+    },
+
+    async changerLogo(id, fichier) {
+      const donnees = new FormData()
+      donnees.append('logo', fichier)
+      const reponse = await apiFetch(`/api/partenaires/${id}/logo`, { method: 'PUT', body: donnees })
+      const { logoUrl } = await traiterReponse(reponse)
+      const compte = this.comptes.find((c) => c.id === id)
+      if (compte) compte.logoUrl = logoUrl
+    },
+
+    async supprimerLogo(id) {
+      const reponse = await apiFetch(`/api/partenaires/${id}/logo`, { method: 'DELETE' })
+      await traiterReponse(reponse)
+      const compte = this.comptes.find((c) => c.id === id)
+      if (compte) compte.logoUrl = ''
     }
   }
 })

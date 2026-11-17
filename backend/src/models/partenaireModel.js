@@ -30,8 +30,24 @@ export async function creer({ nom, identifiant, motDePasseHash, commune, categor
   return rows[0]
 }
 
-// Renvoie le nom du compte supprimé, ou undefined s'il n'existait pas.
+// Renvoie { nom, logo_url } du compte supprimé, ou undefined s'il n'existait pas.
 export async function supprimer(id) {
-  const { rows } = await db.query('DELETE FROM partenaires WHERE id = ? RETURNING nom', [id])
-  return rows[0]?.nom
+  const { rows } = await db.query('DELETE FROM partenaires WHERE id = ? RETURNING nom, logo_url', [id])
+  return rows[0]
+}
+
+export async function trouver(id) {
+  const { rows } = await db.query('SELECT id, nom, logo_url FROM partenaires WHERE id = ?', [id])
+  return rows[0]
+}
+
+export async function mettreAJourLogo(id, logoUrl) {
+  await db.query('UPDATE partenaires SET logo_url = ? WHERE id = ?', [logoUrl, id])
+}
+
+// Vitrine publique : seulement le nom et le logo, jamais l'identifiant, l'e-mail ou le
+// périmètre. Sans logo, le site affiche le nom à la place.
+export async function listerPublics() {
+  const { rows } = await db.query('SELECT nom, logo_url FROM partenaires ORDER BY nom ASC')
+  return rows
 }

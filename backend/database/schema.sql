@@ -64,9 +64,15 @@ CREATE TABLE IF NOT EXISTS partenaires (
   commune VARCHAR(100) NULL,
   categories JSON NOT NULL DEFAULT ('[]'),
   email VARCHAR(255) NULL,
+  logo_url VARCHAR(255) NULL,
   cree_le VARCHAR(30) NOT NULL,
   derniere_connexion VARCHAR(30) NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Ajout du logo pour une base créée avant cette colonne (sans effet si elle existe).
+-- Tous les partenaires apparaissent sur la page d'accueil (« Ils agissent avec nous ») :
+-- avec leur logo s'il est renseigné, sinon avec leur nom.
+ALTER TABLE partenaires ADD COLUMN IF NOT EXISTS logo_url VARCHAR(255) NULL;
 
 -- Signalement urgent : un simple drapeau plutôt qu'un circuit séparé, pour que le danger
 -- immédiat (fil électrique à terre, fuite, route coupée) remonte en tête de liste.

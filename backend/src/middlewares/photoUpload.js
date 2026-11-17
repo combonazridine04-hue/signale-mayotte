@@ -20,7 +20,10 @@ export function creerUpload(limits) {
   })
 }
 
-export async function traiterPhoto(fichier, { largeurMax } = {}) {
+// largeurMax : recadre en carré (avatars).
+// contenir : réduit sans jamais recadrer ni agrandir, dans un cadre largeur × hauteur
+// (logos : un logo coupé ou déformé serait inutilisable).
+export async function traiterPhoto(fichier, { largeurMax, contenir } = {}) {
   const format = EXTENSIONS_AUTORISEES[fichier.mimetype]
   // .rotate() sans argument applique l'orientation EXIF avant de la supprimer,
   // pour éviter les photos de travers ; toBuffer() par défaut retire déjà toutes
@@ -29,6 +32,14 @@ export async function traiterPhoto(fichier, { largeurMax } = {}) {
   try {
     let image = sharp(fichier.buffer, { animated: format === 'gif' }).rotate()
     if (largeurMax) image = image.resize({ width: largeurMax, height: largeurMax, fit: 'cover' })
+    if (contenir) {
+      image = image.resize({
+        width: contenir.largeur,
+        height: contenir.hauteur,
+        fit: 'inside',
+        withoutEnlargement: true
+      })
+    }
     buffer = await image.toFormat(format).toBuffer()
   } catch {
     // Type annoncé correct mais contenu illisible (fichier corrompu, renommé…) : c'est

@@ -12,6 +12,11 @@ import { ouvrirSession } from '../services/sessionService.js'
 import { motDePasseInterdit } from '../shared/motDePasse.js'
 import { emailValide } from '../middlewares/validation.js'
 import { journaliser } from '../services/journalService.js'
+import { traiterPhoto } from '../middlewares/photoUpload.js'
+import { supprimerPhoto } from '../config/storage.js'
+
+// Cadre des logos : assez grand pour un écran net, assez petit pour une page légère.
+const CADRE_LOGO = { largeur: 480, hauteur: 240 }
 
 // « benoblock440@gmail.com » → « be•••••••@gmail.com »
 function masquerEmail(email) {
@@ -27,8 +32,41 @@ function mapRow(row) {
     commune: row.commune,
     categories: row.categories || [],
     email: row.email || '',
+    logoUrl: row.logo_url || '',
     creeLe: row.cree_le
   }
+}
+
+// Page d'accueil : ouverte à tous. Nom et logo seulement.
+export const listerPartenairesPublics = async (req, res) => {
+  const partenaires = await Partenaire.listerPublics()
+  res.json(partenaires.map((p) => ({ nom: p.nom, logoUrl: p.logo_url || '' })))
+}
+
+export const changerLogoPartenaire = async (req, res) => {
+  const id = Number(req.params.id)
+  const partenaire = await Partenaire.trouver(id)
+  if (!partenaire) return res.status(404).json({ erreur: 'Compte introuvable.' })
+  if (!req.file) {
+    return res.status(400).json({ erreur: 'Aucune image envoyée (formats acceptés : jpg, png, webp, gif).' })
+  }
+
+  const logoUrl = await traiterPhoto(req.file, { contenir: CADRE_LOGO })
+  await Partenaire.mettreAJourLogo(id, logoUrl)
+  if (partenaire.logo_url) await supprimerPhoto(partenaire.logo_url)
+
+  journaliser(req, 'partenaire.logo', { cible: { type: 'partenaire', id, nom: partenaire.nom } })
+  res.json({ logoUrl })
+}
+
+export const supprimerLogoPartenaire = async (req, res) => {
+  const id = Number(req.params.id)
+  const partenaire = await Partenaire.trouver(id)
+  if (!partenaire) return res.status(404).json({ erreur: 'Compte introuvable.' })
+
+  if (partenaire.logo_url) await supprimerPhoto(partenaire.logo_url)
+  await Partenaire.mettreAJourLogo(id, null)
+  res.status(204).end()
 }
 
 // Connexion : ouverte à tous, comme celle des admins et des citoyens.
@@ -126,8 +164,10 @@ export const creerPartenaire = async (req, res) => {
 export const supprimerPartenaire = async (req, res) => {
   const id = Number(req.params.id)
 
-  const nom = await Partenaire.supprimer(id)
-  if (nom === undefined) return res.status(404).json({ erreur: 'Compte introuvable.' })
+  const supprime = await Partenaire.supprimer(id)
+  if (!supprime) return res.status(404).json({ erreur: 'Compte introuvable.' })
+  const { nom } = supprime
+  if (supprime.logo_url) await supprimerPhoto(supprime.logo_url)
 
   revoquerSessionsPartenaire(id)
   journaliser(req, 'partenaire.suppression', { cible: { type: 'partenaire', id, nom } })
