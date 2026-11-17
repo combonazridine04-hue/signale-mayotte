@@ -50,19 +50,17 @@ const partenaires = computed(() => {
             :target="partenaire.site ? '_blank' : undefined"
             :rel="partenaire.site ? 'noopener' : undefined"
             class="partenaires-carte"
+            :style="{ '--couleur': partenaire.couleur || '#16a34a' }"
           >
-            <img
-              v-if="partenaire.logo"
-              :src="partenaire.logo"
-              :alt="partenaire.description || partenaire.nom"
-              class="partenaires-logo"
-              loading="lazy"
-            />
-            <template v-else>
+            <span class="partenaires-logo-zone">
+              <img v-if="partenaire.logo" :src="partenaire.logo" alt="" class="partenaires-logo" loading="lazy" />
+              <span v-else class="partenaires-initiales" aria-hidden="true">{{ partenaire.nom.slice(0, 3) }}</span>
+            </span>
+            <span class="partenaires-texte">
               <span class="partenaires-nom">{{ partenaire.nom }}</span>
               <span v-if="partenaire.description" class="partenaires-description">{{ partenaire.description }}</span>
-            </template>
-            <span v-if="partenaire.domaine" class="partenaires-domaine">{{ partenaire.domaine }}</span>
+              <span v-if="partenaire.domaine" class="partenaires-domaine">{{ partenaire.domaine }}</span>
+            </span>
           </component>
         </li>
       </ul>
