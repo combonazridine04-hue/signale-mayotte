@@ -2,7 +2,7 @@ name: Intégration continue
 
 on:
   push:
-    branches: [main]
+    branches: [main, passage-mariadb]
   pull_request:
 
 jobs:

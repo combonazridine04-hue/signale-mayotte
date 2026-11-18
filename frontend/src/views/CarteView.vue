@@ -48,7 +48,13 @@ function dessinerMarqueurs() {
   signalementsLocalises.value.forEach((s) => {
     const contenu = document.createElement('div')
     contenu.className = 'carte-popup'
-    contenu.innerHTML = `<strong>${s.categorie}</strong><br>${s.commune}<br>`
+    // Construit avec textContent, jamais innerHTML : un texte venu de la base ne peut pas
+    // être interprété comme du HTML (protection contre l'injection de script, XSS).
+    const titre = document.createElement('strong')
+    titre.textContent = s.categorie
+    const commune = document.createElement('div')
+    commune.textContent = s.commune
+    contenu.append(titre, commune)
 
     const lien = document.createElement('a')
     lien.href = '#'
