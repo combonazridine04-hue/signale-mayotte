@@ -27,7 +27,7 @@ Accueil (/)
 │   ├── Mes signalements (/mes-signalements)
 │   └── Profil (/profil)
 ├── Espace partenaire (/partenaire/login → /partenaire)
-├── Espace admin (/admin/login → /admin)
+├── Espace admin (adresse secrète VITE_CHEMIN_ADMIN, /admin par défaut)
 └── Page 404
 ```
 

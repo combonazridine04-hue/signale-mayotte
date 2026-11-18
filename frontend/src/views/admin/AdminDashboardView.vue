@@ -24,7 +24,7 @@ const uiStore = useUiStore()
 
 const seDeconnecter = () => {
   authStore.deconnecter()
-  router.push('/admin/login')
+  router.push({ name: 'admin-login' })
 }
 
 const section = ref('apercu')

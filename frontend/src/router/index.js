@@ -23,6 +23,14 @@ import { useCitoyenStore } from '../stores/citoyenStore.js'
 import { usePartenaireStore } from '../stores/partenaireStore.js'
 import { synchroniserSession } from '../utils/session.js'
 
+// Adresse de l'espace d'administration. En production, elle est secrète : définie par
+// VITE_CHEMIN_ADMIN dans frontend/.env.production (jamais envoyé sur GitHub), par ex.
+// « /espace-k7m2q9xr4 ». /admin affiche alors « page introuvable », comme n'importe quelle
+// adresse inconnue : un robot qui essaie les adresses habituelles ne trouve rien.
+// Ce n'est qu'une couche en plus : la vraie protection reste le mot de passe, la double
+// authentification et la limite d'essais, contrôlés par le serveur.
+const CHEMIN_ADMIN = '/' + String(import.meta.env.VITE_CHEMIN_ADMIN || 'admin').replace(/^\/+|\/+$/g, '')
+
 const routes = [
   {
     path: '/',
@@ -111,13 +119,13 @@ const routes = [
     meta: { titre: 'Mon profil', requiresAuthCitoyen: true }
   },
   {
-    path: '/admin/login',
+    path: `${CHEMIN_ADMIN}/login`,
     name: 'admin-login',
     component: AdminLoginView,
     meta: { titre: 'Connexion admin', admin: true }
   },
   {
-    path: '/admin',
+    path: CHEMIN_ADMIN,
     name: 'admin-dashboard',
     component: AdminDashboardView,
     meta: { titre: 'Espace admin', admin: true, requiresAuth: true }
@@ -201,6 +209,15 @@ export const TITRE_SITE = 'Signale Mayotte'
 // et les onglets multiples. La page d'un signalement affine ce titre de son côté.
 router.afterEach((to) => {
   document.title = to.meta.titre ? `${to.meta.titre} · ${TITRE_SITE}` : `${TITRE_SITE} — Signalement citoyen`
+  // Espaces admin et partenaire : jamais référencés par les moteurs de recherche.
+  let robots = document.querySelector('meta[name="robots"]')
+  if (!robots) {
+    robots = document.createElement('meta')
+    robots.name = 'robots'
+    document.head.appendChild(robots)
+  }
+  robots.content =
+    to.meta.admin || to.meta.partenaire || to.name === 'introuvable' ? 'noindex, nofollow' : 'index, follow'
 })
 
 export default router

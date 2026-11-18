@@ -181,10 +181,11 @@ ne servent qu'aux tests : on ne les définit pas en production.
 Lu **au build** et copié dans le JavaScript envoyé au navigateur : ces valeurs sont
 publiques, jamais de secret ici. Après toute modification, relancer `npm run build`.
 
-| Variable            | Valeur                                             |
-| ------------------- | -------------------------------------------------- |
-| `VITE_API_URL`      | **vide** : l'API est à la même adresse que le site |
-| `VITE_MAPTILER_KEY` | Clé des fonds de carte (optionnelle)               |
+| Variable            | Valeur                                                                                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VITE_API_URL`      | **vide** : l'API est à la même adresse que le site                                                                                                                  |
+| `VITE_MAPTILER_KEY` | Clé des fonds de carte (optionnelle)                                                                                                                                |
+| `VITE_CHEMIN_ADMIN` | Adresse **secrète** de l'espace admin (ex. `espace-k7m2q9xr4`) : `/admin` affiche alors « page introuvable ». Gardée hors de GitHub, notée dans `alwaysdata.local`. |
 
 ### 4.3 Sécurité déjà gérée dans le code
 

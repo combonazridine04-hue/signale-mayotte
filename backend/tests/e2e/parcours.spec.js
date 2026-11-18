@@ -42,7 +42,8 @@ const API = `http://localhost:${serveur.address().port}`
 // 3. Compilation du front, pointé vers cette API.
 const build = spawnSync('npm', ['run', 'build', '--', '--outDir', distFront, '--emptyOutDir'], {
   cwd: DOSSIER_FRONT,
-  env: { ...process.env, VITE_API_URL: API },
+  // Adresse admin habituelle pour le test, même si .env.production en définit une secrète.
+  env: { ...process.env, VITE_API_URL: API, VITE_CHEMIN_ADMIN: 'admin' },
   shell: true,
   encoding: 'utf8'
 })
