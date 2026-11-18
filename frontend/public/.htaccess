@@ -6,9 +6,9 @@
 RewriteEngine On
 RewriteBase /
 
-# Toute visite en HTTP (non chiffré) est renvoyée vers HTTPS. Le chiffrement est fait par le
-# proxy d'alwaysdata, qui indique le protocole d'origine dans X-Forwarded-Proto.
-RewriteCond %{HTTP:X-Forwarded-Proto} =http
+# Toute visite en HTTP (non chiffré) est renvoyée vers HTTPS. Chez alwaysdata, une visite
+# chiffrée arrive avec HTTPS=on ; une visite en HTTP, sans (vérifié le 18/11/2026).
+RewriteCond %{HTTPS} !=on
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
 
 RewriteRule ^index\.html$ - [L]

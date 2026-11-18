@@ -35,11 +35,13 @@ const app = express()
 // Nécessaire pour que express-rate-limit identifie les IP réelles derrière un proxy/hébergeur.
 app.set('trust proxy', 1)
 
-// Une requête arrivée en HTTP non chiffré (le proxy de l'hébergeur l'indique dans
-// X-Forwarded-Proto) est renvoyée vers HTTPS. 308 garde la méthode et le corps (POST…).
-// En local et dans les tests, cet en-tête est absent : rien ne change.
+// En production (site en HTTPS), une requête arrivée en HTTP non chiffré est renvoyée vers
+// HTTPS. Chez alwaysdata, le proxy n'ajoute « X-Forwarded-Proto: https » qu'aux requêtes
+// chiffrées. 308 garde la méthode et le corps (POST…). En local et dans les tests, le site
+// n'est pas en HTTPS : rien ne change.
+const productionHttps = (process.env.FRONTEND_URL || '').startsWith('https://')
 app.use((req, res, next) => {
-  if (req.get('x-forwarded-proto') === 'http') {
+  if (productionHttps && req.get('x-forwarded-proto') !== 'https') {
     return res.redirect(308, `https://${req.get('host')}${req.originalUrl}`)
   }
   next()
