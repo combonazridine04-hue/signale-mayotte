@@ -186,7 +186,31 @@ Menu latéral à sept sections. Sur mobile, il devient une rangée d'onglets dé
 
 ---
 
-### 3.8 Captures du site réalisé
+### 3.8 Wireframes (basse fidélité)
+
+Le zonage ci-dessus est détaillé en **wireframes** : noir et blanc, blocs gris pour le
+texte, cases barrées d'une croix pour les images, et pastilles rouges numérotées
+renvoyant aux annotations. Ils fixent la disposition et les priorités de chaque écran
+avant le travail sur les couleurs. Source : [`maquettes/wireframes/wireframes.html`](maquettes/wireframes/wireframes.html),
+images générées par `node docs/maquettes/wireframes/capturer.mjs`.
+
+| Écran                  | Ordinateur                                                                     | Mobile                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Accueil                | ![Wireframe accueil ordinateur](maquettes/wireframes/accueil-ordinateur.png)   | ![Wireframe accueil mobile](maquettes/wireframes/accueil-mobile.png)   |
+| Signaler un problème   | ![Wireframe signaler ordinateur](maquettes/wireframes/signaler-ordinateur.png) | ![Wireframe signaler mobile](maquettes/wireframes/signaler-mobile.png) |
+| Fiche d'un signalement | ![Wireframe fiche ordinateur](maquettes/wireframes/fiche-ordinateur.png)       | —                                                                      |
+| Carte des signalements | ![Wireframe carte ordinateur](maquettes/wireframes/carte-ordinateur.png)       | —                                                                      |
+
+### 3.9 Maquette graphique (haute fidélité)
+
+La planche [`charte-graphique.png`](maquettes/wireframes/charte-graphique.png) applique la
+charte (section 4) aux composants : couleurs, typographie Inter, boutons, pastilles de
+statut, panneau « verre dépoli », carte de signalement, carte partenaire et barre de
+navigation, sur le fond réel du site.
+
+![Charte graphique et composants](maquettes/wireframes/charte-graphique.png)
+
+### 3.10 Captures du site réalisé
 
 Résultat de l'intégration, capturé sur le site en ligne (ordinateur 1440 × 900, mobile 390 × 844).
 

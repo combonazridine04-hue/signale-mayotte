@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Wireframes — Signale Mayotte</title>
+<!--
+  Wireframes basse fidélité de Signale Mayotte (zoning détaillé des écrans principaux).
+  Chaque <section class="planche"> est capturée en image PNG par capturer.mjs :
+  noir et blanc volontairement, pour discuter de la disposition avant les couleurs.
+-->
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 24px; background: #d4d4d4; font-family: "Segoe UI", Arial, sans-serif; color: #222; }
+  .planche { background: #fff; padding: 28px; margin: 0 0 32px; display: inline-block; vertical-align: top; }
+  .entete { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 18px; }
+  .entete h1 { font-size: 20px; margin: 0; }
+  .entete span { font-size: 12px; color: #666; }
+  .ecran { position: relative; border: 2px solid #222; background: #fff; overflow: hidden; }
+  .ordi { width: 1180px; }
+  .mobile { width: 360px; border-radius: 26px; padding-top: 18px; }
+  .mobile::before { content: ""; position: absolute; top: 7px; left: 50%; width: 70px; height: 6px; margin-left: -35px; background: #222; border-radius: 3px; }
+  .zone { border: 1.5px dashed #888; padding: 14px; margin: 10px; position: relative; }
+  .zone-titre { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #777; margin-bottom: 8px; }
+  .img { background: #eee url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' viewBox='0 0 100 100'%3E%3Cpath d='M0 0L100 100M100 0L0 100' stroke='%23aaa' stroke-width='0.8' vector-effect='non-scaling-stroke'/%3E%3C/svg%3E") center / 100% 100% no-repeat; border: 1.5px solid #999; }
+  .ligne { height: 9px; background: #cfcfcf; border-radius: 4px; margin: 7px 0; }
+  .titre-gros { height: 22px; background: #555; border-radius: 4px; margin: 6px 0; }
+  .titre-moyen { height: 15px; background: #777; border-radius: 4px; margin: 6px 0; }
+  .btn { display: inline-block; border: 2px solid #222; border-radius: 8px; padding: 9px 16px; font-size: 13px; font-weight: 700; background: #fff; }
+  .btn.plein { background: #222; color: #fff; }
+  .champ { border: 1.5px solid #888; border-radius: 6px; height: 34px; padding: 8px 10px; font-size: 12px; color: #888; margin: 4px 0 10px; }
+  .champ.grand { height: 74px; }
+  .label { font-size: 12px; font-weight: 700; }
+  .rangee { display: flex; gap: 14px; }
+  .col { flex: 1; min-width: 0; }
+  .carte-sig { border: 1.5px solid #888; border-radius: 8px; padding: 8px; }
+  .badge { display: inline-block; border: 1.5px solid #555; border-radius: 999px; padding: 2px 9px; font-size: 11px; margin: 4px 4px 0 0; }
+  .nav { display: flex; gap: 10px; justify-content: center; align-items: center; border: 2px solid #222; border-radius: 999px; padding: 7px 14px; width: max-content; margin: 12px auto; font-size: 12px; background: #fff; }
+  .nav i { display: inline-block; width: 22px; height: 22px; border: 1.5px solid #555; border-radius: 6px; }
+  .nav i.actif { background: #222; }
+  .note { position: absolute; width: 24px; height: 24px; border-radius: 50%; background: #d11; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; z-index: 2; }
+  .legende { margin-top: 18px; font-size: 13px; line-height: 1.55; columns: 2; column-gap: 32px; max-width: 1180px; }
+  .legende.etroite { columns: 1; max-width: 360px; }
+  .legende b { display: inline-block; min-width: 22px; height: 22px; border-radius: 50%; background: #d11; color: #fff; text-align: center; margin-right: 6px; font-size: 12px; line-height: 22px; }
+  .legende div { break-inside: avoid; margin-bottom: 6px; }
+  .carte-fond { background: repeating-linear-gradient(45deg, #f2f2f2 0 10px, #e6e6e6 10px 20px); border: 1.5px solid #999; position: relative; }
+  .marqueur { position: absolute; width: 16px; height: 16px; border-radius: 50%; border: 3px solid #222; background: #fff; }
+  .chrono { display: flex; justify-content: space-between; align-items: center; margin: 12px 0; font-size: 11px; }
+  .chrono span { width: 18px; height: 18px; border-radius: 50%; border: 2px solid #222; }
+  .chrono span.fait { background: #222; }
+  .chrono hr { flex: 1; border: 0; border-top: 2px solid #222; margin: 0 6px; }
+  /* Planche graphique (couleurs réelles du site) */
+  .charte { width: 1180px; }
+  .pastilles { display: flex; gap: 14px; flex-wrap: wrap; }
+  .pastille { width: 170px; border: 1px solid #ddd; border-radius: 10px; overflow: hidden; font-size: 12px; }
+  .pastille div:first-child { height: 70px; }
+  .pastille div:last-child { padding: 8px 10px; line-height: 1.4; }
+  .fond-site { background: #000; border-radius: 14px; padding: 24px; color: #f1f5f9; }
+  .vitre { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 16px; }
+  .bouton-vert { background: #198754; color: #fff; border-radius: 8px; padding: 10px 18px; font-weight: 600; display: inline-block; }
+  .bouton-contour { border: 1px solid #f1f5f9; color: #f1f5f9; border-radius: 8px; padding: 10px 18px; display: inline-block; }
+  .statut { display: inline-block; border-radius: 999px; padding: 3px 12px; font-size: 12px; font-weight: 700; }
+  h2.sous { font-size: 14px; letter-spacing: 1px; text-transform: uppercase; color: #0f766e; margin: 22px 0 10px; }
+</style>
+</head>
+<body>
+
+<!-- ============================ ACCUEIL ORDINATEUR ============================ -->
+<section class="planche" id="accueil-ordinateur">
+  <div class="entete"><h1>Wireframe 1 — Accueil (ordinateur, 1440 px)</h1><span>Signale Mayotte · basse fidélité</span></div>
+  <div class="ecran ordi">
+    <div class="zone" style="height:300px">
+      <div class="zone-titre">Hero</div>
+      <div class="rangee">
+        <div class="col" style="padding-top:30px">
+          <div class="ligne" style="width:120px"></div>
+          <div class="titre-gros" style="width:85%"></div><div class="titre-gros" style="width:55%"></div>
+          <div class="ligne" style="width:80%"></div><div class="ligne" style="width:70%"></div>
+          <div style="margin-top:18px"><span class="btn plein">Faire un signalement</span> &nbsp; <span class="btn">Mon espace</span></div>
+        </div>
+        <div class="col"><div class="img" style="height:240px;border-radius:50%;width:240px;margin-left:auto"></div></div>
+      </div>
+      <span class="note" style="top:60px;left:-6px">1</span><span class="note" style="top:200px;left:-6px">2</span><span class="note" style="top:20px;right:20px">3</span>
+    </div>
+    <div class="zone">
+      <div class="zone-titre">Comment ça marche</div>
+      <div class="rangee">
+        <div class="col carte-sig"><div class="titre-moyen" style="width:40%"></div><div class="ligne"></div><div class="ligne" style="width:70%"></div></div>
+        <div class="col carte-sig"><div class="titre-moyen" style="width:50%"></div><div class="ligne"></div><div class="ligne" style="width:60%"></div></div>
+        <div class="col carte-sig"><div class="titre-moyen" style="width:45%"></div><div class="ligne"></div><div class="ligne" style="width:65%"></div></div>
+      </div>
+      <span class="note" style="top:8px;right:20px">4</span>
+    </div>
+    <div class="zone">
+      <div class="zone-titre">Nos partenaires</div>
+      <div class="rangee">
+        <div class="col img" style="height:70px"></div><div class="col img" style="height:70px"></div><div class="col img" style="height:70px"></div><div class="col img" style="height:70px"></div><div class="col img" style="height:70px"></div>
+      </div>
+      <span class="note" style="top:8px;right:20px">5</span>
+    </div>
+    <div class="zone">
+      <div class="zone-titre">Derniers signalements</div>
+      <div class="rangee" style="margin-bottom:12px">
+        <div class="champ col">Rechercher…</div><div class="champ col">Commune ▾</div><div class="champ col">Catégorie ▾</div><div class="champ col">Statut ▾</div><div class="champ col">Tri ▾</div><div class="champ" style="width:110px">☐ Urgents</div>
+      </div>
+      <div class="rangee">
+        <div class="col carte-sig"><div class="img" style="height:110px"></div><div class="titre-moyen" style="width:50%"></div><div class="ligne"></div><span class="badge">Signalé</span></div>
+        <div class="col carte-sig"><div class="img" style="height:110px"></div><div class="titre-moyen" style="width:60%"></div><div class="ligne"></div><span class="badge">En cours</span></div>
+        <div class="col carte-sig"><div class="img" style="height:110px"></div><div class="titre-moyen" style="width:45%"></div><div class="ligne"></div><span class="badge">Résolu</span></div>
+      </div>
+      <p style="text-align:center;font-size:12px;margin:12px 0 0">← Précédent &nbsp; Page 1 / 3 &nbsp; Suivant →</p>
+      <span class="note" style="top:40px;left:-6px">6</span><span class="note" style="top:110px;left:-6px">7</span>
+    </div>
+    <div class="nav" style="position:relative"><i class="actif"></i>Accueil<i></i><i></i><i></i><i></i><i></i><i></i><span class="note" style="top:6px;right:-34px">8</span></div>
+    <div class="zone" style="height:70px"><div class="zone-titre">Pied de page — liens, catégories, contact</div></div>
+  </div>
+  <div class="legende">
+    <div><b>1</b>Titre et accroche : ce que fait le site, en une phrase.</div>
+    <div><b>2</b>Action principale visible dès l'arrivée : « Faire un signalement ».</div>
+    <div><b>3</b>Globe 3D en fond : identité visuelle (lagon → coucher de soleil).</div>
+    <div><b>4</b>Les 3 étapes : signaler, transmission au bon service, suivi.</div>
+    <div><b>5</b>Partenaires : logo, nom et domaine de chaque organisme.</div>
+    <div><b>6</b>Filtres en une ligne : commune, catégorie, statut, tri, urgents.</div>
+    <div><b>7</b>Cartes de signalement en 3 colonnes, statut en pastille, pagination.</div>
+    <div><b>8</b>Barre de navigation flottante en bas, à icônes (page active surlignée).</div>
+  </div>
+</section>
+
+<!-- ============================ ACCUEIL MOBILE ============================ -->
+<section class="planche" id="accueil-mobile">
+  <div class="entete"><h1>Wireframe 2 — Accueil (mobile, 390 px)</h1><span>&nbsp;basse fidélité</span></div>
+  <div class="ecran mobile">
+    <div class="zone">
+      <div class="zone-titre">Hero</div>
+      <div class="ligne" style="width:40%"></div><div class="titre-gros"></div><div class="titre-gros" style="width:70%"></div>
+      <div class="ligne"></div><div class="ligne" style="width:80%"></div>
+      <div style="margin-top:12px"><span class="btn plein" style="display:block;text-align:center">Faire un signalement</span></div>
+      <span class="note" style="top:90px;right:-4px">1</span>
+    </div>
+    <div class="zone"><div class="zone-titre">Comment ça marche (empilé)</div>
+      <div class="carte-sig" style="margin-bottom:6px"><div class="titre-moyen" style="width:50%"></div><div class="ligne"></div></div>
+      <div class="carte-sig"><div class="titre-moyen" style="width:60%"></div><div class="ligne"></div></div>
+    </div>
+    <div class="zone"><div class="zone-titre">Partenaires (2 par ligne)</div>
+      <div class="rangee"><div class="col img" style="height:56px"></div><div class="col img" style="height:56px"></div></div>
+      <span class="note" style="top:8px;right:-4px">2</span>
+    </div>
+    <div class="zone"><div class="zone-titre">Signalements</div>
+      <div class="champ">Rechercher…</div><div class="champ">Commune ▾</div>
+      <div class="carte-sig"><div class="img" style="height:120px"></div><div class="titre-moyen" style="width:50%"></div><div class="ligne"></div><span class="badge">Signalé</span></div>
+      <span class="note" style="top:60px;right:-4px">3</span>
+    </div>
+    <div class="nav" style="padding:6px 10px"><i class="actif"></i><i></i><i></i><i></i><i></i><i></i></div>
+    <span class="note" style="bottom:16px;left:10px">4</span>
+  </div>
+  <div class="legende etroite">
+    <div><b>1</b>Une colonne : titre, puis l'action principale en pleine largeur.</div>
+    <div><b>2</b>Logos des partenaires 2 par ligne.</div>
+    <div><b>3</b>Filtres empilés, une carte de signalement par ligne.</div>
+    <div><b>4</b>Navigation à icônes fixée en bas, à portée du pouce.</div>
+  </div>
+</section>
+
+<!-- ============================ SIGNALER ORDINATEUR ============================ -->
+<section class="planche" id="signaler-ordinateur">
+  <div class="entete"><h1>Wireframe 3 — Signaler un problème (ordinateur)</h1><span>parcours principal · BF-08</span></div>
+  <div class="ecran ordi">
+    <div class="rangee" style="padding:10px">
+      <div class="zone" style="flex:0 0 380px">
+        <div class="zone-titre">Explication</div>
+        <div class="ligne" style="width:50%"></div><div class="titre-gros" style="width:80%"></div>
+        <div class="ligne"></div><div class="ligne"></div><div class="ligne" style="width:70%"></div>
+        <span class="note" style="top:8px;right:8px">1</span>
+      </div>
+      <div class="zone col">
+        <div class="zone-titre">Formulaire</div>
+        <div class="rangee">
+          <div class="col"><span class="label">Catégorie</span><div class="champ">Choisir ▾</div></div>
+          <div class="col"><span class="label">Commune</span><div class="champ">Choisir parmi les 17 ▾</div></div>
+        </div>
+        <div class="carte-sig" style="margin-bottom:10px;font-size:12px">Organisme compétent : nom, téléphone, site <span class="note" style="position:static;display:inline-flex;margin-left:6px">2</span></div>
+        <span class="label">Description</span><div class="champ grand">10 à 2000 caractères</div>
+        <span class="label">Photos (5 maximum)</span><div class="champ" style="height:70px;border-style:dashed;text-align:center;padding-top:24px">Glisser-déposer ou prendre une photo</div>
+        <span class="label">☐ Urgent (danger immédiat)</span>
+        <div style="margin-top:10px"><span class="label">Localisation</span></div>
+        <div class="carte-fond" style="height:210px;margin:6px 0 10px"><span class="marqueur" style="top:90px;left:300px"></span><span class="btn" style="position:absolute;right:10px;bottom:10px">Utiliser ma position</span></div>
+        <div class="carte-sig" style="margin-bottom:12px;font-size:12px;border-style:dashed">Un signalement semblable existe à 120 m — [ Le soutenir ] <span class="note" style="position:static;display:inline-flex;margin-left:6px">4</span></div>
+        <span class="btn plein">Envoyer le signalement</span>
+        <span class="note" style="top:350px;right:8px">3</span>
+      </div>
+    </div>
+    <div class="nav"><i></i><i class="actif"></i>Signaler<i></i><i></i><i></i><i></i></div>
+  </div>
+  <div class="legende">
+    <div><b>1</b>Colonne d'aide : pourquoi signaler, ce qui se passe ensuite.</div>
+    <div><b>2</b>Dès que la catégorie est choisie, l'organisme compétent s'affiche.</div>
+    <div><b>3</b>Carte : un clic place le repère, ou bouton de géolocalisation.</div>
+    <div><b>4</b>Doublons proches (moins de 400 m) proposés avant l'envoi, sans bloquer (RG-16).</div>
+  </div>
+</section>
+
+<!-- ============================ SIGNALER MOBILE ============================ -->
+<section class="planche" id="signaler-mobile">
+  <div class="entete"><h1>Wireframe 4 — Signaler (mobile)</h1><span>&nbsp;BF-08</span></div>
+  <div class="ecran mobile">
+    <div class="zone"><div class="zone-titre">Formulaire (une colonne)</div>
+      <span class="label">Catégorie</span><div class="champ">Choisir ▾</div>
+      <span class="label">Commune</span><div class="champ">Choisir ▾</div>
+      <span class="label">Description</span><div class="champ grand"></div>
+      <div class="champ" style="height:56px;border-style:dashed;text-align:center;padding-top:18px">📷 Prendre une photo</div>
+      <div class="carte-fond" style="height:150px;margin:6px 0 10px"><span class="marqueur" style="top:60px;left:150px"></span></div>
+      <span class="btn plein" style="display:block;text-align:center">Envoyer</span>
+      <span class="note" style="top:200px;right:-4px">1</span><span class="note" style="top:270px;right:-4px">2</span>
+    </div>
+    <div class="nav" style="padding:6px 10px"><i></i><i class="actif"></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <div class="legende etroite">
+    <div><b>1</b>Sur téléphone, le bouton ouvre directement l'appareil photo.</div>
+    <div><b>2</b>Carte réduite ; la géolocalisation évite de chercher le lieu.</div>
+  </div>
+</section>
+
+<!-- ============================ FICHE ORDINATEUR ============================ -->
+<section class="planche" id="fiche-ordinateur">
+  <div class="entete"><h1>Wireframe 5 — Fiche d'un signalement (ordinateur)</h1><span>BF-03, BF-11, BF-12</span></div>
+  <div class="ecran ordi">
+    <p style="margin:14px 20px 0;font-size:12px">← Retour</p>
+    <div class="rangee" style="padding:10px">
+      <div class="zone col"><div class="zone-titre">Photos</div><div class="img" style="height:330px"></div>
+        <div class="rangee" style="margin-top:8px"><div class="col img" style="height:60px"></div><div class="col img" style="height:60px"></div><div class="col img" style="height:60px"></div></div>
+        <span class="note" style="top:8px;right:8px">1</span></div>
+      <div class="zone col">
+        <div class="zone-titre">Informations</div>
+        <span class="badge">Voirie</span><span class="badge">⚠ Urgent</span>
+        <div class="titre-gros" style="width:55%"></div><div class="ligne" style="width:35%"></div>
+        <div class="chrono"><span class="fait"></span><hr><span class="fait"></span><hr><span></span></div>
+        <div class="chrono" style="margin-top:-6px"><b>Signalé</b><b>En cours</b><b>Résolu</b></div>
+        <div style="margin:10px 0"><span class="btn">👍 Moi aussi (12)</span> &nbsp; <span class="btn">Partager</span> &nbsp; <span class="btn">🚩 Signaler</span> <span class="note" style="position:static;display:inline-flex;vertical-align:middle">3</span></div>
+        <div class="ligne"></div><div class="ligne"></div><div class="ligne" style="width:60%"></div>
+        <div class="carte-sig" style="margin:12px 0"><span class="label">Suivi officiel</span><div class="ligne"></div><div class="ligne" style="width:70%"></div></div>
+        <div class="carte-sig"><span class="label">Commentaires</span><div class="ligne"></div><div class="ligne" style="width:80%;margin-left:24px"></div><div class="champ">Écrire un commentaire…</div></div>
+        <span class="note" style="top:96px;right:8px">2</span><span class="note" style="top:270px;right:8px">4</span><span class="note" style="top:350px;right:8px">5</span>
+      </div>
+    </div>
+    <div class="nav"><i class="actif"></i><i></i><i></i><i></i><i></i><i></i></div>
+  </div>
+  <div class="legende">
+    <div><b>1</b>Photo principale et vignettes ; photo de résolution une fois résolu.</div>
+    <div><b>2</b>Frise du statut : Signalé → En cours → Résolu, avec les dates.</div>
+    <div><b>3</b>« Moi aussi » pour soutenir plutôt que créer un doublon (RG-15).</div>
+    <div><b>4</b>Mises à jour officielles publiées par l'association.</div>
+    <div><b>5</b>Commentaires avec un seul niveau de réponse (RG-20).</div>
+  </div>
+</section>
+
+<!-- ============================ CARTE ORDINATEUR ============================ -->
+<section class="planche" id="carte-ordinateur">
+  <div class="entete"><h1>Wireframe 6 — Carte des signalements (ordinateur)</h1><span>BF-02</span></div>
+  <div class="ecran ordi carte-fond" style="height:560px">
+    <div class="zone" style="position:absolute;top:10px;left:10px;width:280px;background:#fff">
+      <div class="zone-titre">Panneau de filtres flottant</div>
+      <div class="titre-moyen" style="width:70%"></div><div class="ligne" style="width:50%"></div>
+      <div class="champ">Communes ▾</div><div class="champ">Catégories ▾</div><div class="champ">Statuts ▾</div>
+      <div style="font-size:12px">◯ Signalé &nbsp; ◐ En cours &nbsp; ● Résolu</div>
+      <span class="note" style="top:8px;right:8px">1</span>
+    </div>
+    <span class="marqueur" style="top:180px;left:600px"></span><span class="marqueur" style="top:240px;left:680px;background:#888"></span><span class="marqueur" style="top:330px;left:640px;background:#222"></span><span class="marqueur" style="top:300px;left:760px"></span>
+    <div class="carte-sig" style="position:absolute;top:120px;left:700px;width:200px;background:#fff;font-size:12px">Aperçu : catégorie, commune, statut — [Voir la fiche]</div>
+    <span class="note" style="top:230px;left:560px">2</span><span class="note" style="top:110px;left:910px">3</span>
+    <div class="nav" style="position:absolute;bottom:4px;left:50%;transform:translateX(-50%)"><i></i><i></i><i class="actif"></i>Carte<i></i><i></i><i></i></div>
+  </div>
+  <div class="legende">
+    <div><b>1</b>Filtres au-dessus de la carte, qui occupe tout l'écran ; légende des statuts.</div>
+    <div><b>2</b>Un marqueur par signalement localisé, couleur selon le statut.</div>
+    <div><b>3</b>Clic sur un marqueur : aperçu puis lien vers la fiche.</div>
+  </div>
+</section>
+
+<!-- ============================ PLANCHE GRAPHIQUE ============================ -->
+<section class="planche" id="charte-graphique">
+  <div class="entete"><h1>Maquette — Charte graphique et composants</h1><span>haute fidélité · couleurs réelles du site</span></div>
+  <div class="charte">
+    <h2 class="sous">Couleurs</h2>
+    <div class="pastilles">
+      <div class="pastille"><div style="background:#000"></div><div><b>Fond</b><br>#000000 · thème sombre</div></div>
+      <div class="pastille"><div style="background:#f1f5f9;border-bottom:1px solid #ddd"></div><div><b>Texte</b><br>#f1f5f9</div></div>
+      <div class="pastille"><div style="background:#94a3b8"></div><div><b>Texte secondaire</b><br>#94a3b8</div></div>
+      <div class="pastille"><div style="background:#38bdf8"></div><div><b>Primaire (lagon)</b><br>#38bdf8 · liens, actifs</div></div>
+      <div class="pastille"><div style="background:#22c55e"></div><div><b>Accent</b><br>#22c55e · succès, Résolu</div></div>
+      <div class="pastille"><div style="background:linear-gradient(135deg,#0f766e,#7f1d1d,#ea580c)"></div><div><b>Dégradé du fond</b><br>lagon → coucher de soleil</div></div>
+    </div>
+    <h2 class="sous">Typographie — Inter</h2>
+    <div style="font-family:Inter,'Segoe UI',Arial,sans-serif">
+      <div style="font-size:40px;font-weight:800;line-height:1.1">Signalez les problèmes de votre commune</div>
+      <div style="font-size:20px;font-weight:700;margin-top:8px">Titre de section — 20 px gras</div>
+      <div style="font-size:15px;margin-top:6px;color:#475569">Texte courant 15 px : lisible sur petit écran, phrases courtes, vocabulaire simple.</div>
+    </div>
+    <h2 class="sous">Composants sur le fond du site</h2>
+    <div class="fond-site">
+      <div class="rangee" style="align-items:flex-start">
+        <div class="col">
+          <span class="bouton-vert">Faire un signalement</span> &nbsp; <span class="bouton-contour">Mon espace</span>
+          <div style="margin-top:18px">
+            <span class="statut" style="background:rgba(239,68,68,.18);color:#fca5a5">Signalé</span>
+            <span class="statut" style="background:rgba(245,158,11,.18);color:#fcd34d">En cours</span>
+            <span class="statut" style="background:rgba(34,197,94,.18);color:#86efac">Résolu</span>
+            <span class="statut" style="background:#dc2626;color:#fff">⚠ Urgent</span>
+          </div>
+          <div class="vitre" style="margin-top:18px;font-size:13px;color:#94a3b8">Panneau « verre dépoli » : fond rgba(255,255,255,.06), bordure rgba(255,255,255,.12), coins arrondis 14 px.</div>
+        </div>
+        <div class="col">
+          <div class="vitre">
+            <div style="height:120px;border-radius:10px;background:linear-gradient(135deg,#334155,#0f172a)"></div>
+            <div style="margin-top:10px;font-weight:700">Mamoudzou · Voirie</div>
+            <div style="font-size:13px;color:#94a3b8;margin:4px 0 8px">Nid-de-poule important rue principale…</div>
+            <span class="statut" style="background:rgba(245,158,11,.18);color:#fcd34d">En cours</span>
+            <span style="font-size:12px;color:#94a3b8;margin-left:8px">👍 12 soutiens</span>
+          </div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:6px">Carte de signalement (composant SignalementCard)</div>
+        </div>
+        <div class="col">
+          <div style="display:flex;gap:12px;align-items:center;background:linear-gradient(135deg,#0089d0,#005a88);border-radius:16px;padding:14px">
+            <div style="width:84px;height:64px;background:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#0089d0;font-weight:900">LOGO</div>
+            <div><div style="font-weight:900;font-size:18px">EDM</div><div style="font-size:12px;opacity:.9">Électricité de Mayotte</div><span class="statut" style="background:rgba(255,255,255,.2);margin-top:6px">Éclairage public</span></div>
+          </div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:6px">Carte partenaire, aux couleurs de l'organisme</div>
+          <div style="margin-top:18px;display:flex;gap:10px;justify-content:center;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:8px 14px;width:max-content">
+            <span style="background:rgba(34,197,94,.2);color:#86efac;border-radius:999px;padding:4px 12px;font-size:13px">⌂ Accueil</span><span>⚠</span><span>⌖</span><span>💬</span><span>▮</span><span>👤</span>
+          </div>
+          <div style="font-size:12px;color:#94a3b8;margin-top:6px">Barre de navigation flottante</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</body>
+</html>
