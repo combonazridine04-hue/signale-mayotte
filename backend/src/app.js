@@ -34,18 +34,9 @@ const app = express()
 
 // Nécessaire pour que express-rate-limit identifie les IP réelles derrière un proxy/hébergeur.
 app.set('trust proxy', 1)
-
-// En production (site en HTTPS), une requête arrivée en HTTP non chiffré est renvoyée vers
-// HTTPS. Chez alwaysdata, le proxy n'ajoute « X-Forwarded-Proto: https » qu'aux requêtes
-// chiffrées. 308 garde la méthode et le corps (POST…). En local et dans les tests, le site
-// n'est pas en HTTPS : rien ne change.
-const productionHttps = (process.env.FRONTEND_URL || '').startsWith('https://')
-app.use((req, res, next) => {
-  if (productionHttps && req.get('x-forwarded-proto') !== 'https') {
-    return res.redirect(308, `https://${req.get('host')}${req.originalUrl}`)
-  }
-  next()
-})
+// Le passage de HTTP à HTTPS est fait par le site (frontend/public/.htaccess) : les pages
+// n'appellent l'API qu'en relatif, donc toujours en HTTPS. Le cookie de session est marqué
+// Secure : il n'est jamais envoyé sur une connexion non chiffrée.
 
 // Ce serveur est une API : il ne sert ni pages ni scripts, seulement du JSON et des photos.
 // Sa politique de sécurité peut donc tout interdire. Celle des pages du site est inscrite
