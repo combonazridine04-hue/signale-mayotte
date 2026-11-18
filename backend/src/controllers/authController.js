@@ -14,7 +14,11 @@ import {
   mettreAJourPseudo,
   mettreAJourAvatar
 } from '../services/authService.js'
-import { envoyerVerificationEmail, envoyerReinitialisationMotDePasse } from '../services/emailService.js'
+import {
+  envoyerAlerteConnexionAdmin,
+  envoyerVerificationEmail,
+  envoyerReinitialisationMotDePasse
+} from '../services/emailService.js'
 import { motDePasseInterdit } from '../shared/motDePasse.js'
 import { fermerSession, ouvrirSession, sessionDeLaRequete } from '../services/sessionService.js'
 import { traiterPhoto } from '../middlewares/photoUpload.js'
@@ -51,6 +55,13 @@ export const connexionAdmin = async (req, res) => {
 
   ouvrirSession(req, res, creerSession(admin))
   journaliser(req, 'admin.connexion', { acteur, details: { deuxFacteurs: Boolean(admin.totpSecret) } })
+  // Après la réponse : l'e-mail ne doit ni ralentir ni faire échouer la connexion.
+  envoyerAlerteConnexionAdmin({
+    identifiant: admin.identifiant,
+    ip: req.ip,
+    navigateur: String(req.get('user-agent') || 'inconnu').slice(0, 200),
+    deuxFacteurs: Boolean(admin.totpSecret)
+  }).catch((e) => console.error('[mailer] Alerte de connexion admin non envoyée :', e.message))
   res.json({ identifiant: admin.identifiant })
 }
 

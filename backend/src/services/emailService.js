@@ -490,6 +490,41 @@ export async function envoyerAlerteContenuAbusif({ type, signalementId, extrait,
   })
 }
 
+// Alerte de sécurité, comme celles des banques : chaque connexion réussie à l'espace
+// d'administration est signalée à l'association. Une connexion qu'elle n'a pas faite se
+// voit tout de suite (mot de passe à changer, double authentification à vérifier).
+export async function envoyerAlerteConnexionAdmin({ identifiant, ip, navigateur, deuxFacteurs }) {
+  const quand = new Date().toLocaleString('fr-FR', { timeZone: 'Indian/Mayotte' })
+  await envoyerEmail({
+    to: destinataire,
+    subject: `Nouvelle connexion à l'espace admin — ${identifiant}`,
+    text: [
+      `Le compte administrateur « ${identifiant} » vient de se connecter.`,
+      `Date : ${quand} (heure de Mayotte)`,
+      `Adresse IP : ${ip}`,
+      `Navigateur : ${navigateur}`,
+      `Double authentification : ${deuxFacteurs ? 'oui' : 'non'}`,
+      '',
+      "Si ce n'est pas vous : changez le mot de passe de ce compte et vérifiez sa double authentification."
+    ].join('\n'),
+    html: gabarit({
+      titre: "Nouvelle connexion à l'espace admin",
+      couleur: COULEURS.bleu,
+      apercu: `${identifiant} — ${quand}`,
+      contenu: `
+        ${paragraphe(`Le compte administrateur <strong style="color:#0f172a;">${echapperHtml(identifiant)}</strong> vient de se connecter.`)}
+        ${fiche([
+          ['Date', `${quand} (heure de Mayotte)`],
+          ['Adresse IP', ip],
+          ['Navigateur', navigateur],
+          ['Double authentification', deuxFacteurs ? 'oui' : 'non']
+        ])}
+        ${note("Ce n'est pas vous ? Changez tout de suite le mot de passe de ce compte et vérifiez sa double authentification.")}
+      `
+    })
+  })
+}
+
 export async function envoyerMessageContact({ nom, email, sujet, message }) {
   await envoyerEmail({
     to: destinataire,
