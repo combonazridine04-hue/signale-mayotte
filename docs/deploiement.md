@@ -265,7 +265,17 @@ npm test   # unitaires + API + parcours dans un navigateur (front et API sépar�
   (puis, une fois corrigé, `git checkout main`). Même principe pour le front, suivi d'un
   `npm run build`. Un retour arrière ne retire pas une colonne déjà ajoutée : les migrations
   n'ajoutent que des colonnes, ce qui reste compatible avec l'ancien code.
-- **Sauvegardes :** avant toute opération risquée, copier la base et les fichiers de l'API :
+- **Sauvegardes automatiques (alwaysdata) :** chaque nuit vers 2 h, l'hébergeur sauvegarde la
+  base (`mysql/COMPTE_signale.sql.zst`) et tous les fichiers du compte, dont les photos et le
+  journal (`files/signale-mayotte/backend/data`). Elles sont lisibles en SSH dans
+  `~/admin/backup/AAAA-MM-JJ/` (vérifié le 18/11/2026 : 10 tables et leurs données présentes).
+  Restauration de la base à partir de celle d'un jour donné :
+  ```bash
+  zstd -dc ~/admin/backup/2026-11-18/mysql/COMPTE_signale.sql.zst \
+    | mariadb -h mysql-COMPTE.alwaysdata.net -u COMPTE_signale -p COMPTE_signale
+  ```
+  Le panneau d'alwaysdata permet aussi de restaurer une sauvegarde (_Avancé → Restauration_).
+- **Sauvegarde manuelle :** avant toute opération risquée, copier la base et les fichiers de l'API :
   ```bash
   mariadb-dump -h mysql-COMPTE.alwaysdata.net -u COMPTE_signale -p COMPTE_signale > sauvegarde.sql
   tar czf donnees.tar.gz -C ~/signale-mayotte/backend data
