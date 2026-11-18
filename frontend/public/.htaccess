@@ -5,6 +5,12 @@
 # /signalements/42, /carte) renvoie index.html, et Vue Router affiche le bon écran.
 RewriteEngine On
 RewriteBase /
+
+# Toute visite en HTTP (non chiffré) est renvoyée vers HTTPS. Le chiffrement est fait par le
+# proxy d'alwaysdata, qui indique le protocole d'origine dans X-Forwarded-Proto.
+RewriteCond %{HTTP:X-Forwarded-Proto} =http
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+
 RewriteRule ^index\.html$ - [L]
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

@@ -35,6 +35,16 @@ const app = express()
 // Nécessaire pour que express-rate-limit identifie les IP réelles derrière un proxy/hébergeur.
 app.set('trust proxy', 1)
 
+// Une requête arrivée en HTTP non chiffré (le proxy de l'hébergeur l'indique dans
+// X-Forwarded-Proto) est renvoyée vers HTTPS. 308 garde la méthode et le corps (POST…).
+// En local et dans les tests, cet en-tête est absent : rien ne change.
+app.use((req, res, next) => {
+  if (req.get('x-forwarded-proto') === 'http') {
+    return res.redirect(308, `https://${req.get('host')}${req.originalUrl}`)
+  }
+  next()
+})
+
 // Ce serveur est une API : il ne sert ni pages ni scripts, seulement du JSON et des photos.
 // Sa politique de sécurité peut donc tout interdire. Celle des pages du site est inscrite
 // par le front-end dans son index.html (voir son vite.config.js).
